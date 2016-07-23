@@ -21,7 +21,7 @@ CFLAGS +=  -Iinclude -I$(FFTW)/include  -I$(GSL)/include -I$(NICAEA)
 LFLAGS += -lm  -lfftw3 -lgsl -lgslcblas -lm -L$(FFTW)/lib -L$(GSL)/lib -L$(NICAEA)/Demo -lnicaea
 
 .PHONY: all
-all: lib$(NAME).$(EXT)
+all: ./bin/lib$(NAME).$(EXT)
 
 vpath %.h include
 vpath %.c src
@@ -32,7 +32,7 @@ test: $(NAME)_test
 $(NAME)_test: lib$(NAME).$(EXT)
 	$(CC)  $(CFLAGS)  $(LFLAGS) src/test.c -o $@ -L. -l$(NAME)
 
-lib$(NAME).$(EXT): $(OBJS)
+./bin/lib$(NAME).$(EXT): $(OBJS)
 	$(CC)  $(CFLAGS) $(LFLAGS) ${LDFLAGS} -o $@ $^
 
 %.h:

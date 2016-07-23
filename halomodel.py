@@ -6,11 +6,11 @@ script to run wrapped halomodel routines in c
 
 Required librairies:
 
-c:
 - nicaea 2.5 (http://www.cosmostat.org/software/nicaea/)
 - fftw3 3.3.4 (http://www.fftw.org/)
 - gsl 2.1 (https://www.gnu.org/software/gsl/)
 
+Paths to those libraries must be set in Makefile
 """
 
 import os
@@ -23,85 +23,86 @@ c_halomodel = ctypes.cdll.LoadLibrary(os.path.dirname(os.path.realpath(__file__)
 
 # the model parameters that are passed to c library
 class Model(ctypes.Structure):
-    """Structure to serve at interface between
+    """ Structure to serve at interface between
     python wrapper and c routines.
 
-    ATTENTION: add corresponding field IN SAME ORDER
+    IMPORTANT: when adding a new field,
+    add corresponding field IN SAME ORDER
     in include/utils.h
     """
 
     _fields_ = [
 
-                # cosmology
-                ("Omega_m",        ctypes.c_double),
-                ("Omega_de",       ctypes.c_double),
-                ("H0",             ctypes.c_double),
-                ("como",           ctypes.c_int),
-                ("massDef",        ctypes.c_char_p),
-                ("concenDef",      ctypes.c_char_p),
-                ("hmfDef",         ctypes.c_char_p),
-                ("biasDef",        ctypes.c_char_p),
+        # cosmology
+        ("Omega_m",        ctypes.c_double),
+        ("Omega_de",       ctypes.c_double),
+        ("H0",             ctypes.c_double),
+        ("como",           ctypes.c_int),
+        ("massDef",        ctypes.c_char_p),
+        ("concenDef",      ctypes.c_char_p),
+        ("hmfDef",         ctypes.c_char_p),
+        ("biasDef",        ctypes.c_char_p),
 
-                 # halo model / HOD parameters
-                ("log10M1",        ctypes.c_double),
-                ("log10Mstar0",    ctypes.c_double),
-                ("beta",           ctypes.c_double),
-                ("delta",          ctypes.c_double),
-                ("gamma",          ctypes.c_double),
-                ("log10Mstar_min", ctypes.c_double),
-                ("log10Mstar_max", ctypes.c_double),
-                ("sigma_log_M0",   ctypes.c_double),
-                ("sigma_lambda",   ctypes.c_double),
-                ("B_cut",          ctypes.c_double),
-                ("B_sat",          ctypes.c_double),
-                ("beta_cut",       ctypes.c_double),
-                ("beta_sat",       ctypes.c_double),
-                ("alpha",          ctypes.c_double),
-                ("fcen1",          ctypes.c_double),
-                ("fcen2",          ctypes.c_double),
+         # halo model / HOD parameters
+        ("log10M1",        ctypes.c_double),
+        ("log10Mstar0",    ctypes.c_double),
+        ("beta",           ctypes.c_double),
+        ("delta",          ctypes.c_double),
+        ("gamma",          ctypes.c_double),
+        ("log10Mstar_min", ctypes.c_double),
+        ("log10Mstar_max", ctypes.c_double),
+        ("sigma_log_M0",   ctypes.c_double),
+        ("sigma_lambda",   ctypes.c_double),
+        ("B_cut",          ctypes.c_double),
+        ("B_sat",          ctypes.c_double),
+        ("beta_cut",       ctypes.c_double),
+        ("beta_sat",       ctypes.c_double),
+        ("alpha",          ctypes.c_double),
+        ("fcen1",          ctypes.c_double),
+        ("fcen2",          ctypes.c_double),
 
-                # if using hod model
-                ("hod",        ctypes.c_int),
+        # if using hod model
+        ("hod",        ctypes.c_int),
 
-                # for X-ray binaries
-                ("Ix_XB_Re",       ctypes.c_double),
-                ("Ix_XB_L",        ctypes.c_double),
+        # for X-ray binaries
+        ("Ix_XB_Re",       ctypes.c_double),
+        ("Ix_XB_L",        ctypes.c_double),
 
-                # X-ray, if hod = 0
-                ("gas_log10rho0",  ctypes.c_double),
-                ("gas_log10beta",  ctypes.c_double),
-                ("gas_log10r_c",   ctypes.c_double),
+        # X-ray, if hod = 0
+        ("gas_log10rho0",  ctypes.c_double),
+        ("gas_log10beta",  ctypes.c_double),
+        ("gas_log10r_c",   ctypes.c_double),
 
-                # X-ray, if hod = 1
-                ("gas_log10rho0_1",    ctypes.c_double),
-                ("gas_log10rho0_2",    ctypes.c_double),
-                ("gas_log10rho0_3",    ctypes.c_double),
-                ("gas_log10rho0_4",    ctypes.c_double),
-                ("gas_log10beta_1",    ctypes.c_double),
-                ("gas_log10beta_2",    ctypes.c_double),
-                ("gas_log10beta_3",    ctypes.c_double),
-                ("gas_log10beta_4",    ctypes.c_double),
-                ("gas_log10r_c_1",     ctypes.c_double),
-                ("gas_log10r_c_2",     ctypes.c_double),
-                ("gas_log10r_c_3",     ctypes.c_double),
-                ("gas_log10r_c_4",     ctypes.c_double),
+        # X-ray, if hod = 1
+        ("gas_log10rho0_1",    ctypes.c_double),
+        ("gas_log10rho0_2",    ctypes.c_double),
+        ("gas_log10rho0_3",    ctypes.c_double),
+        ("gas_log10rho0_4",    ctypes.c_double),
+        ("gas_log10beta_1",    ctypes.c_double),
+        ("gas_log10beta_2",    ctypes.c_double),
+        ("gas_log10beta_3",    ctypes.c_double),
+        ("gas_log10beta_4",    ctypes.c_double),
+        ("gas_log10r_c_1",     ctypes.c_double),
+        ("gas_log10r_c_2",     ctypes.c_double),
+        ("gas_log10r_c_3",     ctypes.c_double),
+        ("gas_log10r_c_4",     ctypes.c_double),
 
-                # for gg lensing, if hod = 0
-                ("ggl_pi_max",      ctypes.c_double),
-                ("ggl_log10c",      ctypes.c_double),
-                ("ggl_log10Mh",     ctypes.c_double),
-                ("ggl_log10Mstar",  ctypes.c_double),
+        # for gg lensing, if hod = 0
+        ("ggl_pi_max",      ctypes.c_double),
+        ("ggl_log10c",      ctypes.c_double),
+        ("ggl_log10Mh",     ctypes.c_double),
+        ("ggl_log10Mstar",  ctypes.c_double),
 
-                # for wtheta, if hod = 1
-                ("wtheta_nz_N",      ctypes.c_int),
-                ("wtheta_nz_z",      ctypes.POINTER(ctypes.c_double)),
-                ("wtheta_nz",        ctypes.POINTER(ctypes.c_double)),
+        # for wtheta, if hod = 1
+        ("wtheta_nz_N",      ctypes.c_int),
+        ("wtheta_nz_z",      ctypes.POINTER(ctypes.c_double)),
+        ("wtheta_nz",        ctypes.POINTER(ctypes.c_double)),
 
-                # XMM PSF /
-                ("XMM_PSF_A",          ctypes.c_double),
-                ("XMM_PSF_r_c",        ctypes.c_double),
-                ("XMM_PSF_alpha",      ctypes.c_double),
-                ]
+        # XMM PSF /
+        ("XMM_PSF_A",          ctypes.c_double),
+        ("XMM_PSF_r_c",        ctypes.c_double),
+        ("XMM_PSF_alpha",      ctypes.c_double),
+        ]
 
     # default parameters
     def __init__(self, Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=0, massDef="M500c", concenDef="TJ03", hmfDef="T08", biasDef="T08"):
@@ -134,7 +135,7 @@ class Model(ctypes.Structure):
         self.fcen1          = -1
         self.fcen2          = -1
 
-        # for X-ray luminosity profiles
+        # if using hod model
         self.hod            = hod
 
         # for X-ray binaries
@@ -180,34 +181,23 @@ class Model(ctypes.Structure):
 """ c function prototypes """
 
 c_halomodel.dndlog10Mstar.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
-
-c_halomodel.DeltaSigma.argtypes    = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
-
-c_halomodel.wOfTheta.argtypes      = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
-
-c_halomodel.rh.argtypes            = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-c_halomodel.rh.restype             = ctypes.c_double
-
-c_halomodel.bias_h.argtypes        = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-c_halomodel.bias_h.restype         = ctypes.c_double
-
+c_halomodel.DeltaSigma.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
+c_halomodel.wOfTheta.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
+c_halomodel.rh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+c_halomodel.rh.restype = ctypes.c_double
+c_halomodel.bias_h.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+c_halomodel.bias_h.restype = ctypes.c_double
 c_halomodel.concentration.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_char_p]
-c_halomodel.concentration.restype  = ctypes.c_double
-
-c_halomodel.M1_to_M2.argtypes      = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
-
-c_halomodel.Omega_m_z.argtypes     = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-c_halomodel.Omega_m_z.restype      = ctypes.c_double
-
-c_halomodel.Delta.argtypes         = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_char_p]
-c_halomodel.Delta.restype          = ctypes.c_double
-
-c_halomodel.Delta_vir.argtypes     = [ctypes.POINTER(Model), ctypes.c_double]
-c_halomodel.Delta_vir.restype      = ctypes.c_double
-
-c_halomodel.msmh_log10Mh.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
-c_halomodel.msmh_log10Mh.restype   = ctypes.c_double
-
+c_halomodel.concentration.restype = ctypes.c_double
+c_halomodel.M1_to_M2.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
+c_halomodel.Omega_m_z.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+c_halomodel.Omega_m_z.restype = ctypes.c_double
+c_halomodel.Delta.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_char_p]
+c_halomodel.Delta.restype = ctypes.c_double
+c_halomodel.Delta_vir.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
+c_halomodel.Delta_vir.restype = ctypes.c_double
+c_halomodel.msmh_log10Mh.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
+c_halomodel.msmh_log10Mh.restype = ctypes.c_double
 
 def main(args):
 
@@ -224,7 +214,7 @@ def testHOD(args):
     z     = 0.308898
 
     if "dist" in actions:
-    """ radial comoving distance """
+        """ radial comoving distance """
 
         c_halomodel.DM.argtypes =  [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
         c_halomodel.DM.restype  = ctypes.c_double
@@ -237,7 +227,7 @@ def testHOD(args):
         return
 
     if False:
-    """ stellar mass function """
+        """ stellar mass function """
         model.hod = 1
 
         log10Mstar  = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)

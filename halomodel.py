@@ -18,23 +18,17 @@ import numpy as np
 import ctypes
 import sys
 
-# ----------------------------------------------------- #
-# path to c library
-# ----------------------------------------------------- #
-
+""" path to c library """
 c_halomodel = ctypes.cdll.LoadLibrary(os.path.dirname(os.path.realpath(__file__))+"/bin/libhalomodel.so")
-
-# ----------------------------------------------------- #
-# parameter structure (to pass model info to the c library)
-# ----------------------------------------------------- #
 
 # the model parameters that are passed to c library
 class Model(ctypes.Structure):
-    ''' Structure to serve at interface between
+    """Structure to serve at interface between
     python wrapper and c routines.
+
     ATTENTION: add corresponding field IN SAME ORDER
-    in c_halomodel/include/utils.h
-    '''
+    in include/utils.h
+    """
 
     _fields_ = [
 
@@ -183,9 +177,7 @@ class Model(ctypes.Structure):
         self.XMM_PSF_alpha = -1.0
 
 
-# ----------------------------------------------------- #
-# c function prototypes
-# ----------------------------------------------------- #
+""" c function prototypes """
 
 c_halomodel.dndlog10Mstar.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 
@@ -217,25 +209,22 @@ c_halomodel.msmh_log10Mh.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.msmh_log10Mh.restype   = ctypes.c_double
 
 
-# ----------------------------------------------------- #
-# tests
-# ----------------------------------------------------- #
-
 def main(args):
 
     function = getattr(sys.modules[__name__], args.option)(args)
     return
 
 def testHOD(args):
+    """ tests """
+
+    actions = ["dist"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
     z     = 0.308898
 
-    # ----------------------------------------------------- #
-    # radial comoving distance
-    # ----------------------------------------------------- #
-    if False:
+    if "dist" in actions:
+    """ radial comoving distance """
 
         c_halomodel.DM.argtypes =  [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
         c_halomodel.DM.restype  = ctypes.c_double
@@ -245,11 +234,10 @@ def testHOD(args):
 
         print c_halomodel.DM(model, z, 0), cosmo.comoving_distance([z])
 
-    # ----------------------------------------------------- #
-    # stellar mass function
-    # ----------------------------------------------------- #
-    if False:
+        return
 
+    if False:
+    """ stellar mass function """
         model.hod = 1
 
         log10Mstar  = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)
@@ -330,7 +318,7 @@ def testHOD(args):
     # ----------------------------------------------------- #
     # clustering (w(theta))
     # ----------------------------------------------------- #
-    if True:
+    if False:
 
         from   astropy.io import ascii
 

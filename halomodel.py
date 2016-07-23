@@ -22,7 +22,7 @@ import sys
 # path to c library
 # ----------------------------------------------------- #
 
-c_halomodel = ctypes.cdll.LoadLibrary(os.path.expanduser("~")+"/local/lib/python/c_halomodel/libhalomodel.so")
+c_halomodel = ctypes.cdll.LoadLibrary(os.path.dirname(os.path.realpath(__file__))+"/bin/libhalomodel.so")
 
 # ----------------------------------------------------- #
 # parameter structure (to pass model info to the c library)
@@ -216,22 +216,6 @@ c_halomodel.Delta_vir.restype      = ctypes.c_double
 c_halomodel.msmh_log10Mh.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.msmh_log10Mh.restype   = ctypes.c_double
 
-# c function prototypes for X-ray luminosities
-# c_halomodel.Ix.argtypes = [np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int]
-
-# c function prototypes for Mgas
-# c_halomodel.MGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-# c_halomodel.MGas.restype  = ctypes.c_double
-
-# c function prototypes for X-ray profile parameters
-# c_halomodel.inter_gas_log10rho0.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
-# c_halomodel.inter_gas_log10rho0.restype  = ctypes.c_double
-
-# c_halomodel.inter_gas_log10beta.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
-# c_halomodel.inter_gas_log10beta.restype  = ctypes.c_double
-
-# c_halomodel.inter_gas_log10r_c.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
-# c_halomodel.inter_gas_log10r_c.restype   = ctypes.c_double
 
 # ----------------------------------------------------- #
 # tests

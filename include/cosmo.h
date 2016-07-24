@@ -1,8 +1,8 @@
-/* ------------------------------------------------------------ *
- * cosmo.h                                                      *
- * halomodel library                                            *
- * Jean Coupon 2016	                                           *
- * ------------------------------------------------------------ */
+/*
+ *    cosmo.h
+ *    halomodel library
+ *    Jean Coupon 2016
+ */
 
 #ifndef COSMO_H
 #define COSMO_H
@@ -14,38 +14,34 @@
 #include "utils.h"
 #include "cosmo.h"
 
-/* ---------------------------------------------------------------- *
- * cosmological parameters
- * ---------------------------------------------------------------- */
+/*
+ *    cosmological parameters
+ */
 
 cosmo *initCosmo(const Model *model);
 
-/* ---------------------------------------------------------------- *
- * Angular correlation function of dark matter
- * ---------------------------------------------------------------- */
+/*
+ *    Angular correlation function of dark matter
+ */
 
 void xi_m(const Model *model, double *r, int N, double z, double *result);
 double intForxi_m(double k, void *params);
 
-//double xi_dm2(const Model *model, double r, double z);
-
-
-/* ---------------------------------------------------------------- *
- * halo bias
- * ---------------------------------------------------------------- */
+/*
+ *    halo bias
+ */
 
 double bias_h(const Model *model, double Mh, double z);
 
-/* ---------------------------------------------------------------- *
- * halo mass function
- * ---------------------------------------------------------------- */
+/*
+ *    halo mass function
+ */
 
 double dndlnMh(const Model *model, double z, double Mh);
 
-
-/* ---------------------------------------------------------------- *
- * halo profile functions
- * ---------------------------------------------------------------- */
+/*
+ *    halo profile functions
+ */
 
 double uHalo(const Model *model, double k, double Mh, double c, double z);
 
@@ -56,22 +52,22 @@ double rhoHalo(const Model *model, double r, double Mh, double c, double z);
 double NFW(double r, double r_s, double rho_s);
 double concentration(const Model *model, double Mh, double z, char *concenDef);
 
-/* ---------------------------------------------------------------- *
- * mass definition
- * ---------------------------------------------------------------- */
+/*
+ *    mass definition
+ */
+
 double Delta(const Model *model, double z, char *massDef);
-// double Delta(const Model *model, double z);
 double Delta_vir(const Model *model, double z);
 double r_vir(const Model *model, double Mh, double c, double z);
 double M_vir(const Model *model, double Mh, char *massDef, double c, double z);
 void M1_to_M2(const Model *model, double M1, double c1, double Delta1, double Delta2, double z, double *M2, double *c2);
-double rh(const Model *model, double Mh, double z);
+double rh(const Model *model, double Mh, double D, double z);
 double Mh_rh(const Model *model, double r, double z);
 
 
-/* ---------------------------------------------------------------- *
- * halo model functions
- * ---------------------------------------------------------------- */
+/*
+ *    halo model functions
+ */
 
 double f_sigma(const Model *model, double sigma, double z);
 double b_sigma(const Model *model, double sigma, double z);
@@ -80,9 +76,9 @@ double sigma2M(const Model *model, double Mh);
 double sigma2R(const Model *model, double R);
 double int_for_sigma2R(double lnk, void *p);
 
-/* ---------------------------------------------------------------- *
- * cosmology functions
- * ---------------------------------------------------------------- */
+/*
+ *    cosmology functions
+ */
 
 double delta_c(const Model *model, double z);
 double Dplus(const Model *model, double z);

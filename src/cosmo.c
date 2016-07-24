@@ -413,7 +413,7 @@ double uHaloClosedFormula(const Model *model, double k, double Mh, double c, dou
    if(isnan(c)) c = concentration(model, Mh, z, model->concenDef);
 
    f = 1.0/(log(1.0+c) - c/(1.0+c));
-   eta = k * rh(model, Mh, z)/c;
+   eta = k * rh(model, Mh, NAN, z)/c;
 
    cieta = gsl_sf_Ci (eta);
    sieta = gsl_sf_Si (eta);
@@ -446,7 +446,7 @@ double rhoHalo(const Model *model, double r, double Mh, double c, double z)
 
       if(isnan(c)) c = concentration(model, Mh, z, model->concenDef);
 
-      r_s     = rh(model, Mh, z)/c;
+      r_s     = rh(model, Mh, NAN, z)/c;
       rho_s   = rho_crit(model, 0.0)*Delta(model, z, model->massDef)/3.0*pow(c,3.0)/(log(1.0+c)-c/(1.0+c));
       Mh_tmp  = Mh;
       c_tmp   = c;
@@ -593,7 +593,7 @@ double r_vir(const Model *model, double Mh, double c, double z)
       for(i=0;i<Ninter;i++){
          x[i]  = LNMH_MIN+dx*(double)i;
          if( !strcmp(model->massDef, "MvirC15")){
-            y[i] = rh(model, exp(x[i]), z);  // DEBUGGING: matches Coupon et al. (2015) but is not exactly correct
+            y[i] = rh(model, Mh, NAN, z);  // DEBUGGING: matches Coupon et al. (2015) but is not exactly correct
          }else{
             y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, 0.0)*Delta_vir(model, z)), 1.0/3.0);
          }
@@ -892,21 +892,24 @@ double int_for_sigma2R(double lnk, void *p)
 
 }
 
+double rh(const Model *model, double Mh, double D, double z){
+/*
+ *    Returns the radius rh enclosing Delta (D) times the CRITICAL
+ *    density of the Universe at redshift z. If Delta = Delta_vir, this
+ *    is the virial radius.
+ */
 
-double rh(const Model *model, double Mh, double z){
-   /*
-   Returns the radius rh enclosing Delta times the CRITICAL
-   density of the Universe at redshift z. If Delta = Delta_vir, this
-   is the virial radius.
-   */
+   if (isnan(D)){
+      D = Delta(model, z, model->massDef);
+   }
 
-   return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, 0.0)*Delta(model, z, model->massDef)), 1.0/3.0);
+   return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, 0.0)*D), 1.0/3.0);
 }
 
 double Mh_rh(const Model *model, double r, double z)
 {
   /* Mass of a halo with radius rh. If Delta = Delta_vir, this
-  is virial mass. This is NOT Mh(r). */
+  is virial mass. This is NOT the mass integrated within r, Mh(r). */
 
   return (4.0/3.0)*M_PI*r*r*r*rho_crit(model, 0.0)*Delta(model, z, model->massDef);
 }

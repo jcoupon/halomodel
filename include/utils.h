@@ -7,6 +7,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -70,22 +71,22 @@ typedef struct Model
    double Ix_XB_Re;
    double Ix_XB_L;
 
-   double gas_log10rho0;
+   double gas_log10n0;
    double gas_log10beta;
-   double gas_log10r_c;
+   double gas_log10rc;
 
-   double gas_log10rho0_1;
-   double gas_log10rho0_2;
-   double gas_log10rho0_3;
-   double gas_log10rho0_4;
+   double gas_log10n0_1;
+   double gas_log10n0_2;
+   double gas_log10n0_3;
+   double gas_log10n0_4;
    double gas_log10beta_1;
    double gas_log10beta_2;
    double gas_log10beta_3;
    double gas_log10beta_4;
-   double gas_log10r_c_1;
-   double gas_log10r_c_2;
-   double gas_log10r_c_3;
-   double gas_log10r_c_4;
+   double gas_log10rc_1;
+   double gas_log10rc_2;
+   double gas_log10rc_3;
+   double gas_log10rc_4;
 
    /* for gg lensing */
    double ggl_pi_max;
@@ -99,7 +100,7 @@ typedef struct Model
 
    /* XMM PSF (King's profile, must be normalised) */
    double XMM_PSF_A;
-   double XMM_PSF_r_c;
+   double XMM_PSF_rc;
    double XMM_PSF_alpha;
 
 }  Model;
@@ -234,6 +235,6 @@ double integrand_gsl(double x, void *p);
 double sinc(double x);
 
 double trapz(double *x, double *y, int N);
-double King(double r, double A, double r_c, double alpha);
+double King(double r, double A, double rc, double alpha);
 
 #endif

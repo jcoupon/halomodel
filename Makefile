@@ -3,7 +3,7 @@
 # compiler option
 CC      = gcc
 CFLAGS  = -fPIC -Wall -Wextra -O3 #-g
-LDFLAGS = -shared
+LDFLAGS =
 RM      = rm -f
 NAME    = halomodel
 EXT     = so
@@ -20,23 +20,25 @@ OBJS    = $(SRCS:.c=.o)
 CFLAGS +=  -Iinclude -I$(FFTW)/include  -I$(GSL)/include -I$(NICAEA)
 LFLAGS += -lm  -lfftw3 -lgsl -lgslcblas -lm -L$(FFTW)/lib -L$(GSL)/lib -L$(NICAEA)/Demo -lnicaea
 
+# python interpreter
+CFLAGS += $(shell python-config --cflags)
+LFLAGS += $(shell python-config --ldflags) -L/anaconda/lib
+
 .PHONY: all
-all: ./bin/lib$(NAME).$(EXT)
+all: ./lib/lib$(NAME).$(EXT)
 
 vpath %.h include
 vpath %.c src
 
-test: $(NAME)_test
-	LD_LIBRARY_PATH=. ./$(NAME)_test
-
-$(NAME)_test: lib$(NAME).$(EXT)
-	$(CC)  $(CFLAGS)  $(LFLAGS) src/test.c -o $@ -L. -l$(NAME)
-
-./bin/lib$(NAME).$(EXT): $(OBJS)
+xray:  $(OBJS)
 	$(CC)  $(CFLAGS) $(LFLAGS) ${LDFLAGS} -o $@ $^
+	mv xray ./bin/xray
+
+./lib/lib$(NAME).$(EXT): $(OBJS)
+	$(CC)  $(CFLAGS) $(LFLAGS) -shared ${LDFLAGS} -o $@ $^
 
 %.h:
 
 .PHONY: clean
 clean:
-	-${RM} $(NAME)_test ${OBJS}
+	-${RM}  ${OBJS}

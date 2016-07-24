@@ -19,7 +19,7 @@ import ctypes
 import sys
 
 """ path to c library """
-c_halomodel = ctypes.cdll.LoadLibrary(os.path.dirname(os.path.realpath(__file__))+"/bin/libhalomodel.so")
+c_halomodel = ctypes.cdll.LoadLibrary(os.path.dirname(os.path.realpath(__file__))+"/lib/libhalomodel.so")
 
 # the model parameters that are passed to c library
 class Model(ctypes.Structure):
@@ -69,23 +69,23 @@ class Model(ctypes.Structure):
         ("Ix_XB_L",        ctypes.c_double),
 
         # X-ray, if hod = 0
-        ("gas_log10rho0",  ctypes.c_double),
+        ("gas_log10n0",  ctypes.c_double),
         ("gas_log10beta",  ctypes.c_double),
-        ("gas_log10r_c",   ctypes.c_double),
+        ("gas_log10rc",   ctypes.c_double),
 
         # X-ray, if hod = 1
-        ("gas_log10rho0_1",    ctypes.c_double),
-        ("gas_log10rho0_2",    ctypes.c_double),
-        ("gas_log10rho0_3",    ctypes.c_double),
-        ("gas_log10rho0_4",    ctypes.c_double),
+        ("gas_log10n0_1",    ctypes.c_double),
+        ("gas_log10n0_2",    ctypes.c_double),
+        ("gas_log10n0_3",    ctypes.c_double),
+        ("gas_log10n0_4",    ctypes.c_double),
         ("gas_log10beta_1",    ctypes.c_double),
         ("gas_log10beta_2",    ctypes.c_double),
         ("gas_log10beta_3",    ctypes.c_double),
         ("gas_log10beta_4",    ctypes.c_double),
-        ("gas_log10r_c_1",     ctypes.c_double),
-        ("gas_log10r_c_2",     ctypes.c_double),
-        ("gas_log10r_c_3",     ctypes.c_double),
-        ("gas_log10r_c_4",     ctypes.c_double),
+        ("gas_log10rc_1",     ctypes.c_double),
+        ("gas_log10rc_2",     ctypes.c_double),
+        ("gas_log10rc_3",     ctypes.c_double),
+        ("gas_log10rc_4",     ctypes.c_double),
 
         # for gg lensing, if hod = 0
         ("ggl_pi_max",      ctypes.c_double),
@@ -100,7 +100,7 @@ class Model(ctypes.Structure):
 
         # XMM PSF /
         ("XMM_PSF_A",          ctypes.c_double),
-        ("XMM_PSF_r_c",        ctypes.c_double),
+        ("XMM_PSF_rc",        ctypes.c_double),
         ("XMM_PSF_alpha",      ctypes.c_double),
         ]
 
@@ -143,23 +143,23 @@ class Model(ctypes.Structure):
         self.Ix_XB_L        = -1.0 # in CR Mpc-2
 
         # X-ray, if hod = 0
-        self.gas_log10rho0  = -3.0
+        self.gas_log10n0  = -3.0
         self.gas_log10beta  = -1.0
-        self.gas_log10r_c   = -1.0
+        self.gas_log10rc   = -1.0
 
         # X-ray, if hod = 1
-        self.gas_log10rho0_1 = -2.0
-        self.gas_log10rho0_2 = -2.0
-        self.gas_log10rho0_3 = -2.0
-        self.gas_log10rho0_4 = -2.0
+        self.gas_log10n0_1 = -2.0
+        self.gas_log10n0_2 = -2.0
+        self.gas_log10n0_3 = -2.0
+        self.gas_log10n0_4 = -2.0
         self.gas_log10beta_1 = 0.5
         self.gas_log10beta_2 = 0.5
         self.gas_log10beta_3 = 0.5
         self.gas_log10beta_4 = 0.5
-        self.gas_log10r_c_1  = -1.0
-        self.gas_log10r_c_2  = -1.0
-        self.gas_log10r_c_3  = -1.0
-        self.gas_log10r_c_4  = -1.0
+        self.gas_log10rc_1  = -1.0
+        self.gas_log10rc_2  = -1.0
+        self.gas_log10rc_3  = -1.0
+        self.gas_log10rc_4  = -1.0
 
         # for gg lensing
         self.ggl_pi_max     = 60.0
@@ -174,7 +174,7 @@ class Model(ctypes.Structure):
 
         # XMM PSF
         self.XMM_PSF_A     = -1.0
-        self.XMM_PSF_r_c   = -1.0
+        self.XMM_PSF_rc   = -1.0
         self.XMM_PSF_alpha = -1.0
 
 
@@ -183,7 +183,8 @@ class Model(ctypes.Structure):
 c_halomodel.dndlog10Mstar.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.DeltaSigma.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.wOfTheta.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
-c_halomodel.rh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+# c_halomodel.Ix.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
+c_halomodel.rh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.rh.restype = ctypes.c_double
 c_halomodel.bias_h.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
 c_halomodel.bias_h.restype = ctypes.c_double
@@ -207,26 +208,43 @@ def main(args):
 def testHOD(args):
     """ tests """
 
-    actions = ["dist"]
+    actions = ["CR_to_Lx"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
     z     = 0.308898
 
-    if "dist" in actions:
-        """ radial comoving distance """
 
-        c_halomodel.DM.argtypes =  [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
-        c_halomodel.DM.restype  = ctypes.c_double
+    if "CR_to_Lx" in actions:
 
-        from   astropy.cosmology import FlatLambdaCDM
-        cosmo = FlatLambdaCDM(H0=72.0, Om0=0.258)
+        c_halomodel.CRToLx.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
+        c_halomodel.CRToLx.restype = ctypes.c_double
 
-        print c_halomodel.DM(model, z, 0), cosmo.comoving_distance([z])
+        c_halomodel.CRToLx(model, z, 0.5, 0.25)
+
+
+        sys.path.append(os.path.dirname(os.path.realpath(__file__))+"/python")
+
+        import xray
+
+        print xray.CRToLx("info/CRtoLx.ascii", z)
 
         return
 
-    if False:
+        from   astropy.io import ascii
+        from scipy import interpolate
+
+        data = ascii.read("info/CRtoLx.ascii")
+
+        ZGas_Tx_z = (data['ZGas'], data['Tx'], data['z'])
+
+        CR = interpolate.griddata(ZGas_Tx_z, data["CR_pn"]+2.0*data["CR_MOS"], (0.25, 0.5, 0.2), method='linear')
+        Lx = interpolate.griddata(ZGas_Tx_z, data["Lx_bolo"], (0.25, 0.5, 0.2), method='linear')
+
+        print Lx/CR
+
+
+    if "smf" in actions:
         """ stellar mass function """
         model.hod = 1
 
@@ -236,60 +254,15 @@ def testHOD(args):
         for i in range(len(log10Mstar)):
             print log10Mstar[i], result[i]
 
-
-    # ----------------------------------------------------- #
-    # Mstar - Mh
-    # ----------------------------------------------------- #
-    if False:
-
-        c_halomodel.msmh_log10Mstar.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
-        c_halomodel.msmh_log10Mstar.restype  = ctypes.c_double
-
-        log10Mh  = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
-
-        for i in range(len(log10Mh)):
-            print log10Mh[i], c_halomodel.msmh_log10Mstar(model, log10Mh[i])
-
-
-    # ----------------------------------------------------- #
-    # fourrier transform of NFW profile
-    # ----------------------------------------------------- #
-    if False:
-
-        Mh = 1.e14
-        c  = np.nan
-
-        c_halomodel.uHalo.argtypes =  [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
-        c_halomodel.uHalo.restype  = ctypes.c_double
-
-        c_halomodel.uHaloClosedFormula.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
-        c_halomodel.uHaloClosedFormula.restype  = ctypes.c_double
-
-        k       = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(1.e4), 100))
-        numerical = np.asarray(np.zeros(len(k)), dtype=np.float64)
-        analytic  = np.asarray(np.zeros(len(k)), dtype=np.float64)
-
-        for i in range(len(k)):
-            numerical[i] = c_halomodel.uHalo(model, k[i], Mh, c, z)
-            analytic[i]  = c_halomodel.uHaloClosedFormula(model, k[i], Mh, c, z)
-            print k[i], numerical[i], analytic[i]
-
-        #print np.trapz(numerical, k), np.trapz(analytic, k)
-
-        return
-
-    # ----------------------------------------------------- #
-    # gg lensing (Delta Sigma)
-    # ----------------------------------------------------- #
-    if False:
+    if "ggl" in actions:
 
         model.como = 0 # physical or comoving coordinates
+        model.hod = 0 # halo model
 
-        if True: # parameteric HOD
+        if model.hod == 1:
             model.log10Mstar_min = 11.10 - 0.1549 #- 0.142668
             model.log10Mstar_max = 11.30 - 0.1549 #- 0.142668
-
-        if False: # non-parametric HOD
+        else:
             model.hod = 0
             model.ggl_log10Mh = 12.0520432788 - 0.142668
             model.ggl_log10c  = 1.12299192362
@@ -305,10 +278,7 @@ def testHOD(args):
         for i in range(len(R)):
             print R[i], total[i], star[i], cen[i], sat[i], twohalo[i]
 
-    # ----------------------------------------------------- #
-    # clustering (w(theta))
-    # ----------------------------------------------------- #
-    if False:
+    if "wtheta" in actions:
 
         from   astropy.io import ascii
 
@@ -333,10 +303,108 @@ def testHOD(args):
         for i in range(len(R)):
             print R[i], total[i], censat[i], satsat[i], twohalo[i]
 
-    # ----------------------------------------------------- #
-    # dark matter TPCF
-    # ----------------------------------------------------- #
-    if False:
+    if "Lambda" in actions:
+
+        c_halomodel.Lambda.argtypes = [ctypes.c_double, ctypes.c_double]
+        c_halomodel.Lambda.restype = ctypes.c_double
+
+        Tx = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
+        for i in range(len(Tx)):
+            print Tx[i], c_halomodel.Lambda(Tx[i], 0.25), c_halomodel.Lambda(Tx[i], 0.15), c_halomodel.Lambda(Tx[i], 0.40)
+
+
+    if "Ix" in actions:
+
+        model.como = 0 # physical (0) or comoving coordinates (1)
+        model.hod = 0 # halo model
+
+        Mh = pow(10.0, 13.8)
+        c  = np.nan #pow(10.0, 0.797955197032)
+
+        R500 = c_halomodel.rh(model, Mh, Delta(model, z, "M500c"), z)
+
+
+        if model.hod == 1:
+            model.log10Mstar_min = 11.10 - 0.1549 #- 0.142668
+            model.log10Mstar_max = 11.30 - 0.1549 #- 0.142668
+        else:
+            model.gas_log10n0 = np.log10(5.3e-3)
+            model.gas_log10beta = np.log10(0.40)
+            model.gas_log10rc = np.log10(0.03*R500)
+
+
+        c_halomodel.nGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+        c_halomodel.nGas.restype = ctypes.c_double
+
+        c_halomodel.MGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+        c_halomodel.MGas.restype = ctypes.c_double
+
+        c_halomodel.ix.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+        c_halomodel.ix.restype = ctypes.c_double
+
+
+        R = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(R500), 100))
+
+        Mgas = c_halomodel.MGas(model, R500, Mh, c, z)
+
+        print np.log10(Mgas), Mgas/Mh
+
+        ix = np.zeros(len(R))
+        nGas = np.zeros(len(R))
+
+        for i in range(len(R)):
+            ix[i] =  c_halomodel.ix(model, R[i], Mh, c, z)
+            nGas[i] = c_halomodel.nGas(model, R[i], np.nan, np.nan, z)
+            print R[i], nGas[i], ix[i]
+
+        print np.log10(4.0 * np.pi * np.trapz(ix * R * R, R))
+        print np.log10(3.33054952367e+16 * 4.0 * np.pi * np.trapz(nGas * R * R, R))
+
+
+    if "dist" in actions:
+        """ radial comoving distance """
+
+        c_halomodel.DM.argtypes =  [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
+        c_halomodel.DM.restype  = ctypes.c_double
+
+        from   astropy.cosmology import FlatLambdaCDM
+        cosmo = FlatLambdaCDM(H0=72.0, Om0=0.258)
+
+        print c_halomodel.DM(model, z, 0), cosmo.comoving_distance([z])*0.72
+
+    if "MsMh" in actions:
+
+        c_halomodel.msmh_log10Mstar.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
+        c_halomodel.msmh_log10Mstar.restype  = ctypes.c_double
+
+        log10Mh  = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
+
+        for i in range(len(log10Mh)):
+            print log10Mh[i], c_halomodel.msmh_log10Mstar(model, log10Mh[i])
+
+    if "uNFW" in actions:
+
+        Mh = 1.e14
+        c  = np.nan
+
+        c_halomodel.uHalo.argtypes =  [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+        c_halomodel.uHalo.restype  = ctypes.c_double
+
+        c_halomodel.uHaloClosedFormula.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+        c_halomodel.uHaloClosedFormula.restype  = ctypes.c_double
+
+        k       = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(1.e4), 100))
+        numerical = np.asarray(np.zeros(len(k)), dtype=np.float64)
+        analytic  = np.asarray(np.zeros(len(k)), dtype=np.float64)
+
+        for i in range(len(k)):
+            numerical[i] = c_halomodel.uHalo(model, k[i], Mh, c, z)
+            analytic[i]  = c_halomodel.uHaloClosedFormula(model, k[i], Mh, c, z)
+            print k[i], numerical[i], analytic[i]
+
+        #print np.trapz(numerical, k), np.trapz(analytic, k)
+
+    if "xi_dm" in actions:
 
         c_halomodel.xi_m.argtypes =  [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)]
 
@@ -348,16 +416,10 @@ def testHOD(args):
         for i in range(len(R)):
             print R[i], result[i]
 
-    # ----------------------------------------------------- #
-    # concentration
-    # ----------------------------------------------------- #
-    if False:
+    if "concen" in actions:
         print concentration(model, 1.e14, z, concenDef="TJ03")
 
-    # ----------------------------------------------------- #
-    # mass conversion
-    # ----------------------------------------------------- #
-    if False:
+    if "mass_conv" in actions:
 
         log10h = np.log10(model.H0/100.0)
 
@@ -366,10 +428,7 @@ def testHOD(args):
 
         print log10M1_to_log10M2(model, log10Mh, None, "MvirC15", "M500c", z)[0] - log10h
 
-    # ----------------------------------------------------- #
-    # change
-    # ----------------------------------------------------- #
-    if False:
+    if "change" in actions:
 
         c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model)]
         c_halomodel.changeModelHOD.restype  = ctypes.c_int
@@ -379,69 +438,6 @@ def testHOD(args):
 
     return
 
-
-
-def testNicaea(args):
-
-    model = Model()
-    z     = 0.311712 #0.29
-
-    # linear power spectrum
-    if True:
-
-        c_halomodel.P_lin.argtypes     = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-        c_halomodel.P_lin.restype      = ctypes.c_double
-        c_halomodel.P_nonlin.argtypes  = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-        c_halomodel.P_nonlin.restype   = ctypes.c_double
-
-        for k in np.exp(np.linspace(np.log(1.e-4), np.log(20.0), 50)):
-            # fac  = k*k*k/(2*np.pi*np.pi);
-            fac = 1.0
-            print k, c_halomodel.P_lin(model, z, k) * fac, c_halomodel.P_nonlin(model, z, k) * fac
-
-    if False:
-
-        c_halomodel.sigmaR2.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
-        c_halomodel.sigmaR2.restype   = ctypes.c_double
-
-        print np.sqrt(c_halomodel.sigmaR2(model, 8.0)) # sigma8
-
-    if False:
-
-        c_halomodel.rho_crit.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
-        c_halomodel.rho_crit.restype   = ctypes.c_double
-
-        print c_halomodel.rho_crit(model, z)
-
-    if False:
-
-        c_halomodel.delta_c.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
-        c_halomodel.delta_c.restype   = ctypes.c_double
-
-        print c_halomodel.delta_c(model, z)
-
-    if False:
-
-        c_halomodel.dndlnMh.argtypes  = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-        c_halomodel.dndlnMh.restype   = ctypes.c_double
-
-        for m in np.exp(np.linspace(np.log(1.e3), np.log(2.e16), 100)):
-            print m, c_halomodel.dndlnMh(model, z, m)
-
-    if False:
-
-        c_halomodel.bias_h.argtypes  = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-        c_halomodel.bias_h.restype   = ctypes.c_double
-
-        for m in np.exp(np.linspace(np.log(1.e3), np.log(2.e16), 100)):
-            print m, c_halomodel.bias_h(model, z, m)
-
-    return
-
-
-# ----------------------------------------------------- #
-# Main functions
-# ----------------------------------------------------- #
 
 def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
     """
@@ -472,8 +468,6 @@ def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
     c_halomodel.dndlog10Mstar(model, log10Mstar, len(log10Mstar), z, obs_type, result)
 
     return result
-
-
 
 def wOfTheta(model, R, zl, obs_type="all"):
     """
@@ -557,7 +551,7 @@ def Ix(R, model, PSF=None, obs_type="cen", log10Mh=-1.0, z=0.0):
     # PSF in model
     if PSF is not None:
         model.XMM_PSF_A     = PSF[0]
-        model.XMM_PSF_r_c   = PSF[1]
+        model.XMM_PSF_rc   = PSF[1]
         model.XMM_PSF_alpha = PSF[2]
 
     # this is used if model.HOD = 0 (non HOD modelling =)
@@ -577,9 +571,7 @@ def Ix(R, model, PSF=None, obs_type="cen", log10Mh=-1.0, z=0.0):
     return result
 
 
-# ----------------------------------------------------- #
-# Utils
-# ----------------------------------------------------- #
+""" Utils """
 
 def getCRtoLx_bremss(fileNameIn, redshift):
     from scipy import interpolate
@@ -686,34 +678,93 @@ if __name__ == "__main__":
 
 
 
+def testNicaea_DEPRECATDED(args):
+
+    model = Model()
+    z     = 0.311712 #0.29
+
+    # linear power spectrum
+    if True:
+
+        c_halomodel.P_lin.argtypes     = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+        c_halomodel.P_lin.restype      = ctypes.c_double
+        c_halomodel.P_nonlin.argtypes  = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+        c_halomodel.P_nonlin.restype   = ctypes.c_double
+
+        for k in np.exp(np.linspace(np.log(1.e-4), np.log(20.0), 50)):
+            # fac  = k*k*k/(2*np.pi*np.pi);
+            fac = 1.0
+            print k, c_halomodel.P_lin(model, z, k) * fac, c_halomodel.P_nonlin(model, z, k) * fac
+
+    if False:
+
+        c_halomodel.sigmaR2.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
+        c_halomodel.sigmaR2.restype   = ctypes.c_double
+
+        print np.sqrt(c_halomodel.sigmaR2(model, 8.0)) # sigma8
+
+    if False:
+
+        c_halomodel.rho_crit.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
+        c_halomodel.rho_crit.restype   = ctypes.c_double
+
+        print c_halomodel.rho_crit(model, z)
+
+    if False:
+
+        c_halomodel.delta_c.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
+        c_halomodel.delta_c.restype   = ctypes.c_double
+
+        print c_halomodel.delta_c(model, z)
+
+    if False:
+
+        c_halomodel.dndlnMh.argtypes  = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+        c_halomodel.dndlnMh.restype   = ctypes.c_double
+
+        for m in np.exp(np.linspace(np.log(1.e3), np.log(2.e16), 100)):
+            print m, c_halomodel.dndlnMh(model, z, m)
+
+    if False:
+
+        c_halomodel.bias_h.argtypes  = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+        c_halomodel.bias_h.restype   = ctypes.c_double
+
+        for m in np.exp(np.linspace(np.log(1.e3), np.log(2.e16), 100)):
+            print m, c_halomodel.bias_h(model, z, m)
+
+    return
+
+
+
 
 def setInterPara_DEPRECATED(model, log10Mh):
     """
-    Set log10rho0, beta and log10r_c in model
+    Set log10n0, beta and log10rc in model
     from interpolated values, and returns
     the values
     """
 
     if isinstance(log10Mh, np.ndarray):
 
-        gas_log10rho0 = []
+        gas_log10n0 = []
         gas_log10beta = []
-        gas_log10r_c  = []
+        gas_log10rc  = []
         for m in log10Mh:
-            gas_log10rho0.append(c_halomodel.inter_gas_log10rho0(model, m))
+            gas_log10n0.append(c_halomodel.inter_gas_log10n0(model, m))
             gas_log10beta.append(c_halomodel.inter_gas_log10beta(model, m))
-            gas_log10r_c.append(c_halomodel.inter_gas_log10r_c(model, m))
+            gas_log10rc.append(c_halomodel.inter_gas_log10rc(model, m))
 
-        return [gas_log10rho0, gas_log10beta, gas_log10r_c]
+        return [gas_log10n0, gas_log10beta, gas_log10rc]
 
     else:
 
-        model.gas_log10rho0 = c_halomodel.inter_gas_log10rho0(model, log10Mh)
+        model.gas_log10n0 = c_halomodel.inter_gas_log10n0(model, log10Mh)
         model.gas_log10beta      = c_halomodel.inter_gas_log10beta(model, log10Mh)
-        model.gas_log10r_c  = c_halomodel.inter_gas_log10r_c(model, log10Mh)
+        model.gas_log10rc  = c_halomodel.inter_gas_log10rc(model, log10Mh)
 
 
-        return [model.gas_log10rho0 , model.gas_log10beta, model.gas_log10r_c]
+        return [model.gas_log10n0 , model.gas_log10beta, model.gas_log10rc]
 
 
 
@@ -1060,18 +1111,18 @@ def M1_to_M2_DEPRECATED(z, M1, Delta1, Delta2, c1=None):
     return M2, c2
 
 
-def King_DEPRECATED(r, A, r_c, alpha):
+def King_DEPRECATED(r, A, rc, alpha):
     """
     Returns King's profile.
     """
-    return A * pow(1.0+(r**2/r_c**2), -alpha)
+    return A * pow(1.0+(r**2/rc**2), -alpha)
 
 
-def PSFConvKing_DEPRECATED(R, model, r_c, alpha, A=None):
+def PSFConvKing_DEPRECATED(R, model, rc, alpha, A=None):
 
     """
     Convolve model with King's profile PSF
-    A * pow(1.0+(r**2/r_c**2), -alpha)
+    A * pow(1.0+(r**2/rc**2), -alpha)
     """
 
     rmin = 1.e-3
@@ -1080,7 +1131,7 @@ def PSFConvKing_DEPRECATED(R, model, r_c, alpha, A=None):
     # normalise PSF
     if A is None:
         X    = np.exp(np.linspace(np.log(rmin), np.log(rmax), 50))
-        Norm = np.trapz(King(X, 1.0, r_c, alpha), X)
+        Norm = np.trapz(King(X, 1.0, rc, alpha), X)
         A = 1.0/Norm
 
     # interpolate model
@@ -1095,7 +1146,7 @@ def PSFConvKing_DEPRECATED(R, model, r_c, alpha, A=None):
     for i in range(len(R)):
         for j in range(len(Rp)):
             model_Rp[j] = 1.0/(2.0*np.pi) * np.trapz(model_inter(np.sqrt(R[i]**2 + Rp[j]**2 - 2.0*R[i]*Rp[j]*np.cos(theta))), theta)
-        result[i] = np.trapz(King(Rp, A, r_c, alpha) * model_Rp, Rp)
+        result[i] = np.trapz(King(Rp, A, rc, alpha) * model_Rp, Rp)
 
     return result
 

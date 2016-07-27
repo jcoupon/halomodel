@@ -64,7 +64,6 @@ void M1_to_M2(const Model *model, double M1, double c1, double Delta1, double De
 double rh(const Model *model, double Mh, double D, double z);
 double Mh_rh(const Model *model, double r, double z);
 
-
 /*
  *    halo model functions
  */

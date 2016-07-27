@@ -239,22 +239,13 @@ void DeltaSigmaAll(const Model *model, double *R, int N, double z, double *resul
 void DeltaSigmaStar(const Model *model, double *R, int N, double z, double *result)
 {
    /*
-   Returns the stellar lensing part. Assumed point source.
-   */
+    *    Returns the stellar lensing part. Assumed point source.
+    */
 
    int i;
    double fac=1.0, Mstar;
 
-   /* comoving or physical coordinates */
-   //if(model->como){
-   //   fac = 1.0;
-   //}else{
-   //   fac = 1.0+z; // TODO check if necessary?
-   //}
-
    if(model->hod){
-
-      // Mstar = MstarMean(model, z, all);
 
       params p;
       p.model = model;
@@ -355,40 +346,40 @@ double intForxi_gm_cen(double logMh, void *p)
 void xi_gm_sat(const Model *model, double *r, int N, double z, double *result){
 
    /*
-   Returns the fourier transform of a
-   P1hc given r_s and rho_s.
-   Both r_s and rho_s depend on cosmology and
-   redshift but are computed by the wrapper.
-   */
+    *    Returns the fourier transform of a
+    *    P1hc given r_s and rho_s.
+    *    Both r_s and rho_s depend on cosmology and
+    *    redshift but are computed by the wrapper.
+    */
 
    int i;
 
-   /* FFTLog config */
+   /*    FFTLog config */
    double q = 0.0, mu = 0.5;
    int j, FFT_N = 64;
    FFTLog_config *fc = FFTLog_init(FFT_N, KMIN, KMAX, q, mu);
-   double *r_FFT     = (double *)malloc(FFT_N*sizeof(double));
-   double *ar        = (double *)malloc(FFT_N*sizeof(double));
-   double *logr_FFT  = (double *)malloc(FFT_N*sizeof(double));
+   double *r_FFT = (double *)malloc(FFT_N*sizeof(double));
+   double *ar = (double *)malloc(FFT_N*sizeof(double));
+   double *logr_FFT = (double *)malloc(FFT_N*sizeof(double));
 
-   /* parameters to pass to the function */
+   /*    parameters to pass to the function */
    params p;
    p.model = model;
-   p.z     = z;
+   p.z = z;
 
-   /* fonction with parameters to fourier transform */
+   /*    fonction with parameters to fourier transform */
    gsl_function Pk;
    Pk.function = &intForxi_gm_sat;
-   Pk.params   = &p;
+   Pk.params = &p;
 
-   /* fourier transform... */
+   /*    fourier transform... */
    FFTLog(fc, &Pk, r_FFT, ar, -1);
 
-   /* return values through interpolation */
+   /*    return values through interpolation */
    gsl_interp_accel *acc = gsl_interp_accel_alloc ();
-   gsl_spline *spline    = gsl_spline_alloc (gsl_interp_cspline, FFT_N);
+   gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, FFT_N);
 
-   /* attention: N and FFT_N are different */
+   /*    attention: N and FFT_N are different */
    for(j=0;j<FFT_N;j++) logr_FFT[j] = log(r_FFT[j]);
    gsl_spline_init (spline, logr_FFT, ar, FFT_N);
 
@@ -400,7 +391,7 @@ void xi_gm_sat(const Model *model, double *r, int N, double z, double *result){
       }
    }
 
-   /* free memory */
+   /*    free memory */
    free(r_FFT);
    free(ar);
    free(logr_FFT);
@@ -414,8 +405,8 @@ void xi_gm_sat(const Model *model, double *r, int N, double z, double *result){
 
 double intForxi_gm_sat(double k, void *p){
 
-   const Model *model   =  ((params *)p)->model;
-   const double z       =  ((params *)p)->z;
+   const Model *model = ((params *)p)->model;
+   const double z = ((params *)p)->z;
 
    return pow(k, 1.5 )* P_gm_satsat(model, k, z);
 
@@ -430,9 +421,9 @@ double P_gm_satsat(const Model *model, double k, double z)
 
       params p;
       p.model = model;
-      p.k     = k;
-      p.z     = z;
-      p.c     = NAN;
+      p.k = k;
+      p.z = z;
+      p.c = NAN;
 
       double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
       return int_gsl(intForP_gm_satsat, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/ng/rhobar;
@@ -441,18 +432,18 @@ double P_gm_satsat(const Model *model, double k, double z)
       double Mh, c;
 
       Mh = pow(10.0, model->ggl_log10Mh);
-      c  = pow(10.0, model->ggl_log10c);
+      c = pow(10.0, model->ggl_log10c);
 
-      return Mh * pow(uHalo(model, k, Mh, c, z), 2.0) / rhobar;
+      return Mh * pow(uHalo(model, k, Mh, c, z), 2.0)/rhobar;
    }
 }
 
 double intForP_gm_satsat(double logMh, void *p){
 
-   const Model *model    = ((params *)p)->model;
-   double k              = ((params *)p)->k;
-   double z              = ((params *)p)->z;
-   double c              = ((params *)p)->c;
+   const Model *model = ((params *)p)->model;
+   double k = ((params *)p)->k;
+   double z = ((params *)p)->z;
+   double c = ((params *)p)->c;
 
    double Mh = exp(logMh);
 
@@ -465,9 +456,11 @@ double intForP_gm_satsat(double logMh, void *p){
 void xi_gm_twohalo(const Model *model, double *r, int N, double z, double *result){
 
    /*
-   Returns the 2-halo galaxy-dark matter
-   two-point correlation function.
-   */
+    *    Returns the 2-halo galaxy-dark matter
+    *    two-point correlation function.
+    */
+
+
    int i;
    double bias_fac;
 
@@ -481,7 +474,7 @@ void xi_gm_twohalo(const Model *model, double *r, int N, double z, double *resul
       params p;
       p.model = model;
       p.z = z;
-      p.c = NAN;  // for the HOD model, the concentration(Mh) relationship is fixed
+      p.c = NAN;  /*    for the HOD model, the concentration(Mh) relationship is fixed */
 
       /* fonction with parameters to fourier transform */
       gsl_function Pk;
@@ -502,8 +495,12 @@ void xi_gm_twohalo(const Model *model, double *r, int N, double z, double *resul
          if(p.ng < 1.0e-14 || p.ngp < 1.0e-14 || r[i] < RMIN2){
             result[i] = 0.0;
          }else{
-   	      // result[i] = (p.ngp/p.ng)*pow(bias_fac, 2.0)*xi_from_Pkr(&Pk, r[i], fc);
-   	      result[i] = pow(p.ngp/p.ng, 2.0)*pow(bias_fac, 2.0)*xi_from_Pkr(&Pk, r[i], fc);  // DEBUGGING: matches Coupon et al. (2015) (bug)
+            if( !strcmp(model->massDef, "MvirC15")){
+   	         result[i] = pow(p.ngp/p.ng, 2.0)*pow(bias_fac, 2.0)*xi_from_Pkr(&Pk, r[i], fc);  /* matches Coupon et al. (2015) (bug) */
+            }else{
+               result[i] = (p.ngp/p.ng)*pow(bias_fac, 2.0)*xi_from_Pkr(&Pk, r[i], fc);
+            }
+
          }
       }
       FFTLog_free(fc);

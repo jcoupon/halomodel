@@ -300,20 +300,6 @@ double uHalo(const Model *model, double k, double Mh, double c, double z)
     */
 
 
-   // DEBUGGING
-   params p;
-   p.model = model;
-   p.c = c;
-   p.z = z;
-   p.k = 0.001;
-   p.Mh = 1.e14;
-
-   //double res = 4.0*M_PI/p.Mh*int_gsl(intForUHalo, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
-   //printf("%g %g %g\n", p.Mh, p.k, res);
-   //res = 4.0*M_PI/p.Mh*int_gsl(intForUHalo, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
-   //printf("%g %g %g\n", p.Mh, p.k, res);
-   //exit(-1);
-
    static int firstcall = 1;
 
    static gsl_spline2d *spline = NULL;
@@ -321,54 +307,67 @@ double uHalo(const Model *model, double k, double Mh, double c, double z)
    static gsl_interp_accel *yacc = NULL;
 
    static double norm = 1.0, result, inter_xmin, inter_xmax, inter_ymin, inter_ymax;
+   static double *x = NULL, *logx = NULL, dlogx = 0.0;
+   static double *y = NULL, *logy = NULL, dlogy = 0.0;
+   static double *za;
+
+   static int i, j, Nx = 64, Ny = 64;
 
    static double c_tmp = NAN;
 
-   if(firstcall || (!isnan(c) && fabs(c_tmp - c) > 1.e-5)){
+   if(firstcall){
 
-      c_tmp = c;
-      firstcall = 0;
+      /*    initialize interpolation */
+      const gsl_interp2d_type *T = gsl_interp2d_bilinear;
+      spline = gsl_spline2d_alloc(T, Nx, Ny);
+      xacc = gsl_interp_accel_alloc();
+      yacc = gsl_interp_accel_alloc();
 
-      int i, j, Nx = 64, Ny = 64;
-
-      /* x axis = logMh */
-      double *x    = (double *)malloc(Nx*sizeof(double));
-      double *logx = (double *)malloc(Nx*sizeof(double));
-      double dlogx = (LNMH_MAX - LNMH_MIN)/(double)Nx;
+      /*    x axis = logMh */
+      x = (double *)malloc(Nx*sizeof(double));
+      logx = (double *)malloc(Nx*sizeof(double));
+      dlogx = (LNMH_MAX - LNMH_MIN)/(double)Nx;
       for(i=0;i<Nx;i++){
          logx[i] = LNMH_MIN + dlogx*(double)i;
-         x[i]    = exp(logx[i]);
+         x[i] = exp(logx[i]);
       }
 
-      /* y axis = logk */
-      double *y    = (double *)malloc(Ny*sizeof(double));
-      double *logy = (double *)malloc(Ny*sizeof(double));
-      double dlogy = log(KMAX/KMIN)/(double)Ny;
+      /*    y axis = logk */
+      y = (double *)malloc(Ny*sizeof(double));
+      logy = (double *)malloc(Ny*sizeof(double));
+      dlogy = log(KMAX/KMIN)/(double)Ny;
       for(j=0;j<Ny;j++){
          logy[j] = log(KMIN) + dlogy*(double)j;
-         y[j]    = exp(logy[j]);
+         y[j] = exp(logy[j]);
       }
+
+      /*    z axis = log(uHalo) */
+      za = (double *)malloc(Nx*Ny*sizeof(double));
+
+      /*    interpolation range */
+      inter_xmin = x[0];
+      inter_xmax = x[Nx-1];
+
+      inter_ymin = y[0];
+      inter_ymax = y[Ny-1];
+
+   }
+
+   if(firstcall || assert_float(c_tmp, c)){
+      /* If first call or if c has changed, the table must be recomputed */
+
+      firstcall = 0;
+      c_tmp = c;
 
       params p;
       p.model = model;
       p.c = c;
       p.z = z;
 
-      /* z axis = log(uHalo) */
-      double *za = (double *)malloc(Nx*Ny*sizeof(double));
-
-      /* initialize interpolation */
-      const gsl_interp2d_type *T = gsl_interp2d_bilinear;
-      spline = gsl_spline2d_alloc(T, Nx, Ny);
-      xacc = gsl_interp_accel_alloc();
-      yacc = gsl_interp_accel_alloc();
-
-      /* loop over halo mass */
-      for(i=0;i<Nx;i++){
+      for(i=0;i<Nx;i++){    /*      loop over halo mass */
          p.Mh = x[i];
-         /* loop over k */
          norm = x[i];
-         for(j=0;j<Ny;j++){
+         for(j=0;j<Ny;j++){ /*      loop over k */
             p.k = y[j];
             result = 4.0*M_PI/p.Mh*int_gsl(intForUHalo, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
             //result = uHaloClosedFormula(model, p.k, p.Mh, p.c, p.z); // <- exact for truncated NFW profile
@@ -376,20 +375,16 @@ double uHalo(const Model *model, double k, double Mh, double c, double z)
          }
       }
 
-      inter_xmin = x[0];
-      inter_xmax = x[Nx-1];
-
-      inter_ymin = y[0];
-      inter_ymax = y[Ny-1];
-
-      /* initialize interpolation */
+      /*    fill in interpolation space */
       gsl_spline2d_init(spline, logx, logy, za, Nx, Ny);
 
+#if 0
       free(x);
       free(logx);
       free(y);
       free(logy);
       free(za);
+#endif
 
    }
 
@@ -400,7 +395,6 @@ double uHalo(const Model *model, double k, double Mh, double c, double z)
    }
 
 }
-
 
 double intForUHalo(double logr, void *p)
 {
@@ -453,7 +447,7 @@ double rhoHalo(const Model *model, double r, double Mh, double c, double z)
       return 0.0;
    }
 
-   if (firstcall || fabs(Mh_tmp - Mh) > 1.e-5 ||  (!isnan(c) && fabs(c_tmp - c) > 1.e-5)){
+   if (firstcall || assert_float(Mh_tmp, Mh) || assert_float(c_tmp, c)){
 
       if(isnan(c)) c = concentration(model, Mh, z, model->concenDef);
 
@@ -604,7 +598,8 @@ double r_vir(const Model *model, double Mh, double c, double z)
 
    static double c_tmp;
 
-   if(firstcall || (!isnan(c) && fabs(c_tmp - c) > 1.e-5)){
+
+   if(firstcall || assert_float(c_tmp, c)){
 
       firstcall = 0;
       c_tmp = c;

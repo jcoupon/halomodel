@@ -1,8 +1,8 @@
-/* ------------------------------------------------------------ *
- * hod.c                                                        *
- * halomodel library                                            *
- * Jean Coupon 2016                                             *
- * ------------------------------------------------------------ */
+/*
+ *    hod.c
+ *    halomodel library
+ *    Jean Coupon 2016
+ */
 
 #include "hod.h"
 
@@ -12,10 +12,10 @@
 
 double Ngal_c(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max){
    /*
-   Number of central galaxies per halo between
-   Mstellar_min and Mstellar_max.
-   Set Mstellar_max = -1 to get threshold number
-   */
+    *    Number of central galaxies per halo between
+    *    Mstellar_min and Mstellar_max.
+    *    Set Mstellar_max = -1 to get threshold number
+    */
    double arg, result;
 
    if(Mh < 1.e6) return 0.0;
@@ -35,11 +35,11 @@ double Ngal_c(const Model *model, double Mh, double log10Mstar_min, double log10
 
 double eta_cen(const Model *model, double Mh){
    /*
-   fraction of centrals as function of halo mass:
-   = 1 if fcen1 = -1 and fcen2 = -2 (total sample)
-   increasing form if fcen1 > 0.0 (passive)
-   decreasing form if fcen1 < 0.0 (star-forming)
-   */
+    *    fraction of centrals as function of halo mass:
+    *    = 1 if fcen1 = -1 and fcen2 = -2 (total sample)
+    *    increasing form if fcen1 > 0.0 (passive)
+    *    decreasing form if fcen1 < 0.0 (star-forming)
+    */
 
    double result;
 
@@ -64,14 +64,12 @@ double sigma_log_M(const Model *model, double log10Mstar){
 
 double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max){
    /*
-   Number of satellite galaxies per halo mass.
-   */
+    *    Number of satellite galaxies per halo mass.
+    */
 
    double M0, log10Msat,log10Mcut,  result;
 
    if(Mh < 1.e6) return 0.0;
-
-   //double Mh = pow(10, log10Mh);
 
    log10Msat = log10(model->B_sat) + model->beta_sat*msmh_log10Mh(model, log10Mstar_min) + 12.0*(1.0-model->beta_sat);
    log10Mcut = msmh_log10Mh(model, log10Mstar_min) - 0.5;
@@ -96,8 +94,9 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
 }
 
 double Ngal(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max){
-   /* Total number of galaxies per halo.
-   */
+   /*
+    *    Total number of galaxies per halo.
+    */
    double Ngalc, Ngals;
 
    Ngalc = Ngal_c(model, Mh, log10Mstar_min, log10Mstar_max);
@@ -109,15 +108,14 @@ double Ngal(const Model *model, double Mh, double log10Mstar_min, double log10Ms
 
 double msmh_log10Mstar(const Model *model, double log10Mh){
    /*
-   Returns Mstar = f(Mh) for a given Mstar-Mh relation.
-   The Mstar-Mh relation is in fact defined via its
-   inverse function, i.e. Mh = f(Mstar). The routine
-   first evaluates Mh = f(Mstar) and compute the
-   inverse value through interpolation.
-
-   The relation is evaluated only when the HOD
-   parameters changes (TO DO).
-   */
+    *    Returns Mstar = f(Mh) for a given Mstar-Mh relation.
+    *    The Mstar-Mh relation is in fact defined via its
+    *    inverse function, i.e. Mh = f(Mstar). The routine
+    *    first evaluates Mh = f(Mstar) and compute the
+    *    inverse value through interpolation.
+    *    The relation is evaluated only when the HOD
+    *    parameters changes (TO DO).
+    */
 
    int i, N = 64;
    double log10Mstar_min = 6.0, log10Mstar_max = 12.5;
@@ -133,26 +131,25 @@ double msmh_log10Mstar(const Model *model, double log10Mh){
    if (firstcall) {
       firstcall = 0;
 
-      /* tabulate log10Mh = f(log10Mstar) */
-      t_log10Mh     = (double *)malloc(N*sizeof(double));
-      t_log10Mstar  = (double *)malloc(N*sizeof(double));
-      dlog10Mstar   = (log10Mstar_max - log10Mstar_min)/(double)N;
+      /*    tabulate log10Mh = f(log10Mstar) */
+      t_log10Mh = (double *)malloc(N*sizeof(double));
+      t_log10Mstar = (double *)malloc(N*sizeof(double));
+      dlog10Mstar = (log10Mstar_max - log10Mstar_min)/(double)N;
 
       for(i=0;i<N;i++){
          t_log10Mstar[i] = log10Mstar_min + dlog10Mstar*(double)i;
-         t_log10Mh[i]    = msmh_log10Mh(model, t_log10Mstar[i]);
+         t_log10Mh[i] = msmh_log10Mh(model, t_log10Mstar[i]);
       }
 
-      acc       = gsl_interp_accel_alloc();
-      spline    = gsl_spline_alloc (gsl_interp_cspline, N);
+      acc = gsl_interp_accel_alloc();
+      spline = gsl_spline_alloc (gsl_interp_cspline, N);
 
       gsl_spline_init(spline, t_log10Mh, t_log10Mstar, N);
 
    }
 
-
    if (changeModelHOD(model)) {
-      /* update log10Mh = f(log10Mstar) */
+      /*    update log10Mh = f(log10Mstar) */
       for(i=0;i<N;i++){
          t_log10Mh[i] = msmh_log10Mh(model, t_log10Mstar[i]);
       }
@@ -165,27 +162,30 @@ double msmh_log10Mstar(const Model *model, double log10Mh){
       return 0.0;
    }
 
-   /*
+#if 0
    free(t_log10Mh);
    free(t_log10Mstar);
    gsl_spline_free (spline);
    gsl_interp_accel_free (acc);
-   */
+#endif
+
 }
 
 
 double msmh_log10Mh(const Model *model, double log10Mstar){
    /*
-   Mstar - Mh relation.
-   Parameterization from
-   Behroozi et al. (2010).
-   */
+    *    Mstar - Mh relation.
+    *    Parameterization from
+    *    Behroozi et al. (2010).
+    */
+
+
    double result;
 
    double log10A = log10Mstar - model->log10Mstar0;
-   double A      = pow(10.0, log10A);
-   result        = model->log10M1 + model->beta * log10A;
-   result       += pow(A, model->delta)/(1.0 + pow(A, -model->gamma)) - 0.5;
+   double A = pow(10.0, log10A);
+   result = model->log10M1 + model->beta * log10A;
+   result += pow(A, model->delta)/(1.0 + pow(A, -model->gamma)) - 0.5;
 
    return result;
 }

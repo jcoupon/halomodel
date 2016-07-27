@@ -238,5 +238,7 @@ double sinc(double x);
 
 double trapz(double *x, double *y, int N);
 double King(double r, double A, double rc, double alpha);
+int assert_float(double before, double after);
+
 
 #endif

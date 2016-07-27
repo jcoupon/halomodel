@@ -317,3 +317,23 @@ double King(double r, double A, double r_c, double alpha){
   */
   return A * pow(1.0+(r/r_c)*(r/r_c), -alpha);
 }
+
+int assert_float(double before, double after){
+   /*
+    *    asserts two floats
+    */
+
+   if (isnan(before) && isnan(after)){
+      return 0;
+   }else if (isnan(before) && !isnan(after)){
+      return 1;
+   }else if(!isnan(before) && isnan(after)){
+      return 1;
+   }else if(fabs(before - after) > 1.e-8){
+      return 1;
+   }else{
+      return 0;
+   }
+
+
+}

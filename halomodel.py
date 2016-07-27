@@ -240,7 +240,10 @@ c_halomodel.DA.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
 c_halomodel.DA.restype  = ctypes.c_double
 c_halomodel.msmh_log10Mstar.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.msmh_log10Mstar.restype = ctypes.c_double
-
+c_halomodel.Lambda.argtypes = [ctypes.c_double, ctypes.c_double]
+c_halomodel.Lambda.restype = ctypes.c_double
+c_halomodel.CRToLx.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
+c_halomodel.CRToLx.restype = ctypes.c_double
 
 """
 
@@ -273,11 +276,14 @@ def test(args):
 
     from astropy.io import ascii
     from astropy.table import Table, Column
+    from colorama import Fore, Back, Style
 
-    compute_ref=True
+    OK_MESSAGE="OK\n"
 
-    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl"]
-    actions = ["ggl"]
+    compute_ref=False
+
+    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx"]
+    # actions = ["ggl_HOD", "ggl"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -286,10 +292,6 @@ def test(args):
     if "dist" in actions:
         """ angular diameter distance """
 
-        sys.stderr.write("dist:")
-        np.testing.assert_almost_equal(c_halomodel.DA(model, z, 0), 662.494287693, err_msg="in dist")
-        sys.stderr.write("PASSED\n")
-
         # compare with astropy.cosmology
         if compute_ref:
             print c_halomodel.DA(model, z, 0)
@@ -297,65 +299,81 @@ def test(args):
             cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
             h = model.H0/100.0
             print c_halomodel.DA(model, z, 0)/h, cosmo.angular_diameter_distance([z])
+        else:
+            sys.stderr.write("dist:")
+            np.testing.assert_almost_equal(c_halomodel.DA(model, z, 0), 662.494287693, err_msg="in dist")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
     if "change_HOD" in actions:
 
-        sys.stderr.write("change_HOD:")
-        c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model)]
-        c_halomodel.changeModelHOD.restype = ctypes.c_int
+        if compute_ref:
+            pass
+        else:
+            sys.stderr.write("change_HOD:")
+            c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model)]
+            c_halomodel.changeModelHOD.restype = ctypes.c_int
 
-        np.testing.assert_equal(c_halomodel.changeModelHOD(model), 0, err_msg="in change_HOD")
+            np.testing.assert_equal(c_halomodel.changeModelHOD(model), 0, err_msg="in change_HOD")
 
-        log10M1 = model.log10M1
-        model.log10M1 = 10.0
-        np.testing.assert_equal(c_halomodel.changeModelHOD(model), 1, err_msg="in change_HOD")
-        model.log10M1 = log10M1
-        sys.stderr.write("PASSED\n")
+            log10M1 = model.log10M1
+            model.log10M1 = 10.0
+            np.testing.assert_equal(c_halomodel.changeModelHOD(model), 1, err_msg="in change_HOD")
+            model.log10M1 = log10M1
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
+
 
     if "MsMh" in actions:
 
-        sys.stderr.write("MsMh:")
-        ref = ascii.read(HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii", header_start=-1)
         log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
         log10Mstar = msmh_log10Mstar(model, log10Mh)
-        np.testing.assert_array_almost_equal(log10Mstar, ref['log10Mstar'], err_msg="in MsMh")
-        sys.stderr.write("PASSED\n")
 
         if compute_ref:
             out = Table([log10Mh, log10Mstar], names=['log10Mh', 'log10Mstar'])
             ascii.write(out, HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii", format="commented_header")
+        else:
+            sys.stderr.write("MsMh:")
+            ref = ascii.read(HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii", header_start=-1)
+            np.testing.assert_array_almost_equal(log10Mstar, ref['log10Mstar'], err_msg="in MsMh")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
+
 
     if "concen" in actions:
 
-        sys.stderr.write("concen:")
-        np.testing.assert_almost_equal(concentration(model, 1.e14, z, concenDef="TJ03"), 5.25635255301, err_msg="in concen")
-        sys.stderr.write("PASSED\n")
-
         if compute_ref:
             print concentration(model, 1.e14, z, concenDef="TJ03")
+        else:
+            sys.stderr.write("concen:")
+            np.testing.assert_almost_equal(concentration(model, 1.e14, z, concenDef="TJ03"), 5.25635255301, err_msg="in concen")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
     if "mass_conv" in actions:
 
-        sys.stderr.write("mass_conv:")
-        np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0], 12.7112150386, err_msg="in mass_conv")
-        sys.stderr.write("PASSED\n")
-
         if compute_ref:
             print log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0]
+        else:
+            sys.stderr.write("mass_conv:")
+            np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0], 12.7112150386, err_msg="in mass_conv")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
     if "xi_dm" in actions:
 
-        sys.stderr.write("xi_dm:")
         r = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(200.0), 100.00))
         xi = xi_dm(model, r, z)
-        ref = ascii.read(HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii", header_start=-1)
-        np.testing.assert_array_almost_equal(xi, ref['xi'], err_msg="in xi_dm")
-        sys.stderr.write("PASSED\n")
 
         if compute_ref:
             out = Table([r, xi], names=['r', 'xi'])
             ascii.write(out, HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii", format="commented_header")
-
+        else:
+            sys.stderr.write("xi_dm:")
+            ref = ascii.read(HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii", header_start=-1)
+            np.testing.assert_array_almost_equal(xi, ref['xi'], err_msg="in xi_dm")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
     if "uHalo" in actions:
         """ Fourrier transform of halo profile """
@@ -379,29 +397,30 @@ def test(args):
             numerical[i] = c_halomodel.uHalo(model, k[i], Mh, c, z)
             analytic[i]  = c_halomodel.uHaloClosedFormula(model, k[i], Mh, c, z)
 
-        ref = ascii.read(HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii", header_start=-1)
-        np.testing.assert_array_almost_equal(numerical, ref['numerical'], err_msg="in uHalo (numerical)")
-        np.testing.assert_array_almost_equal(analytic, ref['analytic'], err_msg="in uHalo (analytic)")
-        sys.stderr.write("PASSED\n")
-
         if compute_ref:
             out = Table([k, numerical, analytic], names=['k', 'numerical', 'analytic'])
             ascii.write(out, HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii", format="commented_header")
-
+        else:
+            ref = ascii.read(HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii", header_start=-1)
+            np.testing.assert_array_almost_equal(numerical, ref['numerical'], err_msg="in uHalo (numerical)")
+            np.testing.assert_array_almost_equal(analytic, ref['analytic'], err_msg="in uHalo (analytic)")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
     if "smf" in actions:
         """ stellar mass function """
 
-        sys.stderr.write("smf:")
-        ref = ascii.read(HALOMODEL_DIRNAME+"/data/smf_ref.ascii", header_start=-1)
-        log10Mstar = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)
-        n = dndlog10Mstar(model, log10Mstar, z, obs_type="all")
-        np.testing.assert_array_almost_equal(n, ref['n'], err_msg="in smf")
-        sys.stderr.write("PASSED\n")
-
         if compute_ref:
             out = Table([log10Mstar, n], names=['log10Mstar', 'n'])
             ascii.write(out, HALOMODEL_DIRNAME+"/data/smf_ref.ascii", format="commented_header")
+        else:
+            sys.stderr.write("smf:")
+            ref = ascii.read(HALOMODEL_DIRNAME+"/data/smf_ref.ascii", header_start=-1)
+            log10Mstar = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)
+            n = dndlog10Mstar(model, log10Mstar, z, obs_type="all")
+            np.testing.assert_array_almost_equal(n, ref['n'], err_msg="in smf")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
     if "ggl_HOD" in actions:
         """ Galaxy-galaxy lensing, HOD model """
@@ -417,18 +436,20 @@ def test(args):
         sat = DeltaSigma(model, R, z, obs_type="sat")
         twohalo = DeltaSigma(model, R, z, obs_type="twohalo")
 
-        sys.stderr.write("ggl_HOD:")
-        ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii", header_start=-1)
-        np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl_HOD (star)")
-        np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl_HOD (cen)")
-        np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl_HOD (sat)")
-        np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl_HOD (twohalo)")
-        np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl_HOD (total)")
-        sys.stderr.write("PASSED\n")
-
         if compute_ref:
             out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
             ascii.write(out, HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii", format="commented_header")
+        else:
+            sys.stderr.write("ggl_HOD:")
+            ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii", header_start=-1)
+            np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl_HOD (star)")
+            np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl_HOD (cen)")
+            np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl_HOD (sat)")
+            np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl_HOD (twohalo)")
+            np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl_HOD (total)")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
+
 
     if "ggl" in actions:
         """ Galaxy-galaxy lensing """
@@ -446,68 +467,95 @@ def test(args):
         twohalo = DeltaSigma(model, R, z, obs_type="twohalo")
         total = DeltaSigma(model, R, z, obs_type="all")
 
-        sys.stderr.write("ggl:")
-        ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_ref.ascii", header_start=-1)
-        np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl (star)")
-        np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl (cen)")
-        np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl (sat)")
-        np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl (twohalo)")
-        np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
-        sys.stderr.write("PASSED\n")
-
         model.hod = 1
 
         if compute_ref:
             out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
             ascii.write(out, HALOMODEL_DIRNAME+"/data/ggl_ref.ascii", format="commented_header")
+        else:
+            sys.stderr.write("ggl:")
+            ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_ref.ascii", header_start=-1)
+            np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl (star)")
+            np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl (cen)")
+            np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl (sat)")
+            np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl (twohalo)")
+            np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
-    if "wtheta" in actions:
 
-        from   astropy.io import ascii
+    if "wtheta_HOD" in actions:
 
-        nz = ascii.read("/Users/coupon/data/XXL/HOD/K22_0.20_0.35_Mstar_11.10_11.30_all.nz", format="no_header")
+        nz = ascii.read("data/wtheta_nz.ascii", format="no_header")
 
-        # n(z)
+        # load n(z) in model object
         model.wtheta_nz_N = len(nz)
         model.wtheta_nz_z = np.ctypeslib.as_ctypes(nz["col1"])
-        model.wtheta_nz   = np.ctypeslib.as_ctypes(nz["col2"])
+        model.wtheta_nz = np.ctypeslib.as_ctypes(nz["col2"])
 
-        if True: # parameteric HOD
-            model.log10Mstar_min = 11.10 - 0.1549 #- 0.142668
-            model.log10Mstar_max = 11.30 - 0.1549 #- 0.142668
+        model.log10Mstar_min = 11.10 - 0.1549 #- 0.142668
+        model.log10Mstar_max = 11.30 - 0.1549 #- 0.142668
 
-        R   = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(1.e2), 100.00))
+        theta = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(1.e2), 100.00))
 
-        censat  = wOfTheta(model, R, z, obs_type="censat")
-        satsat  = wOfTheta(model, R, z, obs_type="satsat")
-        twohalo = wOfTheta(model, R, z, obs_type="twohalo")
-        total   = wOfTheta(model, R, z, obs_type="all")
+        censat = wOfTheta(model, theta, z, obs_type="censat")
+        satsat = wOfTheta(model, theta, z, obs_type="satsat")
+        twohalo = wOfTheta(model, theta, z, obs_type="twohalo")
+        total = wOfTheta(model, theta, z, obs_type="all")
 
-        for i in range(len(R)):
-            print R[i], total[i], censat[i], satsat[i], twohalo[i]
+        if compute_ref:
+            out = Table([theta, total, censat, satsat, twohalo], names=['theta', 'total', 'censat', 'satsat', 'twohalo'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/wtheta_HOD_ref.ascii", format="commented_header")
+        else:
+            sys.stderr.write("wtheta:")
+            ref = ascii.read(HALOMODEL_DIRNAME+"/data/wtheta_HOD_ref.ascii", header_start=-1)
+            np.testing.assert_array_almost_equal(censat, ref['censat'], err_msg="in wtheta (censat)")
+            np.testing.assert_array_almost_equal(satsat, ref['satsat'], err_msg="in wtheta (satsat)")
+            np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in wtheta (twohalo)")
+            np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
     if "Lambda" in actions:
 
-        c_halomodel.Lambda.argtypes = [ctypes.c_double, ctypes.c_double]
-        c_halomodel.Lambda.restype = ctypes.c_double
-
         Tx = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
-        for i in range(len(Tx)):
-            print Tx[i], c_halomodel.Lambda(Tx[i], 0.25), c_halomodel.Lambda(Tx[i], 0.15), c_halomodel.Lambda(Tx[i], 0.40)
+        Lambda_0_00 = Lambda(Tx, 0.00)
+        Lambda_0_15 = Lambda(Tx, 0.15)
+        Lambda_0_40 = Lambda(Tx, 0.40)
+
+        if compute_ref:
+            out = Table([Tx, Lambda_0_00, Lambda_0_15, Lambda_0_40], names=['Tx', 'Lambda_0_00', 'Lambda_0_15', 'Lambda_0_40'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/Lambda_ref.ascii", format="commented_header")
+        else:
+            sys.stderr.write("Lambda:")
+            ref = ascii.read(HALOMODEL_DIRNAME+"/data/Lambda_ref.ascii", header_start=-1)
+            np.testing.assert_array_almost_equal(Lambda_0_00, ref['Lambda_0_00'], err_msg="Lambda ZGAS 0.00")
+            np.testing.assert_array_almost_equal(Lambda_0_15, ref['Lambda_0_15'], err_msg="Lambda ZGAS 0.15")
+            np.testing.assert_array_almost_equal(Lambda_0_40, ref['Lambda_0_40'], err_msg="Lambda ZGAS 0.40")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
     if "CRToLx" in actions:
 
-        c_halomodel.CRToLx.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
-        c_halomodel.CRToLx.restype = ctypes.c_double
+        Tx = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
+        CRToLx_0_00 = CRToLx(model, z, Tx, 0.00)
+        CRToLx_0_15 = CRToLx(model, z, Tx, 0.15)
+        CRToLx_0_40 = CRToLx(model, z, Tx, 0.40)
 
-        Tx = 0.2
-        res = c_halomodel.CRToLx(model, z, Tx, 0.25)
-        print Tx, res
+        if compute_ref:
+            out = Table([Tx, CRToLx_0_00, CRToLx_0_15, CRToLx_0_40], names=['Tx', 'CRToLx_0_00', 'CRToLx_0_15', 'CRToLx_0_40'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", format="commented_header")
+        else:
+            sys.stderr.write("CRToLx:")
+            ref = ascii.read(HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", header_start=-1)
+            np.testing.assert_array_almost_equal(CRToLx_0_00, ref['CRToLx_0_00'], err_msg="CRToLx ZGAS 0.00")
+            np.testing.assert_array_almost_equal(CRToLx_0_15, ref['CRToLx_0_15'], err_msg="CRToLx ZGAS 0.15")
+            np.testing.assert_array_almost_equal(CRToLx_0_40, ref['CRToLx_0_40'], err_msg="CRToLx ZGAS 0.40")
+            sys.stderr.write(Fore.GREEN+Style.BRIGHT+OK_MESSAGE)
+            sys.stderr.write(Style.RESET_ALL)
 
-        # dirname = os.path.dirname(os.path.realpath(__file__))
-        # sys.path.append(dirname+"/python")
-        # import xray
-        # print xray.CRToLx(dirname+"/data/CRtoLx.ascii", z, 0.25)
+
+
 
     def powerLaw(x, a, b):
         return a + b*(x-14.0)
@@ -786,7 +834,6 @@ def Delta(model, z, massDef):
 
     return c_halomodel.Delta(model, z, massDef)
 
-
 def msmh_log10Mstar(model, log10Mh):
     """  Wrapper for c-function msmh_log10Mstar()
 
@@ -806,6 +853,55 @@ def msmh_log10Mstar(model, log10Mh):
             result[i] = c_halomodel.msmh_log10Mstar(model, m)
     else:
         result = c_halomodel.msmh_log10Mstar(model, log10Mh)
+
+    return result
+
+def Lambda(Tx, ZGas):
+    """  Wrapper for c-function Lambda()
+
+    Returns  = f(Tx, ZGas) the cooling function
+    for a given temperature and metallicity
+
+    INPUT
+    Tx: temperature (float or array)
+    ZGas: metallicity
+
+    OUPUT
+    Lambda
+
+    """
+
+    if isinstance(Tx, (list, tuple, np.ndarray)):
+        result = np.zeros(len(Tx))
+        for i, t in enumerate(Tx):
+            result[i] = c_halomodel.Lambda(t, ZGas)
+    else:
+        result = c_halomodel.Lambda(Tx, ZGas)
+
+    return result
+
+
+def CRToLx(model, z, Tx, ZGas):
+    """  Wrapper for c-function CRToLx()
+
+    Returns  = CRToLx(Tx, z, ZGas) the coefficient to
+    transform CR into luminosity
+
+    INPUT
+    Tx: temperature (float or array)
+    z: redshift
+    ZGas: metallicity
+
+    OUPUT
+    CRToLx
+    """
+
+    if isinstance(Tx, (list, tuple, np.ndarray)):
+        result = np.zeros(len(Tx))
+        for i, t in enumerate(Tx):
+            result[i] = c_halomodel.CRToLx(model, z, t, ZGas)
+    else:
+        result = c_halomodel.CRToLx(model, z, Tx, ZGas)
 
     return result
 

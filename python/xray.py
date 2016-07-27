@@ -1,14 +1,26 @@
 
-def CRToLx(filein, z):
+def CRToLx(fileInName, z, Zgas):
+    """ function to return CR to Lx conversion
+    as a function of temperature.
 
-    from   astropy.io import ascii
+    Takes the redshift and the metallicity as input.
+    Returns log(tx) values and convertion factor.
+    """
+
+    from astropy.io import ascii
     from scipy import interpolate
+    from numpy import linspace, log
 
-    data = ascii.read(filein)
+    N = 128
 
-    ZGas_Tx_z = (data['ZGas'], data['Tx'], data['z'])
+    data = ascii.read(fileInName)
 
-    CR = interpolate.griddata(ZGas_Tx_z, data["CR_pn"]+2.0*data["CR_MOS"], (0.25, 0.5, 0.2), method='linear')
-    Lx = interpolate.griddata(ZGas_Tx_z, data["Lx_bolo"], (0.25, 0.5, 0.2), method='linear')
+    z_ZGas_logTx = (data['z'], data['ZGas'], log(data['Tx']))
+    logTx  = linspace(log(min(data['Tx'])), log(max(data['Tx'])), N)
 
-    return Lx
+    z_ZGas_logTx_eval = ([z]*N, [Zgas]*N, logTx )
+
+    logCR = interpolate.griddata(z_ZGas_logTx, log(data["CR_pn"]+2.0*data["CR_MOS"]), z_ZGas_logTx_eval, method='linear')
+    logLx = interpolate.griddata(z_ZGas_logTx, log(data["Lx_bolo"]), z_ZGas_logTx_eval, method='linear')
+
+    return list(logTx), list(logLx-logCR)

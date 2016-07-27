@@ -1,59 +1,270 @@
 /*
  *    xray.c
  *    halomodel library
- *    Jean Coupon 2016
+ *    Jean Coupon 2015-2016
  */
 
 #include "xray.h"
-
 #include <Python.h>
 
 int main()
 {
+   /*
+    *    THIS IS FOR TESTS ONLY
+    *    Needs to define PYTHONHOME
+    *    $ setenv PYTHONHOME ~/anaconda/
+    */
 
    Py_Initialize();
    PyRun_SimpleString("import numpy as np; print \"Hello world\"");
    Py_Finalize();
 
    return 0;
-
 }
 
 
-double CRToLx(const Model *model, double z, double Tx, double ZGas)
+void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z, int obs_type, double *result)
 {
-   /*    call python function to ease the 3D interpolation
-    *    see http://www.linuxjournal.com/article/8497?page=0,0
-    *    TODO: directly call CR->Lx code
+   /*
+    *    Computes projected  X-ray luminosity profiles
+    *    See Vikhlinin et al. (2006) and Cavaliere & Fusco-Femiano (1978)
+    *
+    *    If model.hod is set to 1, it will use the full
+    *    HOD parametrisation, and needs a halo mass function. Otherwise
+    *    if set to 0, it will only use the three parameters that controls
+    *    the shape of a X-ray profile.
     */
 
+   double fac = 1.0;
+   /* comoving or physical coordinates */
+   //if(model->como){
+   //   fac = 1.0;
+   //}else{
+   //   fac = 1.0+z;
+   //}
 
-   // see for arrays: https://github.com/Frogee/PythonCAPI_testing/blob/master/testEmbed.cpp
+   /*    interpolate to speed up integration for projection and PSF convolution */
+   int i, j, k, Ninter = 128;
 
-   /*    see https://docs.python.org/2/c-api/init.html
-    *    the code above is necessary as xray.c is itself
-    *    wrapped into python code
+   double *logrinter = (double *)malloc(Ninter*sizeof(double));
+   double *rinter = (double *)malloc(Ninter*sizeof(double));
+   double rinter_min = RMIN;
+   double rinter_max = RMAX;
+   double dlogrinter = log(rinter_max/rinter_min)/(double)Ninter;
+
+   for(i=0;i<Ninter;i++){
+      logrinter[i] = log(rinter_min)+dlogrinter*(double)i;
+      rinter[i]    = exp(logrinter[i]);
+   }
+
+   double *Ix = (double *)malloc(Ninter*sizeof(double));
+   double *SigmaIx_tmp = (double *)malloc(Ninter*sizeof(double));
+
+   switch (obs_type){
+      case cen:
+         Ix1hc(model, rinter, Ninter, Mh, c, z, Ix);
+         break;
+      case sat:
+         //Ix1hs(rinter, Ninter, model, Ix);
+         break;
+      case XB:
+         //IxXB(rinter, Ninter, model, Ix);
+         break;
+   }
+
+   /*    interpolate Ix(r) */
+   gsl_interp_accel *acc = gsl_interp_accel_alloc();
+   gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+   gsl_spline_init(spline, logrinter, Ix, Ninter);
+
+   /*    project along line of sight */
+   params p;
+   switch (obs_type){
+      /*    For central and satellites, computed the projected 3D profile */
+      case cen: case sat:
+         p.acc = acc;
+         p.spline = spline;
+         p.logrmin = logrinter[0];
+         p.logrmax = logrinter[Ninter-1];
+         for(i=0;i<Ninter;i++){
+            p.R = rinter[i];
+            // result[i] = 2.0*int_gsl(intForIx, (void*)&p, log(rinter_min), log(rinter_max), 1.e-4);
+            SigmaIx_tmp[i] = 2.0*int_gsl(intForIx, (void*)&p, log(rinter[i]), log(RMAX), 1.e-4);
+         }
+         break;
+
+      /*    For X-ray binaries, it is simply the de Vaucouleurs profile */
+      case XB:
+         for(i=0;i<Ninter;i++){
+            double logr = log(rinter[i]);
+            if(logrinter[0] < logr && logr < logrinter[Ninter-1]){
+               SigmaIx_tmp[i] = gsl_spline_eval(spline, logr, acc);
+            }else
+            SigmaIx_tmp[i] = 0.0;
+         }
+         break;
+   }
+
+   /*    recycle interpolation space */
+   gsl_spline_init(spline, logrinter, SigmaIx_tmp, Ninter);
+
+   /*    convolve with PSF... */
+   if (!isnan(model->XMM_PSF_A)){
+
+      int N_PSF = 128;
+      double Rpp;
+      double *theta = (double *)malloc(N_PSF*sizeof(double));
+      double *Rp = (double *)malloc(N_PSF*sizeof(double));
+      double *intForTheta = (double *)malloc(N_PSF*sizeof(double));
+      double *intForRp = (double *)malloc(N_PSF*sizeof(double));
+
+      double *PSF_profile = (double *)malloc(N_PSF*sizeof(double));
+
+      for(i=0;i<N_PSF;i++){
+         Rp[i]    = exp(log(rinter_min)+dlogrinter*(double)i);
+         theta[i] = 0.0+2.0*M_PI / (double)(N_PSF-1) * (double)i;
+         intForTheta[i] = 0.0;
+         intForRp[i] = 0.0;
+         PSF_profile[i] = King(Rp[i], model->XMM_PSF_A, model->XMM_PSF_rc, model->XMM_PSF_alpha);
+      }
+
+      double norm_PSF = 1.0/trapz(Rp, PSF_profile, N_PSF);
+
+      for(i=0;i<N;i++){                                        /*    Main loop */
+         for(j=0;j<N_PSF;j++){                                 /*    loop over R' - trapeze integration */
+            for(k=0;k<N_PSF;k++){                              /*    loop over theta - trapeze integration  */
+               Rpp = sqrt(R[i]*fac*R[i]*fac + Rp[j]*Rp[j] - 2.0*R[i]*fac*Rp[j]*cos(theta[k]));
+               if(logrinter[0] < log(Rpp) && log(Rpp) < logrinter[Ninter-1]){
+                  intForTheta[k] = gsl_spline_eval(spline, log(Rpp), acc);
+               }
+            }
+            intForRp[j] = King(Rp[j], model->XMM_PSF_A, model->XMM_PSF_rc, model->XMM_PSF_alpha) * trapz(theta, intForTheta, N_PSF);
+         }
+         result[i] = norm_PSF * 1.0 / (2.0 * M_PI) * trapz(Rp, intForRp, N_PSF);
+      }
+
+      free(intForTheta);
+      free(intForRp);
+      free(theta);
+      free(Rp);
+
+   }else{
+      /*    ... or simply return result */
+      for(i=0;i<N;i++){
+         if(logrinter[0] < log(R[i]*fac) && log(R[i]*fac) < logrinter[Ninter-1]){
+            result[i] = gsl_spline_eval(spline, log(R[i]*fac), acc)/(fac*fac);
+         }else{
+            result[i] = 0.0;
+         }
+      }
+   }
+
+   free(SigmaIx_tmp);
+   free(Ix);
+   free(rinter);
+   free(logrinter);
+   gsl_spline_free (spline);
+   gsl_interp_accel_free (acc);
+
+
+   return;
+}
+
+double intForIx(double logz, void *p)
+{
+   double result = 0.0;
+   double z = exp(logz);
+   double logrmin = ((params *)p)->logrmin;
+   double logrmax = ((params *)p)->logrmax;
+   double R = ((params *)p)->R;
+   gsl_interp_accel *acc = ((params *)p)->acc;
+   gsl_spline *spline = ((params *)p)->spline;
+
+   /*
+   double r    = sqrt(R*R + z*z);
+   double logr = log(r);
+
+   if(logrmin < logr && logr < logrmax){
+      result = gsl_spline_eval(spline, logr, acc) * z;
+   }
+   */
+
+   if(logrmin < logz && logz < logrmax){
+      result = z*z*gsl_spline_eval(spline, logz, acc)/sqrt(z*z - R*R);
+   }
+
+   return result;
+}
+
+void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, double *result){
+   /*
+    *    Returns the 1-halo central X-ray
+    *    3D luminosity profile.
     */
-   PyGILState_STATE gstate;
-   gstate = PyGILState_Ensure();
 
-   /* import module */
-   PyRun_SimpleString("dirname = os.path.dirname(os.path.realpath(__file__))");
-   PyRun_SimpleString("sys.path.insert(0, dirname+'/python')");
+   int i;
 
-   PyRun_SimpleString("import xray");
+   if(model->hod){
 
-   PyRun_SimpleString("print xray.CRToLx(dirname+'/data/CRtoLx.ascii', 0.2)");
+      params p;
+      p.model = model;
+      p.z = z;
+      p.c = NAN;  /* for the HOD model, the concentration(Mh) relationship is fixed */
+
+      double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
+
+      for(i=0;i<N;i++){
+         p.r       = r[i];
+         result[i] = int_gsl(intForIx1hc, (void*)&p, log(Mh_rh(model, r[i], z)) , LNMH_MAX, 1.e-3)/ng;
+      }
+   }else{
+      for(i=0;i<N;i++){
+
+         double Tx, ZGas;
+         Tx = MhToTx(model, Mh, z);
+         ZGas = MhToZGas(model, Mh, z);
+
+         double fac = CRToLx(model, z, Tx, ZGas);
+
+         if (fac > 0.0){
+            result[i] = ix(model, r[i], Mh, c, z)/fac;
+         }else{
+            result[i] = 0.0;
+         }
 
 
-   /* Release the thread. No Python API allowed beyond this point. */
-   PyGILState_Release(gstate);
+      }
+   }
 
-   return 0.0;
+   return;
 }
 
 
-# define CM3TOMPC3  (3.40366918775e-74)
+double intForIx1hc(double logMh, void *p) {
+   /* Integrand for nGas if HOD model */
+
+   const Model *model = ((params *)p)->model;
+   double r = ((params *)p)->r;
+   double c = ((params *)p)->c;
+   double z = ((params *)p)->z;
+
+   double Mh = exp(logMh);
+
+   double Tx, ZGas;
+   Tx = MhToTx(model, Mh, z);
+   ZGas = MhToZGas(model, Mh, z);
+
+   double fac = CRToLx(model, z, Tx, ZGas);
+
+   if (fac > 0.0){
+      return Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
+         * ix(model, r, Mh, c, z)
+         * dndlnMh(model, Mh, z)/fac;
+   }else{
+      return 0.0;
+   }
+
+}
 
 double ix(const Model *model, double r, double Mh, double c, double z){
    /*
@@ -61,17 +272,41 @@ double ix(const Model *model, double r, double Mh, double c, double z){
     *    in erg s^-1 Mpc-3 assuming
     *    a 3D gas profile
     *    Ix3D \propto nGas^2
+    *    = Ix if non HOD
+    *    = ix if HOD (to be integrated over halo mass function)
     */
 
    double Tx, ZGas;
-
    Tx = MhToTx(model, Mh, z);
    ZGas = MhToZGas(model, Mh, z);
 
    return Lambda(Tx, ZGas)*pow(1.21*nGas(model, r, Mh, c, z), 2.0) / CM3TOMPC3;
 }
 
-# undef CM3ToMPC3
+double MhToTx(const Model *model, double Mh, double z)
+{
+
+   double log10Mh = log10(Mh);
+   return pow(10.0, (log10Mh - 13.56) / 1.69);
+}
+
+double TxToMh(const Model *model, double Tx, double z)
+{
+
+   double log10Tx = log10(Tx);
+   return pow(10.0, 1.69*log10Tx + 13.56);
+}
+
+
+double MhToZGas(const Model *model, double Mh, double z)
+{
+   /*
+    *    Metallicity
+    *
+    */
+   return 0.25;
+}
+
 
 # define CONST_MGAS (3.33054952367e+16) /* = mu * mp * 2.21 / (cm3ToMpc3 * Msun) */
 
@@ -187,22 +422,132 @@ double Lambda(double Tx, double ZGas)
 }
 # undef EPS
 
-
-double MhToTx(const Model *model, double Mh, double z)
+double CRToLx(const Model *model, double z, double Tx, double ZGas)
 {
-
-   double log10Mh = log10(Mh);
-   return pow(10.0, (log10Mh - 13.56) / 1.69);
-}
-
-
-double MhToZGas(const Model *model, double Mh, double z)
-{
-   /*
-    *    Metallicity
+   /*    call python function to ease the 3D interpolation
+    *    see http://www.linuxjournal.com/article/8497?page=0,0
+    *    to return arrays, see https://github.com/Frogee/PythonCAPI_testing/blob/master/testEmbed.cpp
     *
+    *    TODO: directly call CR->Lx code
     */
-   return 0.25;
+
+
+   // return 1.0;
+
+   static int firstcall = 1;
+   static gsl_interp_accel *acc;
+   static gsl_spline *spline;
+   static double inter_min, inter_max;
+
+   static double z_tmp = NAN;
+   static double ZGas_tmp = NAN;
+
+   if(firstcall || (!isnan(z_tmp) && fabs(z_tmp - z) > 1.e-5) || (!isnan(ZGas_tmp) && fabs(ZGas_tmp - ZGas) > 1.e-5) ){
+
+      firstcall = 0;
+      ZGas_tmp = ZGas;
+      z_tmp = z;
+
+      /*    the code above is necessary as xray.c is itself
+       *    wrapped into python code
+       *    see https://docs.python.org/2/c-api/init.html for details
+       */
+      PyGILState_STATE gstate;
+      gstate = PyGILState_Ensure();
+
+      /*    add python directory to python path to import xray module */
+      char cmd[1000] = "";
+      sprintf(cmd, "dirname = os.path.dirname(\"%s\")", __FILE__);
+      PyRun_SimpleString(cmd);
+      PyRun_SimpleString("sys.path.insert(0, dirname+'/../python'); ");
+      /*    import xray module and function CRToLx function */
+   	PyObject *pName = PyString_FromString("xray");  //Get the name of the module
+   	PyObject *pModule = PyImport_Import(pName);     //Get the module
+      if (pModule == NULL)
+      {
+         PyErr_Print();
+         fprintf(stderr, "CRToLx(): Error happened in (%s:%d)\n", __FILE__, __LINE__);
+         exit(EXIT_FAILURE);
+      }
+
+      /*    import function pointer */
+      PyObject *pFunc = PyObject_GetAttrString(pModule, "CRToLx");
+      if (pFunc == NULL)
+      {
+         PyErr_Print();
+         fprintf(stderr, "CRToLx(): Error happened in (%s:%d)\n", __FILE__, __LINE__);
+         exit(EXIT_FAILURE);
+      }
+      PyObject *main_module = PyImport_AddModule("__main__");
+      PyObject *global_dict = PyModule_GetDict(main_module);
+      PyRun_SimpleString("fileInName = dirname+'/../data/CRtoLx.ascii'");
+      PyObject *pFileInName = PyDict_GetItemString(global_dict, "fileInName");
+      if (pFileInName == NULL)
+      {
+         PyErr_Print();
+         fprintf(stderr, "CRToLx(): Error happened in (%s:%d)\n", __FILE__, __LINE__);
+         exit(EXIT_FAILURE);
+      }
+      char *fileInName = PyString_AS_STRING(pFileInName);
+
+   	/*    Set up a tuple that will contain the function arguments. */
+      PyObject *pArgTuple = PyTuple_New(3);
+      PyTuple_SetItem(pArgTuple, 0, PyString_FromString(fileInName));
+      PyTuple_SetItem(pArgTuple, 1, PyFloat_FromDouble(z));
+      PyTuple_SetItem(pArgTuple, 2, PyFloat_FromDouble(ZGas));
+
+   	/*    Set up a tuple that will contain the result from the function. */
+      PyObject *pResTuple = PyTuple_New(2);
+
+   	/*    call to python function */
+   	pResTuple = PyObject_CallObject(pFunc, pArgTuple);
+      if (pResTuple == NULL)
+      {
+         PyErr_Print();
+         fprintf(stderr, "CRToLx(): Error happened in (%s:%d)\n", __FILE__, __LINE__);
+         exit(EXIT_FAILURE);
+      }
+
+
+
+      /*    see https://docs.python.org/2/c-api/concrete.html for Tuple functions */
+      PyObject *logTx = PyTuple_GetItem(pResTuple, 0);
+      PyObject *logConv = PyTuple_GetItem(pResTuple, 1);
+
+      int i, Ninter = PyList_Size(logTx);
+      double *x = (double *)malloc(Ninter*sizeof(double));
+      double *y = (double *)malloc(Ninter*sizeof(double));
+      for (i=0;i<Ninter;i++){
+         //printf("%.8f %.8f\n", PyFloat_AsDouble(PyList_GetItem(logTx, i)),  PyFloat_AsDouble(PyList_GetItem(conv, i)));
+         x[i] = PyFloat_AsDouble(PyList_GetItem(logTx, i));
+         y[i] = PyFloat_AsDouble(PyList_GetItem(logConv, i));
+      }
+
+      inter_min = exp(x[0]);
+      inter_max = exp(x[Ninter-1]);
+
+      acc     = gsl_interp_accel_alloc();
+      spline  = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+
+      gsl_spline_init(spline, x, y, Ninter);
+
+      free(x);
+      free(y);
+
+   	Py_DECREF(pArgTuple);
+   	Py_DECREF(pResTuple);
+
+      /* Release the thread. No Python API allowed beyond this point. */
+      PyGILState_Release(gstate);
+
+   }
+
+
+   if (Tx < inter_min || Tx > inter_max){
+      return 0.0;
+   }else{
+      return exp(gsl_spline_eval(spline, log(Tx), acc));
+   }
 }
 
 
@@ -228,6 +573,7 @@ double nGas(const Model *model, double r, double Mh, double c, double z){
       n0 = pow(10.0, inter_gas_log10n0(model, log10Mh));
       beta = pow(10.0, inter_gas_log10beta(model, log10Mh));
       rc  = pow(10.0, inter_gas_log10rc(model, log10Mh));
+
    }else{
       n0 = pow(10.0, model->gas_log10n0);
       beta = pow(10.0, model->gas_log10beta);
@@ -419,194 +765,6 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
 #if  0
 
 
-
-
-void Ix(const Model *model, double *R, int N, double z, int obs_type, double *result)
-{
-   /*
-   Computes projected  X-ray luminosity profiles
-   See Vikhlinin et al. (2006) and Cavaliere & Fusco-Femiano (1978)
-
-   If model.hod is set to 1, it will use the full
-   HOD parametrisation, and needs a halo mass function. Otherwise
-   if set to 0, it will only use the three parameters that controls
-   the shape of a X-ray profile.
-   */
-
-   /* interpolate to speed up integration  */
-   int i, j, k, Ninter = 40;
-   if (obs_type == XB){
-      // TODO check why we need that much
-      Ninter = 256;
-   }
-   double *logrinter  = (double *)malloc(Ninter*sizeof(double));
-   double *rinter     = (double *)malloc(Ninter*sizeof(double));
-   double rinter_min  = 1.e-3;
-   double rinter_max  = 1.e+2;
-   double dlogrinter  = log(rinter_max/rinter_min)/(double)Ninter;
-
-   for(i=0;i<Ninter;i++){
-      logrinter[i] = log(rinter_min)+dlogrinter*(double)i;
-      rinter[i]    = exp(logrinter[i]);
-   }
-
-   double *xi = (double *)malloc(Ninter*sizeof(double));
-
-   switch (obs_type){
-      case cen:
-      Ix1hc(rinter, Ninter, model, xi);
-      break;
-      case sat:
-      Ix1hs(rinter, Ninter, model, xi);
-      break;
-      case XB:
-      IxXB(rinter, Ninter, model, xi);
-      break;
-   }
-
-   /* interpolate xi(r) */
-   gsl_interp_accel *acc = gsl_interp_accel_alloc();
-   gsl_spline *spline    = gsl_spline_alloc (gsl_interp_cspline, Ninter);
-   gsl_spline_init(spline, logrinter, xi, Ninter);
-
-   params p;
-   p.acc       = acc;
-   p.spline    = spline;
-   p.eps       = 1.0e-4;
-   p.logrmin   = logrinter[0];
-   p.logrmax   = logrinter[Ninter-1];
-
-   /* If convolved by PSF */
-   /* TODO: move into external function */
-   if (model->XMM_PSF_A > 0.0){
-      /*
-      First interpolate the projected signal over wide range,
-      keeping the previous interpolation space
-      */
-      double *Ix = (double *)malloc(Ninter*sizeof(double));
-
-      switch (obs_type){
-
-         /* For central and satellites, computed the projected 3D profile */
-         case cen: case sat:
-
-         for(i=0;i<Ninter;i++){
-            p.R = rinter[i];
-            Ix[i] = 2.0*int_gsl(intForIx, (void*)&p, log(rinter_min), log(rinter_max), p.eps);
-         }
-         break;
-
-
-         /* For X-ray binaries, it is simply the de Vaucouleurs profile */
-         case XB:
-
-         for(i=0;i<Ninter;i++){
-            double logr = log( rinter[i]);
-            Ix[i] = gsl_spline_eval(spline, logr, acc);
-         }
-         break;
-      }
-      gsl_spline_init(spline, logrinter, Ix, Ninter);
-
-      /* theta and R prime */
-      int N_PSF           = 64;
-      double Rpp;
-      double *theta       =  (double *)malloc(N_PSF*sizeof(double));
-      double *Rp          =  (double *)malloc(N_PSF*sizeof(double));
-      double *intForTheta =  (double *)malloc(N_PSF*sizeof(double));
-      double *intForRp    =  (double *)malloc(N_PSF*sizeof(double));
-      for(i=0;i<N_PSF;i++){
-         Rp[i]    = exp(log(rinter_min)+dlogrinter*(double)i);
-         theta[i] = 0.0+2.0*M_PI / (double)(N_PSF-1) * (double)i;
-      }
-
-      /* Main loop */
-      for(i=0;i<N;i++){
-         /* loop over R' - trapeze integration */
-         for(j=0;j<N_PSF;j++){
-            /* loop over theta - trapeze integration  */
-            for(k=0;k<N_PSF;k++){
-               Rpp = sqrt(R[i]*R[i] + Rp[j]*Rp[j] - 2.0*R[i]*Rp[j]*cos(theta[k]));
-               if(logrinter[0] < log(Rpp) && log(Rpp) < logrinter[Ninter-1]){
-                  intForTheta[k] = gsl_spline_eval(spline, log(Rpp), acc);
-               }
-            }
-            intForRp[j] = King(Rp[j], model->XMM_PSF_A, model->XMM_PSF_rc, model->XMM_PSF_alpha) * trapz(theta, intForTheta, N_PSF);
-         }
-
-         result[i] = 1.0 / (2.0 * M_PI) * trapz(Rp, intForRp, N_PSF);
-
-      }
-
-
-      /* test
-      for(i=0;i<N;i++){
-      if(logrinter[0] < log(R[i]) && log(R[i]) < logrinter[Ninter-1]){
-      result[i] = gsl_spline_eval(spline, log(R[i]), acc);
-      }
-      }
-
-      */
-      free(intForTheta);
-      free(intForRp);
-      free(theta);
-      free(Rp);
-      free(Ix);
-   }else{
-      /* Or simply returns the result */
-      switch (obs_type){
-
-         /* For central and satellites, computed the projected 3D profile */
-         case cen: case sat:
-         for(i=0;i<N;i++){
-            p.R = R[i];
-            result[i] = 2.0*int_gsl(intForIx, (void*)&p, log(rinter_min), log(rinter_max), p.eps);
-         }
-         break;
-
-         /* For X-ray binaries, it is simply the de Vaucouleurs profile */
-         case XB:
-         for(i=0;i<N;i++){
-            double logr = log(R[i]);
-
-            if(logrinter[0] < logr && logr < logrinter[Ninter-1]){
-               result[i] = gsl_spline_eval(spline, logr, acc);
-            }else
-            result[i] = 0.0;
-         }
-         break;
-      }
-
-
-   }
-
-   free(xi);
-   free(rinter);
-   free(logrinter);
-   gsl_spline_free (spline);
-   gsl_interp_accel_free (acc);
-}
-
-double intForIx(double logz, void *p)
-{
-   double result         = 0.0;
-   double z              = exp(logz);
-   double logrmin        = ((params *)p)->logrmin;
-   double logrmax        = ((params *)p)->logrmax;
-   double R              = ((params *)p)->R;
-   gsl_interp_accel *acc = ((params *)p)->acc;
-   gsl_spline *spline    = ((params *)p)->spline;
-
-   double r    = sqrt(R*R + z*z);
-   double logr = log(r);
-
-   if(logrmin < logr && logr < logrmax){
-      result = gsl_spline_eval(spline, logr, acc) * z;
-   }
-
-   return result;
-}
-
 void IxXB(double *r, int N, const Model *model, double *result){
 
    /*
@@ -636,74 +794,6 @@ void IxXB(double *r, int N, const Model *model, double *result){
    }
 
    return;
-}
-
-
-void Ix1hc(double *r, int N, const Model *model, double *result){
-
-   /*
-   Returns the 1-halo central X-ray
-   3D luminosity profile.
-
-   SB \propto rho(r) ^ 2
-   */
-   int i;
-
-   if(model->hod){
-
-
-      // ************************************************************ //
-      // hack for tests - Don't integrate through dndM
-      // only returns model at mean Mstar
-      //printf("mh = %f\n", model->log10M1);
-      /*
-      for(i=0;i<N;i++){
-         result[i] = Ix3D(r[i],  model->log10M1, model);
-
-      }
-      return
-      */
-      // ************************************************************ //
-
-
-      double z = 0.0;
-
-      params p;
-      p.model = model;
-      double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, cen)
-      + ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, sat);
-
-      for(i=0;i<N;i++){
-         p.r       = r[i];
-         result[i] = int_gsl(intForIx1hc, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/ng;
-
-      }
-
-
-   }else{
-      for(i=0;i<N;i++){
-         result[i] = Ix3D(r[i], -1.0, model);
-      }
-   }
-   return;
-}
-
-
-double intForIx1hc(double logMh, void *p) {
-   /* Integrand for nGas if HOD model */
-
-   const Model *model    = ((params *)p)->model;
-   double r              = ((params *)p)->r;
-
-   double log10Mh = logMh/log(10.0);
-
-   double z = 0.0;
-
-   return Ngal_c(model, log10Mh, model->log10Mstar_min, model->log10Mstar_max)
-   * Ix3D(r, log10Mh, model)
-   * dndlnMh(model, z, log10Mh);
-
-
 }
 
 

@@ -1144,8 +1144,8 @@ double rho_bar(const Model *model, double z)
 double dr_dz(const Model *model, double z)
 {
    /*
-   wrapper for dr/dz, r=comoving distance, see Hamana et al. (2004), eq. (10)
-   */
+    *    wrapper for dr/dz, r=comoving distance, see Hamana et al. (2004), eq. (10)
+    */
 
    double a, result;
 
@@ -1162,11 +1162,43 @@ double dr_dz(const Model *model, double z)
 
 }
 
+/*
+ * From NICAEA doc:
+ *
+ * If wOmegar=1, Omega_radiation>0 is included (photons +
+ * neutrinos), needed for high-z quantities such as the sound
+ * horizon at the drag epoch. Note: For low redshift, wOmega=0
+ * should be used, otherwise the nonlinear power-spectrum
+ * fitting formulae might not work.
+*/
+
+double DC(const Model *model, double z, int wOmegar)
+{
+   /*
+    *    wrapper for comoving distance in Mpc/h
+    */
+
+   double a, result;
+
+   error *myerr = NULL, **err;
+   err = &myerr;
+
+   cosmo *cosmo = initCosmo(model);
+
+   a = 1.0/(1.0 + z);
+   result = w(cosmo, a, wOmegar, err);
+   quitOnError(*err, __LINE__, stderr);
+
+   return result;
+
+}
+
+
 double DM(const Model *model, double z, int wOmegar)
 {
    /*
-   wrapper for radial comoving distance in Mpc/h
-   */
+    *    wrapper for radial (transverse) comoving distance in Mpc/h
+    */
 
    double a, ww, result;
 
@@ -1175,13 +1207,25 @@ double DM(const Model *model, double z, int wOmegar)
 
    cosmo *cosmo = initCosmo(model);
 
-   a       = 1.0/(1.0 + z);
-   ww      = w(cosmo, a, wOmegar, err); quitOnError(*err, __LINE__, stderr);
-   result  = f_K(cosmo, ww, err);       quitOnError(*err, __LINE__, stderr);
+   a = 1.0/(1.0 + z);
+   ww = w(cosmo, a, wOmegar, err);
+   quitOnError(*err, __LINE__, stderr);
+   result = f_K(cosmo, ww, err);
+   quitOnError(*err, __LINE__, stderr);
 
    return result;
 }
 
+
+double DA(const Model *model, double z, int wOmegar)
+{
+   /*
+    *    wrapper for angular diameter distance in Mpc/h
+    */
+
+   return DM(model, z, wOmegar)/(1.0+z);
+
+}
 
 
 /* ---------------------------------------------------------------- *

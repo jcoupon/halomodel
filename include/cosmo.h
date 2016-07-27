@@ -89,6 +89,8 @@ double Omega_m_z(const Model *model, double z, double E2pre);
 double rho_crit(const Model *model, double z);
 double rho_bar(const Model *model, double z);
 double dr_dz(const Model *model, double z);
+double DC(const Model *model, double z, int wOmegar);
 double DM(const Model *model, double z, int wOmegar);
+double DA(const Model *model, double z, int wOmegar);
 
 #endif

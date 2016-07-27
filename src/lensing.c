@@ -31,14 +31,14 @@ void DeltaSigma(const Model *model, double *R, int N, double z, int obs_type, do
       return;
    }
 
-   double fac, pi_max = model->ggl_pi_max;
+   double fac = 1.0, pi_max = model->ggl_pi_max;
 
    /* comoving or physical coordinates */
-   if(model->como){
-      fac = 1.0;
-   }else{
-      fac = 1.0+z;
-   }
+   //if(model->como){
+   //   fac = 1.0;
+   //}else{
+   //   fac = 1.0+z;
+   //}
 
    /* interpolate to speed up integration  */
    int Ninter         = 40;
@@ -115,14 +115,14 @@ void Sigma(const Model *model, double *R, int N, double z, int obs_type, double 
  * ---------------------------------------------------------------- */
 {
 
-   double fac, pi_max = model->ggl_pi_max;
+   double fac = 1.0, pi_max = model->ggl_pi_max;
 
    /* comoving or physical coordinates */
-   if(model->como){
-      fac = 1.0;
-   }else{
-      fac = 1.0+z;
-   }
+   //if(model->como){
+   //   fac = 1.0;
+   //}else{
+   //   fac = 1.0+z;
+   //}
 
    /* interpolate to speed up integration  */
    int i, Ninter      = 40;
@@ -229,14 +229,14 @@ void DeltaSigmaStar(const Model *model, double *R, int N, double z, double *resu
    */
 
    int i;
-   double fac, Mstar;
+   double fac=1.0, Mstar;
 
    /* comoving or physical coordinates */
-   if(model->como){
-      fac = 1.0;
-   }else{
-      fac = 1.0+z; // TODO check if necessary?
-   }
+   //if(model->como){
+   //   fac = 1.0;
+   //}else{
+   //   fac = 1.0+z; // TODO check if necessary?
+   //}
 
    if(model->hod){
 

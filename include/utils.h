@@ -40,7 +40,7 @@ typedef struct Model
    double Omega_m;
    double Omega_de;
    double H0;
-   int    como;
+   //int    como;
    char   *massDef;
    char   *concenDef;
    char   *hmfDef;
@@ -182,6 +182,8 @@ typedef struct gsl_int_params
 /* Limits for quantities integrated over halo mass function */
 #define LNMH_MIN 6.90  // (3.0*log(10.0))
 #define LNMH_MAX 37.99 // (16.5*log(10.0))
+
+#define CM3TOMPC3  (3.40366918775e-74)
 
 /* ---------------------------------------------------------------- *
  * Limits for power spectra. Note: these are

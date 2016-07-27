@@ -12,17 +12,21 @@
 #include "abundance.h"
 #include "cosmo.h"
 
-double CRToLx(const Model *model, double z, double Tx, double ZGas);
+void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z, int obs_type, double *result);
+double intForIx(double logz, void *p);
 
-
+void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
+double intForIx1hc(double logMh, void *p);
 
 double ix(const Model *model, double r, double Mh, double c, double z);
+double MhToTx(const Model *model, double Mh, double z);
+double MhToZGas(const Model *model, double Mh, double z);
+double TxToMh(const Model *model, double Tx, double z);
 
 double MGas(const Model *model, double r, double Mh, double c, double z);
 double intForMGas(double logr, void *p);
 double Lambda(double Tx, double ZGas);
-double MhToTx(const Model *model, double Mh, double z);
-double MhToZGas(const Model *model, double Mh, double z);
+double CRToLx(const Model *model, double z, double Tx, double ZGas);
 
 double nGas(const Model *model, double r, double Mh, double c, double z);
 double betaModel(double r, double n0, double beta, double rc);

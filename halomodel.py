@@ -6,16 +6,15 @@ script to run wrapped halomodel routines in c
 
 Required librairies:
 
-for c:
+for c (if not in /usr/local/, set path in Makefile):
 - nicaea 2.5 (http://www.cosmostat.org/software/nicaea/)
 - fftw3 3.3.4 (http://www.fftw.org/)
 - gsl 2.1 (https://www.gnu.org/software/gsl/)
 
 for python:
-- numpy
+- numpy 1.10.2 (http://www.numpy.org/)
 - scipy 0.17.1 (https://www.scipy.org/scipylib/download.html)
 
-Paths to those libraries must be set in Makefile
 """
 
 import os
@@ -23,12 +22,26 @@ import numpy as np
 import ctypes
 import sys
 
-""" path to c library """
+
+"""
+
+-------------------------------------------------------------
+path to c library (absolute path)
+-------------------------------------------------------------
+
+"""
 
 # c_halomodel = ctypes.cdll.LoadLibrary(os.path.dirname(os.path.realpath(__file__))+"/lib/libhalomodel.so")
 c_halomodel = ctypes.cdll.LoadLibrary("/Users/coupon/local/source/GitHub/halomodel/lib/libhalomodel.so")
 
-# the model parameters that are passed to c library
+"""
+
+-------------------------------------------------------------
+classes
+-------------------------------------------------------------
+
+"""
+
 class Model(ctypes.Structure):
     """ Structure to serve at interface between
     python wrapper and c routines.
@@ -41,118 +54,118 @@ class Model(ctypes.Structure):
     _fields_ = [
 
         # cosmology
-        ("Omega_m",        ctypes.c_double),
-        ("Omega_de",       ctypes.c_double),
-        ("H0",             ctypes.c_double),
-        # ("como",           ctypes.c_int), # TODO-> change strategy leave everything in comoving units only convert DATA
-        ("massDef",        ctypes.c_char_p),
-        ("concenDef",      ctypes.c_char_p),
-        ("hmfDef",         ctypes.c_char_p),
-        ("biasDef",        ctypes.c_char_p),
+        ("Omega_m", ctypes.c_double),
+        ("Omega_de", ctypes.c_double),
+        ("H0", ctypes.c_double),
+        # ("como", ctypes.c_int), # TODO-> change strategy leave everything in comoving units only convert DATA
+        ("massDef", ctypes.c_char_p),
+        ("concenDef", ctypes.c_char_p),
+        ("hmfDef", ctypes.c_char_p),
+        ("biasDef", ctypes.c_char_p),
 
          # halo model / HOD parameters
-        ("log10M1",        ctypes.c_double),
-        ("log10Mstar0",    ctypes.c_double),
-        ("beta",           ctypes.c_double),
-        ("delta",          ctypes.c_double),
-        ("gamma",          ctypes.c_double),
+        ("log10M1", ctypes.c_double),
+        ("log10Mstar0", ctypes.c_double),
+        ("beta", ctypes.c_double),
+        ("delta", ctypes.c_double),
+        ("gamma", ctypes.c_double),
         ("log10Mstar_min", ctypes.c_double),
         ("log10Mstar_max", ctypes.c_double),
-        ("sigma_log_M0",   ctypes.c_double),
-        ("sigma_lambda",   ctypes.c_double),
-        ("B_cut",          ctypes.c_double),
-        ("B_sat",          ctypes.c_double),
-        ("beta_cut",       ctypes.c_double),
-        ("beta_sat",       ctypes.c_double),
-        ("alpha",          ctypes.c_double),
-        ("fcen1",          ctypes.c_double),
-        ("fcen2",          ctypes.c_double),
+        ("sigma_log_M0", ctypes.c_double),
+        ("sigma_lambda", ctypes.c_double),
+        ("B_cut", ctypes.c_double),
+        ("B_sat", ctypes.c_double),
+        ("beta_cut", ctypes.c_double),
+        ("beta_sat", ctypes.c_double),
+        ("alpha", ctypes.c_double),
+        ("fcen1", ctypes.c_double),
+        ("fcen2", ctypes.c_double),
 
         # if using hod model
-        ("hod",        ctypes.c_int),
+        ("hod", ctypes.c_int),
 
         # for X-ray binaries
-        ("Ix_XB_Re",       ctypes.c_double),
-        ("Ix_XB_L",        ctypes.c_double),
+        ("Ix_XB_Re", ctypes.c_double),
+        ("Ix_XB_L", ctypes.c_double),
 
         # X-ray, if hod = 0
-        ("gas_log10n0",  ctypes.c_double),
-        ("gas_log10beta",  ctypes.c_double),
-        ("gas_log10rc",   ctypes.c_double),
+        ("gas_log10n0", ctypes.c_double),
+        ("gas_log10beta", ctypes.c_double),
+        ("gas_log10rc", ctypes.c_double),
 
         # X-ray, if hod = 1
-        ("gas_log10n0_1",    ctypes.c_double),
-        ("gas_log10n0_2",    ctypes.c_double),
-        ("gas_log10n0_3",    ctypes.c_double),
-        ("gas_log10n0_4",    ctypes.c_double),
-        ("gas_log10beta_1",    ctypes.c_double),
-        ("gas_log10beta_2",    ctypes.c_double),
-        ("gas_log10beta_3",    ctypes.c_double),
-        ("gas_log10beta_4",    ctypes.c_double),
-        ("gas_log10rc_1",     ctypes.c_double),
-        ("gas_log10rc_2",     ctypes.c_double),
-        ("gas_log10rc_3",     ctypes.c_double),
-        ("gas_log10rc_4",     ctypes.c_double),
+        ("gas_log10n0_1", ctypes.c_double),
+        ("gas_log10n0_2", ctypes.c_double),
+        ("gas_log10n0_3", ctypes.c_double),
+        ("gas_log10n0_4", ctypes.c_double),
+        ("gas_log10beta_1", ctypes.c_double),
+        ("gas_log10beta_2", ctypes.c_double),
+        ("gas_log10beta_3", ctypes.c_double),
+        ("gas_log10beta_4", ctypes.c_double),
+        ("gas_log10rc_1", ctypes.c_double),
+        ("gas_log10rc_2", ctypes.c_double),
+        ("gas_log10rc_3", ctypes.c_double),
+        ("gas_log10rc_4", ctypes.c_double),
 
         # for gg lensing, if hod = 0
-        ("ggl_pi_max",      ctypes.c_double),
-        ("ggl_log10c",      ctypes.c_double),
-        ("ggl_log10Mh",     ctypes.c_double),
-        ("ggl_log10Mstar",  ctypes.c_double),
+        ("ggl_pi_max", ctypes.c_double),
+        ("ggl_log10c", ctypes.c_double),
+        ("ggl_log10Mh", ctypes.c_double),
+        ("ggl_log10Mstar", ctypes.c_double),
 
         # for wtheta, if hod = 1
-        ("wtheta_nz_N",      ctypes.c_int),
-        ("wtheta_nz_z",      ctypes.POINTER(ctypes.c_double)),
-        ("wtheta_nz",        ctypes.POINTER(ctypes.c_double)),
+        ("wtheta_nz_N", ctypes.c_int),
+        ("wtheta_nz_z", ctypes.POINTER(ctypes.c_double)),
+        ("wtheta_nz", ctypes.POINTER(ctypes.c_double)),
 
-        # XMM PSF /
-        ("XMM_PSF_A",          ctypes.c_double),
-        ("XMM_PSF_rc",        ctypes.c_double),
-        ("XMM_PSF_alpha",      ctypes.c_double),
+        # XMM PSF, King function parameters
+        ("XMM_PSF_A", ctypes.c_double),
+        ("XMM_PSF_rc", ctypes.c_double),
+        ("XMM_PSF_alpha", ctypes.c_double),
         ]
 
     # default parameters
     def __init__(self, Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=0, massDef="M500c", concenDef="TJ03", hmfDef="T08", biasDef="T08"):
 
         # cosmology
-        self.Omega_m        = Omega_m
-        self.Omega_de       = Omega_de
-        self.H0             = H0
-        # self.como           = 1          # comoving coordinates (1) or physical (0)
-        self.massDef        = massDef    # halo mass definition: M500c, M500m, M200c, M200m, Mvir, MvirC15
-        self.concenDef      = concenDef  # mass/concentration relation: D11, M11, TJ03, B12_F, B12_R, B01
-        self.hmfDef         = hmfDef     # halo mass defintion: PS74, ST99, ST02, J01, T08
-        self.biasDef        = biasDef    # mass/bias relation:  PS74, ST99, ST02, J01, T08
+        self.Omega_m = Omega_m
+        self.Omega_de = Omega_de
+        self.H0 = H0
+        # self.como = 1          # comoving coordinates (1) or physical (0)
+        self.massDef = massDef    # halo mass definition: M500c, M500m, M200c, M200m, Mvir, MvirC15
+        self.concenDef = concenDef  # mass/concentration relation: D11, M11, TJ03, B12_F, B12_R, B01
+        self.hmfDef = hmfDef     # halo mass defintion: PS74, ST99, ST02, J01, T08
+        self.biasDef = biasDef    # mass/bias relation:  PS74, ST99, ST02, J01, T08
 
         # halo model / HOD parameters
-        self.log10M1        = 12.529 # in Msun h^-1
-        self.log10Mstar0    = 10.748 # in Msun h^-1
-        self.beta           = 0.356
-        self.delta          = 0.749
-        self.gamma          = 0.807
+        self.log10M1 = 12.529 # in Msun h^-1
+        self.log10Mstar0 = 10.748 # in Msun h^-1
+        self.beta = 0.356
+        self.delta = 0.749
+        self.gamma = 0.807
         self.log10Mstar_min = 10.00
         self.log10Mstar_max = 11.00
-        self.sigma_log_M0   = 0.394
-        self.sigma_lambda   = 0.253
-        self.B_cut          = -1
-        self.B_sat          = 9.956
-        self.beta_cut       = -1
-        self.beta_sat       = 0.872
-        self.alpha          = 1.139
-        self.fcen1          = -1
-        self.fcen2          = -1
+        self.sigma_log_M0 = 0.394
+        self.sigma_lambda = 0.253
+        self.B_cut = -1
+        self.B_sat = 9.956
+        self.beta_cut = -1
+        self.beta_sat = 0.872
+        self.alpha = 1.139
+        self.fcen1 = -1
+        self.fcen2 = -1
 
         # if using hod model
-        self.hod            = hod
+        self.hod = hod
 
         # for X-ray binaries
-        self.Ix_XB_Re       = -1.0 # in Mpc
-        self.Ix_XB_L        = -1.0 # in CR Mpc-2
+        self.Ix_XB_Re = -1.0 # in Mpc
+        self.Ix_XB_L = -1.0 # in CR Mpc-2
 
         # X-ray, if hod = 0
-        self.gas_log10n0  = -3.0
+        self.gas_log10n0 = -3.0
         self.gas_log10beta = -1.0
-        self.gas_log10rc   = -1.0
+        self.gas_log10rc = -1.0
 
         # X-ray, if hod = 1
         self.gas_log10n0_1 = -2.11726021929 # log10n0 = gas_log10n0_1  + gas_log10n0_2 * (log10Mh-14.0)
@@ -163,27 +176,26 @@ class Model(ctypes.Structure):
         self.gas_log10beta_2 = +0.26463453
         self.gas_log10beta_3 = np.nan
         self.gas_log10beta_4 = np.nan
-        self.gas_log10rc_1  = -1.12356845357 # log10beta = gas_log10rc_1  + gas_log10rc_2 * (log10Mh-14.0)
-        self.gas_log10rc_2  = +0.73917722    # rc in [h^-1 Mpc], Mpc in comoving coordinate.
-        self.gas_log10rc_3  = np.nan
-        self.gas_log10rc_4  = np.nan
+        self.gas_log10rc_1 = -1.12356845357 # log10beta = gas_log10rc_1  + gas_log10rc_2 * (log10Mh-14.0)
+        self.gas_log10rc_2 = +0.73917722    # rc in [h^-1 Mpc], Mpc in comoving coordinate.
+        self.gas_log10rc_3 = np.nan
+        self.gas_log10rc_4 = np.nan
 
         # for gg lensing
-        self.ggl_pi_max     = 60.0
-        self.ggl_log10c     = np.nan
-        self.ggl_log10Mh    = 14.0
+        self.ggl_pi_max = 60.0
+        self.ggl_log10c = np.nan
+        self.ggl_log10Mh = 14.0
         self.ggl_log10Mstar = np.nan
 
         # n(z) for wtheta, if hod = 1
-        self.wtheta_nz_N    = 0
-        self.wtheta_nz_z    = None
-        self.wtheta_nz      = None
+        self.wtheta_nz_N = 0
+        self.wtheta_nz_z = None
+        self.wtheta_nz = None
 
         # XMM PSF
         self.XMM_PSF_A = np.nan
         self.XMM_PSF_rc = np.nan
         self.XMM_PSF_alpha = np.nan
-
 
 """ c function prototypes """
 
@@ -212,9 +224,17 @@ c_halomodel.inter_gas_log10beta.argtypes = [ctypes.POINTER(Model), ctypes.c_doub
 c_halomodel.inter_gas_log10beta.restype = ctypes.c_double
 c_halomodel.inter_gas_log10rc.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.inter_gas_log10rc.restype = ctypes.c_double
-
 c_halomodel.DA.argtypes =  [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
 c_halomodel.DA.restype  = ctypes.c_double
+
+
+"""
+
+-------------------------------------------------------------
+main
+-------------------------------------------------------------
+
+"""
 
 
 def main(args):
@@ -222,7 +242,16 @@ def main(args):
     function = getattr(sys.modules[__name__], args.option)(args)
     return
 
-def testHOD(args):
+"""
+
+-------------------------------------------------------------
+test
+-------------------------------------------------------------
+
+"""
+
+
+def test(args):
     """ tests """
 
     actions = ["dist"]
@@ -230,6 +259,24 @@ def testHOD(args):
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
     z = 0.308898
+
+
+    if "dist" in actions:
+        """ angular diameter distance """
+
+        from   astropy.cosmology import FlatLambdaCDM
+        cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
+        h = model.H0/100.0
+
+        print c_halomodel.DA(model, z, 0)/h, cosmo.angular_diameter_distance([z])
+
+
+
+
+
+
+
+
 
     if "smf" in actions:
         """ stellar mass function """
@@ -389,14 +436,6 @@ def testHOD(args):
         for i in range(len(R)):
             print R[i], cen[i]
 
-    if "dist" in actions:
-        """ angular diameter distance """
-
-        from   astropy.cosmology import FlatLambdaCDM
-        cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
-        h = model.H0/100.0
-
-        print c_halomodel.DA(model, z, 0)/h, cosmo.angular_diameter_distance([z])
 
     if "MsMh" in actions:
 
@@ -461,6 +500,16 @@ def testHOD(args):
 
         print c_halomodel.changeModelHOD(model)
         print c_halomodel.changeModelHOD(model)
+
+
+"""
+
+-------------------------------------------------------------
+main functions
+-------------------------------------------------------------
+
+"""
+
 
 
 def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
@@ -585,9 +634,11 @@ def SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None):
     return result
 
 """
+
 -------------------------------------------------------------
 Utils
 -------------------------------------------------------------
+
 """
 
 def getCRtoLx_bremss(fileNameIn, redshift):

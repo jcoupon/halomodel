@@ -23,6 +23,37 @@ int main()
 }
 
 
+void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, double z, double *result)
+{
+
+   int i;
+
+   double *result_tmp = (double *)malloc(N*sizeof(double));
+
+   SigmaIx(model, R, N, Mh, c,, z, cen, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
+
+   SigmaIx(model, R, N, Mh, c,, z, sat, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
+
+   SigmaIx(model, R, N, Mh, c,, z, XB, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
+
+   free(result_tmp);
+
+   return;
+}
+
+
+
+
+
 void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z, int obs_type, double *result)
 {
    /*
@@ -35,13 +66,11 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
     *    the shape of a X-ray profile.
     */
 
-   double fac = 1.0;
-   /* comoving or physical coordinates */
-   //if(model->como){
-   //   fac = 1.0;
-   //}else{
-   //   fac = 1.0+z;
-   //}
+
+   if(obs_type == all){
+      SigmaIxAll(model, R, N, Mh, c, z, result);
+      return;
+   }
 
    /*    interpolate to speed up integration for projection and PSF convolution */
    int i, j, k, Ninter = 128;

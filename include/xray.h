@@ -15,6 +15,8 @@
 void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z, int obs_type, double *result);
 double intForIx(double logz, void *p);
 
+void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, double z, double *result);
+
 void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
 double intForIx1hc(double logMh, void *p);
 

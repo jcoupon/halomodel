@@ -1,8 +1,8 @@
-/* ------------------------------------------------------------ *
- * utils.h                                                      *
- * halomodel library                                            *
- * Jean Coupon 2015                                             *
- * ------------------------------------------------------------ */
+/*
+ *    utils.h
+ *    halomodel library
+ *    Jean Coupon 2015
+ */
 
 #ifndef UTILS_H
 #define UTILS_H
@@ -185,12 +185,12 @@ typedef struct gsl_int_params
 
 #define CM3TOMPC3  (3.40366918775e-74)
 
-/* ---------------------------------------------------------------- *
- * Limits for power spectra. Note: these are
- * simple numerical boundaries. It does not mean
- * we know the matter power spectrum
- * within this full range.
- * ---------------------------------------------------------------- */
+/*
+ *    Limits for power spectra. Note: these are
+ *    simple numerical boundaries. It does not mean
+ *    we know the matter power spectrum
+ *    within this full range.
+ */
 #define KMIN  3.336e-6 //1.e-6
 #define KMAX  333.6   // 1.e+6
 
@@ -202,10 +202,10 @@ double FFTLog_TMP;
 #define ODD 0
 #define EVEN 1
 
-/* ---------------------------------------------------------------- *
- * obs_type
- * 1-point or 2-point observable type
- * ---------------------------------------------------------------- */
+/*
+ *    obs_type
+ *    1-point or 2-point observable type
+ */
 
 
 #define star     0 // star quantity

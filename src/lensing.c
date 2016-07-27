@@ -1,23 +1,22 @@
-/* ------------------------------------------------------------ *
- * lensing.c                                                    *
- * halomodel library                                            *
- * Jean Coupon 2016                                             *
- * ------------------------------------------------------------ */
+/*
+ *    lensing.c
+ *    halomodel library
+ *    Jean Coupon 2016
+ */
 
 #include "lensing.h"
 
-/* ---------------------------------------------------------------- *
- * Delta Sigma (galaxy-galaxy lensing)
- * ---------------------------------------------------------------- */
-
+/*
+ *    Delta Sigma (galaxy-galaxy lensing)
+ */
 void DeltaSigma(const Model *model, double *R, int N, double z, int obs_type, double *result)
 {
    /*
-   Computes DeltaSigma = Sigma(<r) - Sigma(r)
-   See Yoo et al. (2006), Leauthaud et al. (2011)
-   This is gamma X Sigma_crit X 1e-12
-   R in Mpc/h
-   */
+    *    Computes DeltaSigma = Sigma(<r) - Sigma(r)
+    *    See Yoo et al. (2006), Leauthaud et al. (2011)
+    *    This is gamma X Sigma_crit X 1e-12
+    *    R in Mpc/h
+    */
 
    int i;
 
@@ -41,12 +40,12 @@ void DeltaSigma(const Model *model, double *R, int N, double z, int obs_type, do
    //}
 
    /* interpolate to speed up integration  */
-   int Ninter         = 40;
-   double *logrinter  = (double *)malloc(Ninter*sizeof(double));
-   double *rinter     = (double *)malloc(Ninter*sizeof(double));
-   double rinter_max  = pi_max;
-   double rinter_min  = MIN(RMIN1, R[0]);
-   double dlogrinter  = log(rinter_max/rinter_min)/(double)Ninter;
+   int Ninter = 40;
+   double *logrinter = (double *)malloc(Ninter*sizeof(double));
+   double *rinter = (double *)malloc(Ninter*sizeof(double));
+   double rinter_max = pi_max;
+   double rinter_min = MIN(RMIN1, R[0]);
+   double dlogrinter = log(rinter_max/rinter_min)/(double)Ninter;
 
    for(i=0;i<Ninter;i++){
       logrinter[i] = log(rinter_min)+dlogrinter*(double)i;
@@ -211,10 +210,25 @@ void DeltaSigmaAll(const Model *model, double *R, int N, double z, double *resul
 
    double *result_tmp = (double *)malloc(N*sizeof(double));
 
-   DeltaSigma(model, R, N, z, star, result_tmp);    for(i=0;i<N;i++){result[i]  = result_tmp[i];}
-   DeltaSigma(model, R, N, z, cen, result_tmp);     for(i=0;i<N;i++){result[i] += result_tmp[i];}
-   DeltaSigma(model, R, N, z, sat, result_tmp);     for(i=0;i<N;i++){result[i] += result_tmp[i];}
-   DeltaSigma(model, R, N, z, twohalo, result_tmp); for(i=0;i<N;i++){result[i] += result_tmp[i];}
+   DeltaSigma(model, R, N, z, star, result_tmp);
+   for(i=0;i<N;i++){
+      result[i]  = result_tmp[i];
+   }
+
+   DeltaSigma(model, R, N, z, cen, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
+
+   DeltaSigma(model, R, N, z, sat, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
+
+   DeltaSigma(model, R, N, z, twohalo, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
 
    free(result_tmp);
 
@@ -290,9 +304,9 @@ double intForDeltaSigmaStar(double log10Mstar, void *p)
 void xi_gm_cen(const Model *model, double *r, int N, double z, double *result)
 {
    /*
-   Returns the 1-halo central galaxy-dark matter
-   two-point correlation function.
-   */
+    *    Returns the 1-halo central galaxy-dark matter
+    *    two-point correlation function.
+    */
 
    int i;
    double Mh, c;
@@ -303,8 +317,8 @@ void xi_gm_cen(const Model *model, double *r, int N, double z, double *result)
 
       params p;
       p.model = model;
-      p.z     = z;
-      p.c     = NAN;  // for the HOD model, the concentration(Mh) relationship is fixed
+      p.z = z;
+      p.c = NAN;  /* for the HOD model, the concentration(Mh) relationship is fixed */
 
       double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
 
@@ -314,10 +328,8 @@ void xi_gm_cen(const Model *model, double *r, int N, double z, double *result)
       }
 
    }else{
-
       Mh = pow(10.0, model->ggl_log10Mh);
-      c  = pow(10.0, model->ggl_log10c);
-
+      c = pow(10.0, model->ggl_log10c);
       for(i=0;i<N;i++){
          result[i] = rhoHalo(model, r[i], Mh, c, z) / rhobar;
       }

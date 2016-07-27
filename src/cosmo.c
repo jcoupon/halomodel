@@ -293,15 +293,30 @@ double dndlnMh(const Model *model, double Mh, double z){
 double uHalo(const Model *model, double k, double Mh, double c, double z)
 {
    /*
-   Fourier transform of the halio profile.
-   To assume c(Mh) relation, set c = -1.0;
-   uHalo is interpolated in Mh k space if c(Mh) relation
-   is assumed.
-   */
+    *    Fourier transform of the halio profile.
+    *    To assume c(Mh) relation, set c = -1.0;
+    *    uHalo is interpolated in Mh k space if c(Mh) relation
+    *    is assumed.
+    */
+
+
+   // DEBUGGING
+   params p;
+   p.model = model;
+   p.c = c;
+   p.z = z;
+   p.k = 0.001;
+   p.Mh = 1.e14;
+
+   //double res = 4.0*M_PI/p.Mh*int_gsl(intForUHalo, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
+   //printf("%g %g %g\n", p.Mh, p.k, res);
+   //res = 4.0*M_PI/p.Mh*int_gsl(intForUHalo, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
+   //printf("%g %g %g\n", p.Mh, p.k, res);
+   //exit(-1);
 
    static int firstcall = 1;
 
-   static gsl_spline2d *spline   = NULL;
+   static gsl_spline2d *spline = NULL;
    static gsl_interp_accel *xacc = NULL;
    static gsl_interp_accel *yacc = NULL;
 
@@ -335,9 +350,9 @@ double uHalo(const Model *model, double k, double Mh, double c, double z)
       }
 
       params p;
-      p.model  = model;
-      p.c      = c;
-      p.z      = z;
+      p.model = model;
+      p.c = c;
+      p.z = z;
 
       /* z axis = log(uHalo) */
       double *za = (double *)malloc(Nx*Ny*sizeof(double));
@@ -345,19 +360,18 @@ double uHalo(const Model *model, double k, double Mh, double c, double z)
       /* initialize interpolation */
       const gsl_interp2d_type *T = gsl_interp2d_bilinear;
       spline = gsl_spline2d_alloc(T, Nx, Ny);
-      xacc   = gsl_interp_accel_alloc();
-      yacc   = gsl_interp_accel_alloc();
+      xacc = gsl_interp_accel_alloc();
+      yacc = gsl_interp_accel_alloc();
 
       /* loop over halo mass */
       for(i=0;i<Nx;i++){
          p.Mh = x[i];
          /* loop over k */
          norm = x[i];
-
          for(j=0;j<Ny;j++){
             p.k = y[j];
-            result = 4.0*M_PI/norm*int_gsl(intForUHalo, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
-            // result = uHaloClosedFormula(model, p.k, p.Mh, p.c, p.z); <- exact for truncated NFW profile
+            result = 4.0*M_PI/p.Mh*int_gsl(intForUHalo, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
+            //result = uHaloClosedFormula(model, p.k, p.Mh, p.c, p.z); // <- exact for truncated NFW profile
             gsl_spline2d_set(spline, za, i, j, result);
          }
       }
@@ -390,9 +404,7 @@ double uHalo(const Model *model, double k, double Mh, double c, double z)
 
 double intForUHalo(double logr, void *p)
 {
-   /*
-   Integrand for uHalo().
-   */
+   /*    Integrand for uHalo(). */
    const Model *model = ((params *)p)->model;
    const double Mh = ((params *)p)->Mh;
    const double c  = ((params *)p)->c;
@@ -403,7 +415,6 @@ double intForUHalo(double logr, void *p)
 
    return rhoHalo(model, r, Mh, c, z) * sinc(k*r) * r * r * r;
 }
-
 
 
 double uHaloClosedFormula(const Model *model, double k, double Mh, double c, double z)
@@ -427,29 +438,32 @@ double uHaloClosedFormula(const Model *model, double k, double Mh, double c, dou
 }
 
 
-
 double rhoHalo(const Model *model, double r, double Mh, double c, double z)
 {
    /*
-   Returns a halo profile given a set
-   of parameters.
-   */
+    *    Returns a halo profile given a set
+    *    of parameters.
+    */
 
-   static double r_s, rho_s, Mh_tmp = -1.0, c_tmp = -1.0;
+   static double r_s, rho_s, Mh_tmp, c_tmp;
+   static int firstcall = 1;
 
    /* If truncated halo. This matches Leauthaud et al. (2011) */
    if(r > r_vir(model, Mh, c, z)){
       return 0.0;
    }
 
-   if (fabs(Mh_tmp - Mh) > 1.e-5 || fabs(c_tmp - c) > 1.e-5){
+   if (firstcall || fabs(Mh_tmp - Mh) > 1.e-5 ||  (!isnan(c) && fabs(c_tmp - c) > 1.e-5)){
 
       if(isnan(c)) c = concentration(model, Mh, z, model->concenDef);
 
-      r_s     = rh(model, Mh, NAN, z)/c;
-      rho_s   = rho_crit(model, 0.0)*Delta(model, z, model->massDef)/3.0*pow(c,3.0)/(log(1.0+c)-c/(1.0+c));
-      Mh_tmp  = Mh;
-      c_tmp   = c;
+      r_s = rh(model, Mh, NAN, z)/c;
+      rho_s = rho_crit(model, 0.0)*Delta(model, z, model->massDef)/3.0*pow(c,3.0)/(log(1.0+c)-c/(1.0+c));
+
+      Mh_tmp = Mh;
+      c_tmp = c;
+      firstcall = 0;
+
    }
 
    return NFW(r, r_s, rho_s);
@@ -457,68 +471,71 @@ double rhoHalo(const Model *model, double r, double Mh, double c, double z)
 
 double NFW(double r, double r_s, double rho_s){
    /*
-   Returns a NFW profile given r_s and rho_s.
-   Both r_s and rho_s depend on cosmology and
-   redshift but are computed by the wrapper.
-   */
+    *    Returns a NFW profile given r_s and rho_s.
+    *    Both r_s and rho_s depend on cosmology and
+    *    redshift but are computed by the wrapper.
+    */
+
    double x = r / r_s;
    return rho_s / (x * pow(1.0+x, 2.0));
-
 }
 
 double concentration(const Model *model, double Mh, double z, char *concenDef)
 {
    /*
-   concentration for clusters of mass Mh
-   at redshift z
-
-   Mh in Mpc/h
-
-   ATTENTION, each c-M relation is valid
-   only with the same mass defintion:
-   c = wrt to critical density
-   m = wrt to mean density
-
-   */
+    *    concentration for clusters of mass Mh
+    *    at redshift z
+    *
+    *    Mh in Mpc/h
+    *    ATTENTION, each c-M relation is valid
+    *    only with the same mass defintion:
+    *    c = wrt to critical density
+    *    m = wrt to mean density
+    */
 
    double result;
    double a, b, c0, beta, nu;
 
-
    if( !strcmp(concenDef, "D11")){
-      // Duffy et al. (2011), WMAP5 cosmology, M200c, TODO add M200m and Mvir
+
+      /*    Duffy et al. (2011), WMAP5 cosmology, M200c, TODO add M200m and Mvir */
       result = 5.71 * pow(Mh/2.0e12, -0.084) * pow(1.0+z, -0.47);
 
    }else if ( !strcmp(concenDef, "M11")){
-      // Munoz-Cuartas et al. (2011), Mvir (r_vir from Bryan & Norman, 1998)
-      a      = 0.029*z - 0.097;
-      b      = -110.001/(z+16.885) + 2469.720/pow(z+16.885, 2.0);
+
+      /*    Munoz-Cuartas et al. (2011), Mvir (r_vir from Bryan & Norman, 1998) */
+      a = 0.029*z - 0.097;
+      b = -110.001/(z+16.885) + 2469.720/pow(z+16.885, 2.0);
       result = pow(10.0, a*log10(Mh) + b);
 
    }else if ( !strcmp(concenDef, "TJ03")){
-      // Takada & Jain (2003), concentration for clusters, Mvir, WMAP5 cosmology and
-      // c0, beta parameters used in Coupon et al. (2015)
-      c0   = 11.0;
+
+      /*
+       *    Takada & Jain (2003), concentration for clusters, Mvir, WMAP5 cosmology and
+       *    c0, beta parameters used in Coupon et al. (2015)
+       */
+      c0 = 11.0;
       beta = 0.13;
       result = c0*pow(Mh/2.705760e+12, -beta)/(1.0+z);
 
    }else if ( !strcmp(concenDef, "B12_F")){
-      // Bhattacharya et al. (2012) full sample, M200c, concentration for all clusters
-      nu     = 1.0/Dplus(model, z) * (1.12 * pow(Mh/5.0e13, 0.3) + 0.53);
+
+      /*    Bhattacharya et al. (2012) full sample, M200c, concentration for all clusters */
+      nu = 1.0/Dplus(model, z) * (1.12 * pow(Mh/5.0e13, 0.3) + 0.53);
       result = pow(Dplus(model, z),1.15) * 9.0*pow(nu, -0.29);
 
    }else if ( !strcmp(concenDef, "B12_R")){
-      // Bhattacharya et al. (2012) relaxed sample, M200c, concentration for all clusters
-      nu    = 1.0/Dplus(model, z) * (1.12 * pow(Mh/5.0e13, 0.3) + 0.53);
+
+      /*    Bhattacharya et al. (2012) relaxed sample, M200c, concentration for all clusters */
+      nu = 1.0/Dplus(model, z) * (1.12 * pow(Mh/5.0e13, 0.3) + 0.53);
       result = pow(Dplus(model, z), 0.53) * 6.6*pow(nu, -0.41);
 
    }else if ( !strcmp(concenDef, "B01")){
-      // Bullock et al. (2001):
-      // TODO
+
+      /*    Bullock et al. (2001) TODO */
       result = 0.0;
 
    }else {
-
       fprintf(stderr, "concentration(): concentration definition \"%s\" is not defined (%s:%d). Exiting...\n", concenDef, __FILE__, __LINE__);
       exit(EXIT_FAILURE);
 
@@ -543,24 +560,31 @@ double Delta(const Model *model, double z, char *massDef)
    double result;
 
    if( !strcmp(massDef, "M200m")){
+
       result = 200.0 * Omega_m_z(model, 0.0, -1.0); // z=0.0 <- comoving units
 
    }else if( !strcmp(massDef, "M200c")){
+
       result = 200.0;
 
    }else if( !strcmp(massDef, "M500m")){
+
       result = 500.0 * Omega_m_z(model, 0.0, -1.0); // z=0.0 <- comoving units
 
    } else if( !strcmp(massDef, "M500c")){
+
       result = 500.0;
 
    } else if( !strcmp(massDef, "Mvir")){
+
       result = Delta_vir(model, z);
 
    } else if( !strcmp(massDef, "MvirC15")){
+
       result = Delta_vir(model, z)* Omega_m_z(model, 0.0, -1.0); // matches Coupon et al. (2015)
 
    } else {
+
       fprintf(stderr, "Delta(): mass definition \"%s\" is not defined (%s:%d). Exiting...\n", massDef, __FILE__, __LINE__);
       exit(EXIT_FAILURE);
 
@@ -578,22 +602,22 @@ double r_vir(const Model *model, double Mh, double c, double z)
    static gsl_spline *spline;
    static double inter_min, inter_max;
 
-   static double c_tmp = NAN;
+   static double c_tmp;
 
    if(firstcall || (!isnan(c) && fabs(c_tmp - c) > 1.e-5)){
 
       firstcall = 0;
       c_tmp = c;
 
-      int i, Ninter  = 64;
-      double dx      = (LNMH_MAX-LNMH_MIN)/(double)Ninter;
-      double *x      = (double *)malloc(Ninter*sizeof(double));
-      double *y      = (double *)malloc(Ninter*sizeof(double));
+      int i, Ninter = 64;
+      double dx = (LNMH_MAX-LNMH_MIN)/(double)Ninter;
+      double *x = (double *)malloc(Ninter*sizeof(double));
+      double *y = (double *)malloc(Ninter*sizeof(double));
 
       for(i=0;i<Ninter;i++){
          x[i]  = LNMH_MIN+dx*(double)i;
          if( !strcmp(model->massDef, "MvirC15")){
-            y[i] = rh(model, Mh, NAN, z);  // DEBUGGING: matches Coupon et al. (2015) but is not exactly correct
+            y[i] = rh(model, exp(x[i]), NAN, z);  // DEBUGGING: matches Coupon et al. (2015) but is not exactly correct
          }else{
             y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, 0.0)*Delta_vir(model, z)), 1.0/3.0);
          }
@@ -602,8 +626,8 @@ double r_vir(const Model *model, double Mh, double c, double z)
       inter_min = exp(x[0]);
       inter_max = exp(x[Ninter-1]);
 
-      acc     = gsl_interp_accel_alloc();
-      spline  = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+      acc = gsl_interp_accel_alloc();
+      spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
 
       gsl_spline_init(spline, x, y, Ninter);
 
@@ -639,21 +663,21 @@ double M_vir(const Model *model, double Mh, char *massDef, double c, double z)
 void M1_to_M2(const Model *model, double M1, double c1, double Delta1, double Delta2, double z, double *M2, double *c2)
 {
    /*
-   Convert M1 into M2
-   See Hu & Kravtsov - appendix C
-   NFW_sum(c1)/Delta1 = NFW_sum(c2)/Delta2
-   Delta1 and Delta2 are overdensities with respect to
-   the critical matter density
-   */
+    *    Convert M1 into M2
+    *    See Hu & Kravtsov - appendix C
+    *    NFW_sum(c1)/Delta1 = NFW_sum(c2)/Delta2
+    *    Delta1 and Delta2 are overdensities with respect to
+    *    the critical matter density
+    */
 
    if(isnan(c1)) c1 = concentration(model, M1, z, model->concenDef);
 
    double f, p, x;
    double NFW_sum = (log(1.0+c1) - c1/(1.0+c1))/(c1*c1*c1);
 
-   f  = NFW_sum*Delta2/Delta1;
-   p  = -0.4283-3.13e-3*log(f)-3.52e-5*log(f)*log(f);
-   x  = pow(0.5116 * pow(f, 2.0*p) + pow(3.0/4.0, 2.0),-1.0/2.0) + 2.0*f;
+   f = NFW_sum*Delta2/Delta1;
+   p = -0.4283-3.13e-3*log(f)-3.52e-5*log(f)*log(f);
+   x = pow(0.5116 * pow(f, 2.0*p) + pow(3.0/4.0, 2.0),-1.0/2.0) + 2.0*f;
 
    *c2 = 1.0/x;
    *M2 = M1*Delta2/Delta1*pow(*c2/c1, 3.0);

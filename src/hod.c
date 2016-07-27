@@ -193,6 +193,8 @@ double msmh_log10Mh(const Model *model, double log10Mstar){
 #define EPS 1.e-8
 
 int changeModelHOD(const Model *model){
+   /* test if any of the HOD parameters changed */
+
 
    static Model model_tmp;
    static int firstcall = 1;
@@ -206,8 +208,6 @@ int changeModelHOD(const Model *model){
       model_tmp.beta = model->beta;
       model_tmp.delta = model->delta;
       model_tmp.gamma = model->gamma;
-      // model_tmp.log10Mstar_min = model->log10Mstar_min;
-      // model_tmp.log10Mstar_max = model->log10Mstar_max;
       model_tmp.sigma_log_M0 = model->sigma_log_M0;
       model_tmp.sigma_lambda = model->sigma_lambda;
       model_tmp.B_cut = model->B_cut;

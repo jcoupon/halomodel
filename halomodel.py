@@ -14,6 +14,7 @@ for c (if not in /usr/local/, set path in Makefile):
 for python:
 - numpy 1.10.2 (http://www.numpy.org/)
 - scipy 0.17.1 (https://www.scipy.org/scipylib/download.html)
+- (for tests only) astropy 1.2.1 (http://www.astropy.org/)
 
 """
 
@@ -31,8 +32,12 @@ path to c library (absolute path)
 
 """
 
+# where you put this library
+HALOMODEL_DIRNAME="/Users/coupon/local/source/GitHub/halomodel"
+
 # c_halomodel = ctypes.cdll.LoadLibrary(os.path.dirname(os.path.realpath(__file__))+"/lib/libhalomodel.so")
-c_halomodel = ctypes.cdll.LoadLibrary("/Users/coupon/local/source/GitHub/halomodel/lib/libhalomodel.so")
+c_halomodel = ctypes.cdll.LoadLibrary(HALOMODEL_DIRNAME+"/lib/libhalomodel.so")
+
 
 """
 
@@ -131,11 +136,11 @@ class Model(ctypes.Structure):
         self.Omega_m = Omega_m
         self.Omega_de = Omega_de
         self.H0 = H0
-        # self.como = 1          # comoving coordinates (1) or physical (0)
-        self.massDef = massDef    # halo mass definition: M500c, M500m, M200c, M200m, Mvir, MvirC15
+        # self.como = 1             # comoving coordinates (1) or physical (0)
+        self.massDef = massDef      # halo mass definition: M500c, M500m, M200c, M200m, Mvir, MvirC15
         self.concenDef = concenDef  # mass/concentration relation: D11, M11, TJ03, B12_F, B12_R, B01
-        self.hmfDef = hmfDef     # halo mass defintion: PS74, ST99, ST02, J01, T08
-        self.biasDef = biasDef    # mass/bias relation:  PS74, ST99, ST02, J01, T08
+        self.hmfDef = hmfDef        # halo mass defintion: PS74, ST99, ST02, J01, T08
+        self.biasDef = biasDef      # mass/bias relation:  PS74, ST99, ST02, J01, T08
 
         # halo model / HOD parameters
         self.log10M1 = 12.529 # in Msun h^-1
@@ -170,16 +175,16 @@ class Model(ctypes.Structure):
         # X-ray, if hod = 1
         self.gas_log10n0_1 = -2.11726021929 # log10n0 = gas_log10n0_1  + gas_log10n0_2 * (log10Mh-14.0)
         self.gas_log10n0_2 = -0.29693164    # n0 in [h^3 Mpc^-3], Mpc in comoving coordinate.
-        self.gas_log10n0_3 = np.nan
-        self.gas_log10n0_4 = np.nan
-        self.gas_log10beta_1 = -0.32104805 # log10beta = gas_log10beta_1  + gas_log10beta_2 * (log10Mh-14.0)
-        self.gas_log10beta_2 = +0.26463453
-        self.gas_log10beta_3 = np.nan
-        self.gas_log10beta_4 = np.nan
+        self.gas_log10n0_3 = np.nan         # not used
+        self.gas_log10n0_4 = np.nan         # not used
+        self.gas_log10beta_1 = -0.32104805  # log10beta = gas_log10beta_1  + gas_log10beta_2 * (log10Mh-14.0)
+        self.gas_log10beta_2 = +0.26463453  #
+        self.gas_log10beta_3 = np.nan       # not used
+        self.gas_log10beta_4 = np.nan       # not used
         self.gas_log10rc_1 = -1.12356845357 # log10beta = gas_log10rc_1  + gas_log10rc_2 * (log10Mh-14.0)
         self.gas_log10rc_2 = +0.73917722    # rc in [h^-1 Mpc], Mpc in comoving coordinate.
-        self.gas_log10rc_3 = np.nan
-        self.gas_log10rc_4 = np.nan
+        self.gas_log10rc_3 = np.nan         # not used
+        self.gas_log10rc_4 = np.nan         # not used
 
         # for gg lensing
         self.ggl_pi_max = 60.0
@@ -197,8 +202,15 @@ class Model(ctypes.Structure):
         self.XMM_PSF_rc = np.nan
         self.XMM_PSF_alpha = np.nan
 
-""" c function prototypes """
+"""
 
+-------------------------------------------------------------
+c function prototypes
+-------------------------------------------------------------
+
+"""
+
+c_halomodel.xi_m.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.dndlog10Mstar.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.DeltaSigma.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.wOfTheta.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
@@ -224,8 +236,10 @@ c_halomodel.inter_gas_log10beta.argtypes = [ctypes.POINTER(Model), ctypes.c_doub
 c_halomodel.inter_gas_log10beta.restype = ctypes.c_double
 c_halomodel.inter_gas_log10rc.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.inter_gas_log10rc.restype = ctypes.c_double
-c_halomodel.DA.argtypes =  [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
+c_halomodel.DA.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
 c_halomodel.DA.restype  = ctypes.c_double
+c_halomodel.msmh_log10Mstar.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
+c_halomodel.msmh_log10Mstar.restype = ctypes.c_double
 
 
 """
@@ -250,67 +264,202 @@ test
 
 """
 
-
 def test(args):
-    """ tests """
+    """ Performs basic tests
 
-    actions = ["dist"]
+    ** DO NOT CHANGE ANYTHING HERE UNLESS YOU KNOW WHAT YOUR ARE DOING!!!! **
+
+    """
+
+    from astropy.io import ascii
+    from astropy.table import Table, Column
+
+    compute_ref=True
+
+    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl"]
+    actions = ["ggl"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
     z = 0.308898
 
-
     if "dist" in actions:
         """ angular diameter distance """
 
-        from   astropy.cosmology import FlatLambdaCDM
-        cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
-        h = model.H0/100.0
+        sys.stderr.write("dist:")
+        np.testing.assert_almost_equal(c_halomodel.DA(model, z, 0), 662.494287693, err_msg="in dist")
+        sys.stderr.write("PASSED\n")
 
-        print c_halomodel.DA(model, z, 0)/h, cosmo.angular_diameter_distance([z])
+        # compare with astropy.cosmology
+        if compute_ref:
+            print c_halomodel.DA(model, z, 0)
+            from astropy.cosmology import FlatLambdaCDM
+            cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
+            h = model.H0/100.0
+            print c_halomodel.DA(model, z, 0)/h, cosmo.angular_diameter_distance([z])
+
+    if "change_HOD" in actions:
+
+        sys.stderr.write("change_HOD:")
+        c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model)]
+        c_halomodel.changeModelHOD.restype = ctypes.c_int
+
+        np.testing.assert_equal(c_halomodel.changeModelHOD(model), 0, err_msg="in change_HOD")
+
+        log10M1 = model.log10M1
+        model.log10M1 = 10.0
+        np.testing.assert_equal(c_halomodel.changeModelHOD(model), 1, err_msg="in change_HOD")
+        model.log10M1 = log10M1
+        sys.stderr.write("PASSED\n")
+
+    if "MsMh" in actions:
+
+        sys.stderr.write("MsMh:")
+        ref = ascii.read(HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii", header_start=-1)
+        log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
+        log10Mstar = msmh_log10Mstar(model, log10Mh)
+        np.testing.assert_array_almost_equal(log10Mstar, ref['log10Mstar'], err_msg="in MsMh")
+        sys.stderr.write("PASSED\n")
+
+        if compute_ref:
+            out = Table([log10Mh, log10Mstar], names=['log10Mh', 'log10Mstar'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii", format="commented_header")
+
+    if "concen" in actions:
+
+        sys.stderr.write("concen:")
+        np.testing.assert_almost_equal(concentration(model, 1.e14, z, concenDef="TJ03"), 5.25635255301, err_msg="in concen")
+        sys.stderr.write("PASSED\n")
+
+        if compute_ref:
+            print concentration(model, 1.e14, z, concenDef="TJ03")
+
+    if "mass_conv" in actions:
+
+        sys.stderr.write("mass_conv:")
+        np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0], 12.7112150386, err_msg="in mass_conv")
+        sys.stderr.write("PASSED\n")
+
+        if compute_ref:
+            print log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0]
+
+    if "xi_dm" in actions:
+
+        sys.stderr.write("xi_dm:")
+        r = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(200.0), 100.00))
+        xi = xi_dm(model, r, z)
+        ref = ascii.read(HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii", header_start=-1)
+        np.testing.assert_array_almost_equal(xi, ref['xi'], err_msg="in xi_dm")
+        sys.stderr.write("PASSED\n")
+
+        if compute_ref:
+            out = Table([r, xi], names=['r', 'xi'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii", format="commented_header")
 
 
+    if "uHalo" in actions:
+        """ Fourrier transform of halo profile """
 
+        c_halomodel.uHalo.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+        c_halomodel.uHalo.restype  = ctypes.c_double
 
+        c_halomodel.uHaloClosedFormula.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+        c_halomodel.uHaloClosedFormula.restype  = ctypes.c_double
 
+        Mh = 1.e14
+        c = np.nan
 
+        k = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(1.e4), 100))
 
+        numerical = np.asarray(np.zeros(len(k)), dtype=np.float64)
+        analytic  = np.asarray(np.zeros(len(k)), dtype=np.float64)
+
+        sys.stderr.write("uHalo:")
+        for i in range(len(k)):
+            numerical[i] = c_halomodel.uHalo(model, k[i], Mh, c, z)
+            analytic[i]  = c_halomodel.uHaloClosedFormula(model, k[i], Mh, c, z)
+
+        ref = ascii.read(HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii", header_start=-1)
+        np.testing.assert_array_almost_equal(numerical, ref['numerical'], err_msg="in uHalo (numerical)")
+        np.testing.assert_array_almost_equal(analytic, ref['analytic'], err_msg="in uHalo (analytic)")
+        sys.stderr.write("PASSED\n")
+
+        if compute_ref:
+            out = Table([k, numerical, analytic], names=['k', 'numerical', 'analytic'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii", format="commented_header")
 
 
     if "smf" in actions:
         """ stellar mass function """
-        model.hod = 1
 
-        log10Mstar  = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)
-        result      = dndlog10Mstar(model, log10Mstar, z, obs_type="all")
+        sys.stderr.write("smf:")
+        ref = ascii.read(HALOMODEL_DIRNAME+"/data/smf_ref.ascii", header_start=-1)
+        log10Mstar = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)
+        n = dndlog10Mstar(model, log10Mstar, z, obs_type="all")
+        np.testing.assert_array_almost_equal(n, ref['n'], err_msg="in smf")
+        sys.stderr.write("PASSED\n")
 
-        for i in range(len(log10Mstar)):
-            print log10Mstar[i], result[i]
+        if compute_ref:
+            out = Table([log10Mstar, n], names=['log10Mstar', 'n'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/smf_ref.ascii", format="commented_header")
+
+    if "ggl_HOD" in actions:
+        """ Galaxy-galaxy lensing, HOD model """
+
+        model.log10Mstar_min = 11.10 - 0.1549 #- 0.142668
+        model.log10Mstar_max = 11.30 - 0.1549 #- 0.142668
+
+        R = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(1.e2), 100))
+
+        total = DeltaSigma(model, R, z, obs_type="all")
+        star = DeltaSigma(model, R, z, obs_type="star")
+        cen = DeltaSigma(model, R, z, obs_type="cen")
+        sat = DeltaSigma(model, R, z, obs_type="sat")
+        twohalo = DeltaSigma(model, R, z, obs_type="twohalo")
+
+        sys.stderr.write("ggl_HOD:")
+        ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii", header_start=-1)
+        np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl_HOD (star)")
+        np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl_HOD (cen)")
+        np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl_HOD (sat)")
+        np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl_HOD (twohalo)")
+        np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl_HOD (total)")
+        sys.stderr.write("PASSED\n")
+
+        if compute_ref:
+            out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii", format="commented_header")
 
     if "ggl" in actions:
+        """ Galaxy-galaxy lensing """
 
-        model.como = 0 # physical or comoving coordinates
-        model.hod = 0 # halo model
+        model.hod = 0
+        model.ggl_log10Mh = 13.4 - 0.142668
+        model.ggl_log10c = 0.69
+        model.ggl_log10Mstar = 11.0
 
-        if model.hod == 1:
-            model.log10Mstar_min = 11.10 - 0.1549 #- 0.142668
-            model.log10Mstar_max = 11.30 - 0.1549 #- 0.142668
-        else:
-            model.hod = 0
-            model.ggl_log10Mh = 12.0520432788 - 0.142668
-            model.ggl_log10c  = 1.12299192362
+        R = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(1.e2), 100))
 
-        R   = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(1.e2), 100))
-
-        star    = DeltaSigma(model, R, z, obs_type="star")
-        cen     = DeltaSigma(model, R, z, obs_type="cen")
-        sat     = DeltaSigma(model, R, z, obs_type="sat")
+        star = DeltaSigma(model, R, z, obs_type="star")
+        cen = DeltaSigma(model, R, z, obs_type="cen")
+        sat = DeltaSigma(model, R, z, obs_type="sat")
         twohalo = DeltaSigma(model, R, z, obs_type="twohalo")
-        total   = DeltaSigma(model, R, z, obs_type="all")
+        total = DeltaSigma(model, R, z, obs_type="all")
 
-        for i in range(len(R)):
-            print R[i], total[i], star[i], cen[i], sat[i], twohalo[i]
+        sys.stderr.write("ggl:")
+        ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_ref.ascii", header_start=-1)
+        np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl (star)")
+        np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl (cen)")
+        np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl (sat)")
+        np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl (twohalo)")
+        np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
+        sys.stderr.write("PASSED\n")
+
+        model.hod = 1
+
+        if compute_ref:
+            out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/ggl_ref.ascii", format="commented_header")
 
     if "wtheta" in actions:
 
@@ -345,7 +494,6 @@ def test(args):
         Tx = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
         for i in range(len(Tx)):
             print Tx[i], c_halomodel.Lambda(Tx[i], 0.25), c_halomodel.Lambda(Tx[i], 0.15), c_halomodel.Lambda(Tx[i], 0.40)
-
 
     if "CRToLx" in actions:
 
@@ -437,71 +585,6 @@ def test(args):
             print R[i], cen[i]
 
 
-    if "MsMh" in actions:
-
-        c_halomodel.msmh_log10Mstar.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
-        c_halomodel.msmh_log10Mstar.restype  = ctypes.c_double
-
-        log10Mh  = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
-
-        for i in range(len(log10Mh)):
-            print log10Mh[i], c_halomodel.msmh_log10Mstar(model, log10Mh[i])
-
-    if "uNFW" in actions:
-
-        Mh = 1.e14
-        c  = np.nan
-
-        c_halomodel.uHalo.argtypes =  [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
-        c_halomodel.uHalo.restype  = ctypes.c_double
-
-        c_halomodel.uHaloClosedFormula.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
-        c_halomodel.uHaloClosedFormula.restype  = ctypes.c_double
-
-        k       = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(1.e4), 100))
-        numerical = np.asarray(np.zeros(len(k)), dtype=np.float64)
-        analytic  = np.asarray(np.zeros(len(k)), dtype=np.float64)
-
-        for i in range(len(k)):
-            numerical[i] = c_halomodel.uHalo(model, k[i], Mh, c, z)
-            analytic[i]  = c_halomodel.uHaloClosedFormula(model, k[i], Mh, c, z)
-            print k[i], numerical[i], analytic[i]
-
-        #print np.trapz(numerical, k), np.trapz(analytic, k)
-
-    if "xi_dm" in actions:
-
-        c_halomodel.xi_m.argtypes =  [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)]
-
-        R       = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(200.0), 100.00))
-        result  = np.asarray(np.zeros(len(R)), dtype=np.float64)
-
-        c_halomodel.xi_m(model, R, len(R), z, result)
-
-        for i in range(len(R)):
-            print R[i], result[i]
-
-    if "concen" in actions:
-        print concentration(model, 1.e14, z, concenDef="TJ03")
-
-    if "mass_conv" in actions:
-
-        log10h = np.log10(model.H0/100.0)
-
-        log10Mstar = 10.0 # in Msun
-        log10Mh    = msmh_log10Mh(model, log10Mstar+log10h)
-
-        print log10M1_to_log10M2(model, log10Mh, None, "MvirC15", "M500c", z)[0] - log10h
-
-    if "change" in actions:
-
-        c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model)]
-        c_halomodel.changeModelHOD.restype  = ctypes.c_int
-
-        print c_halomodel.changeModelHOD(model)
-        print c_halomodel.changeModelHOD(model)
-
-
 """
 
 -------------------------------------------------------------
@@ -510,29 +593,47 @@ main functions
 
 """
 
+def xi_dm(model, r, z):
+    """ Wrapper for c-function xi_dm()
+
+    Returns the dark matter two-point correlation function
+
+    ** Mpc in comoving units **
+
+    INPUT
+    r: distance in h^-1 Mpc
+
+    OUPUT
+    xi_dm evaluated at r
+    """
+
+    r = np.asarray(r, dtype=np.float64)
+    result = np.asarray(np.zeros(len(r)), dtype=np.float64)
+
+    c_halomodel.xi_m(model, r, len(r), z, result)
+
+    return result
 
 
 def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
-    """
-    Wrapper for c-function dndlog10Mstar()
+    """ Wrapper for c-function dndlog10Mstar()
 
     Returns the stellar mass function in units of (Mpc/h)^-3 dex^-1
+    Mstar in [h^-1 Msun]
 
-    ATTENTION: Mpc in comoving units
+    ** Mpc in comoving units **
 
-    INPUT PARAMETERS:
+    INPUT
     log10Mstar: log10(Mstar) array or single value) in log10 Msun/h units
     z: redshift of the sample
-
     obs_type: [cen, sat, all]
 
+    OUPUT
+    dndlog10Mstar evaluated at log10Mstar
     """
 
     log10Mstar = np.asarray(log10Mstar, dtype=np.float64)
-    result     = np.asarray(np.zeros(len(log10Mstar)), dtype=np.float64)
-
-    # log10Mstar = np.asarray(log10Mstar, dtype=np.float64)
-    # result     = np.asarray(np.zeros(len(log10Mstar)), dtype=np.float64)
+    result = np.asarray(np.zeros(len(log10Mstar)), dtype=np.float64)
 
     if obs_type == "cen":  obs_type = 1
     if obs_type == "sat":  obs_type = 2
@@ -541,6 +642,40 @@ def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
     c_halomodel.dndlog10Mstar(model, log10Mstar, len(log10Mstar), z, obs_type, result)
 
     return result
+
+
+def DeltaSigma(model, R, zl, obs_type="all"):
+    """ Returns DeltaSigma for NFW halo mass profile (in h Msun/pc^2) -
+    PHYSICAL UNITS, unless como=True set
+
+    ** DS and Mpc in comoving units **
+
+    r_como  = r_phys * (1+z)
+    DS_como = DS_phys / (1+z)^2
+
+    INPUT
+    R: (array or single value) in physical units (Mpc/h)
+    zl: redshift of the lens
+    obs_type: [cen, sat, twohalo, star, all], for "star"
+
+    REFS: Sec. 7.5.1 of Mo, van den Bosh & White's Galaxy
+    formation and evolution Wright & Brainerd (200) after
+    correcting the typo in Eq. (7.141)
+    """
+
+    R = np.asarray(R, dtype=np.float64)
+    result = np.asarray(np.zeros(len(R)), dtype=np.float64)
+
+    if obs_type == "star": obs_type = 0
+    if obs_type == "cen": obs_type = 1
+    if obs_type == "sat": obs_type = 2
+    if obs_type == "twohalo": obs_type = 33
+    if obs_type == "all": obs_type = 3
+
+    c_halomodel.DeltaSigma(model, R, len(R), zl, obs_type, result)
+
+    return result
+
 
 def wOfTheta(model, R, zl, obs_type="all"):
     """
@@ -566,38 +701,6 @@ def wOfTheta(model, R, zl, obs_type="all"):
 
     return result
 
-def DeltaSigma(model, R, zl, obs_type="all"):
-    """
-    Returns DeltaSigma for NFW halo mass profile (in h Msun/pc^2) -
-    PHYSICAL UNITS, unless como=True set
-
-    INPUT PARAMETERS:
-    R: (array or single value) in physical units (Mpc/h)
-    zl: redshift of the lens
-
-    obs_type: [cen, sat, twohalo, star, all], for "star", set log10Mstar if
-    HOD model is not set
-
-    If M given defined wrt the *mean* density
-    then give Delta_m X Omega_m(z) as Delta
-
-    REFS: Sec. 7.5.1 of Mo, van den Bosh & White's Galaxy
-    formation and evolution Wright & Brainerd (200) after
-    correcting the typo in Eq. (7.141)
-    """
-
-    R      = np.asarray(R, dtype=np.float64)
-    result = np.asarray(np.zeros(len(R)), dtype=np.float64)
-
-    if obs_type == "star":       obs_type = 0
-    if obs_type == "cen":        obs_type = 1
-    if obs_type == "sat":        obs_type = 2
-    if obs_type == "twohalo":    obs_type = 33
-    if obs_type == "all":        obs_type = 3
-
-    c_halomodel.DeltaSigma(model, R, len(R), zl, obs_type, result)
-
-    return result
 
 def SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None):
     """
@@ -684,14 +787,51 @@ def Delta(model, z, massDef):
     return c_halomodel.Delta(model, z, massDef)
 
 
-def msmh_log10Mh(model, log10Mstar):
-    """
-    Mstar - Mh relation.
-    Parameterization from
-    Behroozi et al. (2010).
+def msmh_log10Mstar(model, log10Mh):
+    """  Wrapper for c-function msmh_log10Mstar()
+
+    Returns Mstar = f(Mh) for a given Mstar-Mh relation.
+
+    INPUT
+    log10Mh: log10(Mh) array or single value) in log10 Msun/h units
+
+    OUPUT
+    log10Mstar evaluated at log10Mh
+
     """
 
-    return c_halomodel.msmh_log10Mh(model, log10Mstar)
+    if isinstance(log10Mh, (list, tuple, np.ndarray)):
+        result = np.zeros(len(log10Mh))
+        for i, m in enumerate(log10Mh):
+            result[i] = c_halomodel.msmh_log10Mstar(model, m)
+    else:
+        result = c_halomodel.msmh_log10Mstar(model, log10Mh)
+
+    return result
+
+
+def msmh_log10Mh(model, log10Mstar):
+    """  Wrapper for c-function msmh_log10Mh()
+
+    Returns Mh = f(Mstar) for a given Mstar-Mh relation.
+
+    INPUT
+    log10Mstar: log10(Mstar) array or single value) in log10 Msun/h units
+
+    OUPUT
+    log10Mh evaluated at log10Mstar
+
+    """
+
+    if isinstance(log10Mstar, (list, tuple, np.ndarray)):
+        result = np.zeros(len(log10Mstar))
+        for i, m in enumerate(log10Mstar):
+            result[i] = c_halomodel.msmh_log10Mh(model, m)
+    else:
+        result = c_halomodel.msmh_log10Mh(model, log10Mstar)
+
+    return result
+
 
 def M1_to_M2(model, M1, c1, Delta1, Delta2, z):
 

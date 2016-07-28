@@ -15,7 +15,7 @@ $ halomodel.py test
 Then:
 - set "HALOMODEL_DIRNAME" as the path to halomodel in halomodel.py
 - add the path to PYTHONPATH
-- in python "import halomodel"
+- in python: "import halomodel"
 
 Requirements:
 

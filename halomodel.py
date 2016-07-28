@@ -18,6 +18,9 @@ for python:
 
 """
 
+__version__ = "1.0.0"
+
+
 import os
 import numpy as np
 import ctypes
@@ -62,7 +65,6 @@ class Model(ctypes.Structure):
         ("Omega_m", ctypes.c_double),
         ("Omega_de", ctypes.c_double),
         ("H0", ctypes.c_double),
-        # ("como", ctypes.c_int), # TODO-> change strategy leave everything in comoving units only convert DATA
         ("massDef", ctypes.c_char_p),
         ("concenDef", ctypes.c_char_p),
         ("hmfDef", ctypes.c_char_p),
@@ -136,7 +138,6 @@ class Model(ctypes.Structure):
         self.Omega_m = Omega_m
         self.Omega_de = Omega_de
         self.H0 = H0
-        # self.como = 1             # comoving coordinates (1) or physical (0)
         self.massDef = massDef      # halo mass definition: M500c, M500m, M200c, M200m, Mvir, MvirC15
         self.concenDef = concenDef  # mass/concentration relation: D11, M11, TJ03, B12_F, B12_R, B01
         self.hmfDef = hmfDef        # halo mass defintion: PS74, ST99, ST02, J01, T08
@@ -330,7 +331,6 @@ def test():
             sys.stderr.write("change_HOD:")
             c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model)]
             c_halomodel.changeModelHOD.restype = ctypes.c_int
-
             try:
                 np.testing.assert_equal(c_halomodel.changeModelHOD(model), 0, err_msg="in change_HOD")
                 log10M1 = model.log10M1
@@ -534,6 +534,7 @@ def test():
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "wtheta_HOD" in actions:
+        """ W(theta) HOD model """
 
         nz = ascii.read(HALOMODEL_DIRNAME+"/data/wtheta_nz.ascii", format="no_header")
 
@@ -570,6 +571,7 @@ def test():
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "Lambda" in actions:
+        """ X-ray cooling function """
 
         Tx = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
         Lambda_0_00 = Lambda(Tx, 0.00)
@@ -593,6 +595,7 @@ def test():
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "CRToLx" in actions:
+        """ CR to Lx conversion """
 
         Tx = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
         CRToLx_0_00 = CRToLx(model, z, Tx, 0.00)
@@ -746,7 +749,7 @@ def xi_dm(model, r, z):
     INPUT
     r: distance in h^-1 Mpc
 
-    OUPUT
+    OUTPUT
     xi_dm evaluated at r
     """
 
@@ -771,16 +774,21 @@ def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
     z: redshift of the sample
     obs_type: [cen, sat, all]
 
-    OUPUT
+    OUTPUT
     dndlog10Mstar evaluated at log10Mstar
     """
 
     log10Mstar = np.asarray(log10Mstar, dtype=np.float64)
     result = np.asarray(np.zeros(len(log10Mstar)), dtype=np.float64)
 
-    if obs_type == "cen":  obs_type = 1
-    if obs_type == "sat":  obs_type = 2
-    if obs_type == "all":  obs_type = 3
+    if obs_type == "cen":
+        obs_type = 1
+    elif obs_type == "sat":
+        obs_type = 2
+    elif obs_type == "all":
+        obs_type = 3
+    else:
+        raise ValueError("dndlog10Mstar: obs_type \"{0:s}\" is not recognised".format(obs_type))
 
     c_halomodel.dndlog10Mstar(model, log10Mstar, len(log10Mstar), z, obs_type, result)
 
@@ -800,6 +808,9 @@ def DeltaSigma(model, R, zl, obs_type="all"):
     zl: redshift of the lens
     obs_type: [cen, sat, twohalo, star, all], for "star"
 
+    OUTPUT
+    Delta Sigma (R)
+
     REFS: Sec. 7.5.1 of Mo, van den Bosh & White's Galaxy
     formation and evolution Wright & Brainerd (200) after
     correcting the typo in Eq. (7.141)
@@ -808,11 +819,19 @@ def DeltaSigma(model, R, zl, obs_type="all"):
     R = np.asarray(R, dtype=np.float64)
     result = np.asarray(np.zeros(len(R)), dtype=np.float64)
 
-    if obs_type == "star": obs_type = 0
-    if obs_type == "cen": obs_type = 1
-    if obs_type == "sat": obs_type = 2
-    if obs_type == "twohalo": obs_type = 33
-    if obs_type == "all": obs_type = 3
+    if obs_type == "star":
+        obs_type = 0
+    elif obs_type == "cen":
+        obs_type = 1
+    elif obs_type == "sat":
+        obs_type = 2
+    elif obs_type == "twohalo":
+        obs_type = 33
+    elif obs_type == "all":
+        obs_type = 3
+    else:
+        raise ValueError("DeltaSigma: obs_type \"{0:s}\" is not recognised".format(obs_type))
+
 
     c_halomodel.DeltaSigma(model, R, len(R), zl, obs_type, result)
 
@@ -827,16 +846,26 @@ def wOfTheta(model, R, zl, obs_type="all"):
     R: (array or single value) in physical units (Mpc/h)
     z: mean redshift of the population
 
+    OUTPUT
+    W(theta)
+
     obs_type: [censat, satsat, twohalo, all]
     """
 
     R = np.asarray(R, dtype=np.float64)
     result = np.asarray(np.zeros(len(R)), dtype=np.float64)
 
-    if obs_type == "censat": obs_type = 12
-    if obs_type == "satsat": obs_type = 22
-    if obs_type == "twohalo": obs_type = 33
-    if obs_type == "all": obs_type = 3
+    if obs_type == "censat":
+        obs_type = 12
+    elif obs_type == "satsat":
+        obs_type = 22
+    elif obs_type == "twohalo":
+        obs_type = 33
+    elif obs_type == "all":
+        obs_type = 3
+    else:
+        raise ValueError("wOfTheta: obs_type \"{0:s}\" is not recognised".format(obs_type))
+
 
     c_halomodel.wOfTheta(model, R, len(R), zl, obs_type, result)
 
@@ -856,7 +885,7 @@ def SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None):
     PSF: normalised King's profile parameters
 
     OUTPUT
-    SigmaIx
+    SigmaIx(R)
     """
 
     R = np.asarray(R, dtype=np.float64)

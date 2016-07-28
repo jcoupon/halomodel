@@ -40,7 +40,6 @@ typedef struct Model
    double Omega_m;
    double Omega_de;
    double H0;
-   //int    como;
    char   *massDef;
    char   *concenDef;
    char   *hmfDef;

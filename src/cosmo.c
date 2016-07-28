@@ -306,7 +306,7 @@ double uHalo(const Model *model, double k, double Mh, double c, double z)
    static gsl_interp_accel *xacc = NULL;
    static gsl_interp_accel *yacc = NULL;
 
-   static double norm = 1.0, result, inter_xmin, inter_xmax, inter_ymin, inter_ymax;
+   static double Norm = 1.0, result, inter_xmin, inter_xmax, inter_ymin, inter_ymax;
    static double *x = NULL, *logx = NULL, dlogx = 0.0;
    static double *y = NULL, *logy = NULL, dlogy = 0.0;
    static double *za;
@@ -366,10 +366,10 @@ double uHalo(const Model *model, double k, double Mh, double c, double z)
 
       for(i=0;i<Nx;i++){    /*      loop over halo mass */
          p.Mh = x[i];
-         norm = x[i];
+         Norm = x[i];
          for(j=0;j<Ny;j++){ /*      loop over k */
             p.k = y[j];
-            result = 4.0*M_PI/p.Mh*int_gsl(intForUHalo, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
+            result = 4.0*M_PI/Norm*int_gsl(intForUHalo, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
             //result = uHaloClosedFormula(model, p.k, p.Mh, p.c, p.z); // <- exact for truncated NFW profile
             gsl_spline2d_set(spline, za, i, j, result);
          }

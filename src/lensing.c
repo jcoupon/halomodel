@@ -101,25 +101,25 @@ double intForDeltaSigma(double logR, void *p)
 
 
 void Sigma(const Model *model, double *R, int N, double z, int obs_type, double *result)
-/* ---------------------------------------------------------------- *
- * Computes xi, projects it along z and returns Sigma.              *
- * See e.g. Zehavi et al. (2005) Eq. (3).                           *
- * ---------------------------------------------------------------- */
 {
+   /*
+    *    Computes xi, projects it along z and returns Sigma.
+    *    See e.g. Zehavi et al. (2005) Eq. (3).
+    */
 
    double pi_max = model->ggl_pi_max;
 
    /* interpolate to speed up integration  */
-   int i, Ninter      = 40;
-   double *logrinter  = (double *)malloc(Ninter*sizeof(double));
-   double *rinter     = (double *)malloc(Ninter*sizeof(double));
-   double rinter_min  = RMIN;
-   double rinter_max  = RMAX;
-   double dlogrinter  = log(rinter_max/rinter_min)/(double)Ninter;
+   int i, Ninter = 40;
+   double *logrinter = (double *)malloc(Ninter*sizeof(double));
+   double *rinter = (double *)malloc(Ninter*sizeof(double));
+   double rinter_min = RMIN;
+   double rinter_max = RMAX;
+   double dlogrinter = log(rinter_max/rinter_min)/(double)Ninter;
 
    for(i=0;i<Ninter;i++){
       logrinter[i] = log(rinter_min)+dlogrinter*(double)i;
-      rinter[i]    = exp(logrinter[i]);
+      rinter[i] = exp(logrinter[i]);
    }
 
    double *S = (double *)malloc(Ninter*sizeof(double));
@@ -138,15 +138,15 @@ void Sigma(const Model *model, double *R, int N, double z, int obs_type, double 
 
    /* interpolate xi(r) */
    gsl_interp_accel *acc = gsl_interp_accel_alloc();
-   gsl_spline *spline    = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+   gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
    gsl_spline_init(spline, logrinter, S, Ninter);
 
    params p;
-   p.acc       = acc;
-   p.spline    = spline;
-   p.eps       = 1.0e-4;
-   p.logrmin   = logrinter[0];
-   p.logrmax   = logrinter[Ninter-1];
+   p.acc = acc;
+   p.spline = spline;
+   p.eps = 1.0e-4;
+   p.logrmin = logrinter[0];
+   p.logrmax = logrinter[Ninter-1];
 
    for(i=0;i<N;i++){
       p.R = R[i];
@@ -163,13 +163,13 @@ void Sigma(const Model *model, double *R, int N, double z, int obs_type, double 
 
 double intForSigma(double logz, void *p)
 {
-   double result         = 0.0;
-   double z              = exp(logz);
-   double logrmin        = ((params *)p)->logrmin;
-   double logrmax        = ((params *)p)->logrmax;
-   double R              = ((params *)p)->R;
+   double result = 0.0;
+   double z = exp(logz);
+   double logrmin = ((params *)p)->logrmin;
+   double logrmax = ((params *)p)->logrmax;
+   double R = ((params *)p)->R;
    gsl_interp_accel *acc = ((params *)p)->acc;
-   gsl_spline *spline    = ((params *)p)->spline;
+   gsl_spline *spline = ((params *)p)->spline;
 
    /*
    double r    = sqrt(R*R + z*z);
@@ -465,7 +465,7 @@ void xi_gm_twohalo(const Model *model, double *r, int N, double z, double *resul
       /* fonction with parameters to fourier transform */
       gsl_function Pk;
       Pk.function = &intForxi_gm_twohalo;
-      Pk.params   = &p;
+      Pk.params = &p;
 
       double *xidm = malloc(N*sizeof(double));
       xi_m(model, r, N, z, xidm);
@@ -475,8 +475,8 @@ void xi_gm_twohalo(const Model *model, double *r, int N, double z, double *resul
 
          bias_fac  = sqrt(pow(1.0+1.17*xidm[i],1.49)/pow(1.0+0.69*xidm[i],2.09));
          p.logMlim = logM_lim(model, r[i], p.c, z, all);
-         p.r       = r[i];
-         p.ngp     = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
+         p.r  = r[i];
+         p.ngp = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
 
          if(p.ng < 1.0e-14 || p.ngp < 1.0e-14 || r[i] < RMIN2){
             result[i] = 0.0;
@@ -496,7 +496,7 @@ void xi_gm_twohalo(const Model *model, double *r, int N, double z, double *resul
       xi_m(model, r, N, z, result);
 
       double Mh = pow(10.0, model->ggl_log10Mh);
-      double c  = pow(10.0, model->ggl_log10c);
+      double c = pow(10.0, model->ggl_log10c);
 
       bh = bias_h(model, Mh, z);
       for(i=0;i<N;i++){

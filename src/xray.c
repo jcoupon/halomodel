@@ -40,6 +40,7 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
       return;
    }
 
+
    /*    interpolate to speed up integration for projection and PSF convolution */
    int i, j, k, Ninter = 128;
 
@@ -67,6 +68,9 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
       case XB:
          IxXB(model, rinter, Ninter, Mh, c, z, Ix);
          break;
+      case twohalo:
+         IxTwohalo(model, rinter, Ninter, Mh, c, z, Ix);
+         break;
    }
 
    /*    interpolate Ix(r) */
@@ -78,7 +82,7 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
    params p;
    switch (obs_type){
       /*    For central and satellites, computed the projected 3D profile */
-      case cen: case sat:
+      case cen: case sat: case twohalo:
          p.acc = acc;
          p.spline = spline;
          p.logrmin = logrinter[0];
@@ -163,7 +167,6 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
    gsl_spline_free (spline);
    gsl_interp_accel_free (acc);
 
-
    return;
 }
 
@@ -194,7 +197,6 @@ double intForIx(double logz, void *p)
 }
 
 
-
 void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, double z, double *result)
 {
 
@@ -213,6 +215,11 @@ void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, doubl
    }
 
    SigmaIx(model, R, N, Mh, c, z, XB, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
+
+   SigmaIx(model, R, N, Mh, c, z, twohalo, result_tmp);
    for(i=0;i<N;i++){
       result[i] += result_tmp[i];
    }
@@ -371,8 +378,6 @@ double intForIx1hs(double k, void *p){
 
 double PIx1hs(const Model *model, double k, const double Mh, const double c, const double z)
 {
-   double result;
-
    if(model->hod){
 
       /* Mh ignored here */
@@ -396,8 +401,7 @@ double PIx1hs(const Model *model, double k, const double Mh, const double c, con
       double Norm = NormIx(model, Mh, c, z);
 
       if (fac*Norm > 0.0){
-         uIx(model, &k, 1, Mh, c, z, &result);
-         return pow(result, 2.0) * Norm / fac * SCALE;
+         return pow(uIx(model, k, Mh, c, z), 2.0) * Norm / fac * SCALE;
       }else{
          return 0.0;
       }
@@ -415,8 +419,6 @@ double intForPIx1hs(double logMh, void *p)
 
    double Mh = exp(logMh);
 
-   double result;
-
    double Tx, ZGas;
    Tx = MhToTx(model, Mh, z);
    ZGas = MhToZGas(model, Mh, z);
@@ -425,9 +427,8 @@ double intForPIx1hs(double logMh, void *p)
    double Norm = NormIx(model, Mh, c, z);
 
    if (fac*Norm > 0.0){
-      uIx(model, &k, 1, Mh, c, z, &result);
       return  Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
-         * pow(result, 2.0) * Norm
+         * pow(uIx(model, k, Mh, c, z), 2.0) * Norm
          * dndlnMh(model, Mh, z) / fac * SCALE;
 
    }else{
@@ -436,10 +437,11 @@ double intForPIx1hs(double logMh, void *p)
 
 }
 
-void uIx(const Model *model, const double *k, int N, double Mh, double c, double z, double *result)
+//void uIx(const Model *model, const double *k, int N, double Mh, double c, double z, double *result)
+double uIx(const Model *model, double k, double Mh, double c, double z)
 {
    /*
-    *    Returns the NOT normalised (out to r_vir radius)
+    *    Returns the normalised (out to r_vir radius)
     *    fourier transform of the brightness profile.
     *    The constants are set by the wrapper and depend on
     *    halo properties, redshift, etc., so that all the
@@ -447,21 +449,94 @@ void uIx(const Model *model, const double *k, int N, double Mh, double c, double
     *    the wrapper.
     */
 
-   params p;
-   p.model = model;
-   p.Mh = Mh;
-   p.c = c;
-   p.z = z;
 
-   double Norm = NormIx(model, Mh, c, z);
+   static int firstcall = 1;
 
-   int i;
-   for (i=0;i<N;i++){
-      p.k = k[i];
-      result[i] = 4.0*M_PI/Norm*int_gsl(intForUIx, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
+   static gsl_spline2d *spline = NULL;
+   static gsl_interp_accel *xacc = NULL;
+   static gsl_interp_accel *yacc = NULL;
+
+   static double Norm = 1.0, result, inter_xmin, inter_xmax, inter_ymin, inter_ymax;
+   static double *x = NULL, *logx = NULL, dlogx = 0.0;
+   static double *y = NULL, *logy = NULL, dlogy = 0.0;
+   static double *za;
+
+   static int i, j, Nx = 64, Ny = 64;
+
+   static double c_tmp = NAN;
+   static double z_tmp = NAN;
+
+   if(firstcall){
+
+      changeModeXRay(model);
+
+      /*    initialize interpolation */
+      const gsl_interp2d_type *T = gsl_interp2d_bilinear;
+      spline = gsl_spline2d_alloc(T, Nx, Ny);
+      xacc = gsl_interp_accel_alloc();
+      yacc = gsl_interp_accel_alloc();
+
+      /*    x axis = logMh */
+      x = (double *)malloc(Nx*sizeof(double));
+      logx = (double *)malloc(Nx*sizeof(double));
+      dlogx = (LNMH_MAX - LNMH_MIN)/(double)Nx;
+      for(i=0;i<Nx;i++){
+         logx[i] = LNMH_MIN + dlogx*(double)i;
+         x[i] = exp(logx[i]);
+      }
+
+      /*    y axis = logk */
+      y = (double *)malloc(Ny*sizeof(double));
+      logy = (double *)malloc(Ny*sizeof(double));
+      dlogy = log(KMAX/KMIN)/(double)Ny;
+      for(j=0;j<Ny;j++){
+         logy[j] = log(KMIN) + dlogy*(double)j;
+         y[j] = exp(logy[j]);
+      }
+
+      /*    z axis = log(uHalo) */
+      za = (double *)malloc(Nx*Ny*sizeof(double));
+
+      /*    interpolation range */
+      inter_xmin = x[0];
+      inter_xmax = x[Nx-1];
+
+      inter_ymin = y[0];
+      inter_ymax = y[Ny-1];
+
    }
 
-   return;
+   if(firstcall || changeModeXRay(model) || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
+      /* If first call or model parameters have changed, the table must be recomputed */
+
+      firstcall = 0;
+      c_tmp = c;
+      z_tmp = z;
+
+      params p;
+      p.model = model;
+      p.c = c;
+      p.z = z;
+
+      for(i=0;i<Nx;i++){    /*      loop over halo mass */
+         p.Mh = x[i];
+         Norm = NormIx(model, Mh, c, z);
+         for(j=0;j<Ny;j++){ /*      loop over k */
+            p.k = y[j];
+            result = 4.0*M_PI/Norm*int_gsl(intForUIx, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
+            gsl_spline2d_set(spline, za, i, j, result);
+         }
+      }
+      /*    fill in interpolation space */
+      gsl_spline2d_init(spline, logx, logy, za, Nx, Ny);
+
+   }
+
+   if (inter_xmin < Mh && Mh < inter_xmax && inter_ymin < k && k < inter_ymax){
+      return gsl_spline2d_eval(spline, log(Mh), log(k), xacc, yacc);
+   }else{
+      return 0.0;
+   }
 }
 
 double intForUIx(double logr, void *p)
@@ -470,7 +545,6 @@ double intForUIx(double logr, void *p)
     *    Integrand for uIx().
     */
 
-   /*    Integrand for uHalo(). */
    const Model *model = ((params *)p)->model;
    const double Mh = ((params *)p)->Mh;
    const double c = ((params *)p)->c;
@@ -485,14 +559,65 @@ double NormIx(const Model *model, double Mh, double c, double z)
 {
    /*    Returns the integrated surface brightness  */
 
-   params p;
-   p.model = model;
-   p.Mh = Mh;
-   p.c = c;
-   p.z = z;
+   static int firstcall = 1;
 
-   return int_gsl(intForNormIx, (void*)&p, log(RMIN), log(RMAX), 1.0e-3);
+   int i, Ninter = 64;
+
+   static gsl_interp_accel *acc;
+   static gsl_spline *spline;
+   static double inter_min, inter_max;
+
+   static double dx, *x, *y;
+
+   static double c_tmp;
+   static double z_tmp;
+
+   if(firstcall){
+
+      dx = (LNMH_MAX-LNMH_MIN)/(double)Ninter;
+      x = (double *)malloc(Ninter*sizeof(double));
+      y = (double *)malloc(Ninter*sizeof(double));
+
+      for(i=0;i<Ninter;i++){
+         x[i]  = LNMH_MIN+dx*(double)i;
+      }
+
+      acc = gsl_interp_accel_alloc();
+      spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+
+   }
+
+   if(firstcall || changeModeXRay(model) || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
+      /* If first call or model parameters have changed, the table must be recomputed */
+
+      firstcall = 0;
+      c_tmp = c;
+      z_tmp = z;
+
+      params p;
+      p.model = model;
+      p.c = c;
+      p.z = z;
+
+      for(i=0;i<Ninter;i++){
+         p.Mh = exp(x[i]);
+         y[i] = int_gsl_QNG(intForNormIx, (void*)&p, log(RMIN), log(r_vir(model, p.Mh, c, z)), 1.0e-3);
+      }
+
+      inter_min = exp(x[0]);
+      inter_max = exp(x[Ninter-1]);
+
+      gsl_spline_init(spline, x, y, Ninter);
+
+   }
+
+   if (Mh < inter_min || Mh > inter_max){
+      return 0.0;
+   }else{
+      return gsl_spline_eval(spline, log(Mh), acc);
+   }
 }
+
 
 double intForNormIx(double logr, void *p){
 
@@ -504,10 +629,6 @@ double intForNormIx(double logr, void *p){
 
    return ix(model, r, Mh, c, z) * r / SCALE;
 }
-
-
-#undef SCALE
-
 
 
 void IxXB(const Model *model, double *r, int N, double Mh, double c, double z, double *result)
@@ -543,12 +664,129 @@ void IxXB(const Model *model, double *r, int N, double Mh, double c, double z, d
    return;
 }
 
+void IxTwohalo(const Model *model, double *r, int N, double Mh, double c, double z, double *result){
+   /*
+    *    Returns the 2-halo term of x-ray
+    *    surface brightness.
+    */
+
+   int i;
+   double bias_fac;
+
+   /* FFTLog config */
+   double q = 0.0, mu = 0.5;
+   int FFT_N = 64;
+   FFTLog_config *fc = FFTLog_init(FFT_N, KMIN, KMAX, q, mu);
+
+   /* parameters to pass to the function */
+   params p;
+   p.model = model;
+   p.z = z;
+   p.c = NAN;  /*    for the HOD model, the concentration(Mh) relationship is fixed */
+   p.Mh = Mh;
+
+   /* fonction with parameters to fourier transform */
+   gsl_function Pk;
+   Pk.function = &intForIxTwohalo;
+   Pk.params = &p;
+
+   double *xidm = malloc(N*sizeof(double));
+   xi_m(model, r, N, z, xidm);
+
+   p.ng  = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
+   for(i=0;i<N;i++){
+
+      bias_fac = sqrt(pow(1.0+1.17*xidm[i],1.49)/pow(1.0+0.69*xidm[i],2.09));
+      p.logMlim = logM_lim(model, r[i], p.c, z, all);
+      p.r = r[i];
+      p.ngp = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
+
+      if(p.ng < 1.0e-14 || p.ngp < 1.0e-14 || r[i] < RMIN2){
+         result[i] = 0.0;
+      }else{
+         result[i] = (p.ngp/p.ng)*pow(bias_fac, 2.0)*xi_from_Pkr(&Pk, r[i], fc);
+      }
+   }
+   FFTLog_free(fc);
+
+
+   return;
+
+}
+
+
+double intForIxTwohalo(double k, void *p){
+   return pow(k, 1.5 )* P_Ix_twohalo(k, p);
+}
+
+double P_Ix_twohalo(double k, void *p)
+{
+
+   const Model *model =  ((params *)p)->model;
+   const double z = ((params *)p)->z;
+   const double ngp = ((params *)p)->ngp;
+   const double logMlim = ((params *)p)->logMlim;
+
+   ((params *)p)->k = k;
+
+   if(model->hod){
+
+      return P_m_nonlin(model, k, z)*pow(int_gsl(intForP_twohalo_Ix, p, LNMH_MIN, logMlim, 1.e-3), 2.0)/ngp;
+
+   }else{
+
+      const double Mh = ((params *)p)->Mh;
+      const double z = ((params *)p)->z;
+      const double c = ((params *)p)->c;
+
+      double Tx, ZGas;
+      Tx = MhToTx(model, Mh, z);
+      ZGas = MhToZGas(model, Mh, z);
+
+      double fac = CRToLx(model, z, Tx, ZGas);
+      double Norm = NormIx(model, Mh, c, z);
+
+      if (fac*Norm > 0.0){
+         return  uIx(model, k, Mh, c, z) * Norm * bias_h(model, Mh, z) / fac * SCALE;
+      }else{
+         return 0.0;
+      }
+
+   }
+}
+
+double intForP_twohalo_Ix(double logMh, void *p){
+
+   const Model *model = ((params *)p)->model;
+   const double k = ((params *)p)->k;
+   const double z = ((params *)p)->z;
+   const double c = ((params *)p)->c;
+
+   double result, Mh = exp(logMh);
+
+   double Tx, ZGas;
+   Tx = MhToTx(model, Mh, z);
+   ZGas = MhToZGas(model, Mh, z);
+
+   double fac = CRToLx(model, z, Tx, ZGas);
+   double Norm = NormIx(model, Mh, c, z);
+
+   if (fac*Norm > 0.0){
+      return  uIx(model, k, Mh, c, z) * Norm
+         * bias_h(model, Mh, z) * dndlnMh(model, Mh, z) / fac * SCALE;
+   }else{
+      return 0.0;
+   }
+
+}
+
+#undef SCALE
 
 
 double ix(const Model *model, double r, double Mh, double c, double z){
    /*
     *    Returns the 3D gas brightness
-    *    in erg s^-1 Mpc-3 assuming
+    *    in erg s^-1 Mpc-3 / 1e.44 assuming
     *    a 3D gas profile
     *    ix \propto nGas^2
     *    = Ix if non HOD
@@ -560,7 +798,10 @@ double ix(const Model *model, double r, double Mh, double c, double z){
    ZGas = MhToZGas(model, Mh, z);
 
    return Lambda(Tx, ZGas)*pow(1.21*nGas(model, r, Mh, c, z), 2.0) / CM3TOMPC3;
+
 }
+
+
 
 double MhToTx(const Model *model, double Mh, double z)
 {
@@ -847,7 +1088,6 @@ double nGas(const Model *model, double r, double Mh, double c, double z){
       n0 = pow(10.0, inter_gas_log10n0(model, log10Mh));
       beta = pow(10.0, inter_gas_log10beta(model, log10Mh));
       rc = pow(10.0, inter_gas_log10rc(model, log10Mh));
-
    }else{
       n0 = pow(10.0, model->gas_log10n0);
       beta = pow(10.0, model->gas_log10beta);

@@ -234,6 +234,49 @@ FFTLog_complex FFTLog_U_mu(double mu, FFTLog_complex z){
   return result;
 }
 
+double int_gsl(funcwithparsHalomodel func, void *params, double a, double b, double eps)
+{
+  int n = 1000, status;
+  gsl_integration_workspace * w = gsl_integration_workspace_alloc (n);
+  double result, result_err;
+
+  gsl_function F;
+  F.function = &integrand_gsl;
+
+  gsl_int_params p;
+  p.func   = func;
+  p.params = params;
+  F.params = &p;
+
+  gsl_set_error_handler_off();
+  status = gsl_integration_qag (&F, a, b, eps, eps, n, GSL_INTEG_GAUSS51, w, &result, &result_err);
+  gsl_integration_workspace_free (w);
+
+  return result;
+}
+
+
+double int_gsl_QNG(funcwithparsHalomodel func, void *params, double a, double b, double eps)
+{
+   size_t n;
+   int status;
+   double result, result_err;
+
+   gsl_function F;
+   F.function = &integrand_gsl;
+
+   gsl_int_params p;
+   p.func   = func;
+   p.params = params;
+   F.params = &p;
+
+   gsl_set_error_handler_off();
+   status = gsl_integration_qng(&F, a, b, eps, eps, &result, &result_err, &n);
+
+   return result;
+}
+
+
 double int_gsl_FFT(funcwithparsHalomodel func, void *params, double a, double b, double eps)
 {
   int n = 1000, status;
@@ -251,30 +294,6 @@ double int_gsl_FFT(funcwithparsHalomodel func, void *params, double a, double b,
   gsl_set_error_handler_off();
  //  status = gsl_integration_qag (&F, a, b, eps, eps, n, GSL_INTEG_GAUSS51, w, &result, &result_err);
   status = gsl_integration_qag (&F, a, b, 0.0, eps, n, GSL_INTEG_GAUSS51, w, &result, &result_err);
-
-  gsl_integration_workspace_free (w);
-
-  return result;
-}
-
-
-
-double int_gsl(funcwithparsHalomodel func, void *params, double a, double b, double eps)
-{
-  int n = 1000, status;
-  gsl_integration_workspace * w = gsl_integration_workspace_alloc (n);
-  double result, result_err;
-
-  gsl_function F;
-  F.function = &integrand_gsl;
-
-  gsl_int_params p;
-  p.func   = func;
-  p.params = params;
-  F.params = &p;
-
-  gsl_set_error_handler_off();
-  status = gsl_integration_qag (&F, a, b, eps, eps, n, GSL_INTEG_GAUSS51, w, &result, &result_err);
 
   gsl_integration_workspace_free (w);
 

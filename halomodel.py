@@ -293,10 +293,10 @@ def test():
     OK_MESSAGE="OK\n"
     FAIL_MESSAGE="FAILED\n"
 
-    compute_ref=True
+    compute_ref=False
 
-    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "SigmaIx_HOD", "SigmaIx"]
-    actions = ["SigmaIx_HOD"]
+    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "SigmaIx_HOD", "SigmaIx"]
+    # actions = ["SigmaIx", "SigmaIx_HOD"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -627,18 +627,19 @@ def test():
         model.IxXB_Re = 0.01196
         model.IxXB_CR = 6.56997872802e-05
 
-        R = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(1.e2), 100))
+        R = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(5.e0), 1000))
 
         Mh = np.nan
         c = np.nan
 
-        total = SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None)
         cen = SigmaIx(model, R, Mh, c, z, obs_type="cen", PSF=None)
         sat = SigmaIx(model, R, Mh, c, z, obs_type="sat", PSF=None)
         XB = SigmaIx(model, R, Mh, c, z, obs_type="XB", PSF=None)
+        twohalo = SigmaIx(model, R, Mh, c, z, obs_type="twohalo", PSF=None)
+        total = SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None)
 
         if compute_ref:
-            out = Table([R, total, cen, sat, XB], names=['R', 'total', 'cen', 'sat', 'XB'])
+            out = Table([R, total, cen, sat, XB, twohalo], names=['R', 'total', 'cen', 'sat', 'XB', 'twohalo'])
             ascii.write(out, HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_ref.ascii", format="commented_header")
         else:
             sys.stderr.write("SigmaIx_HOD:")
@@ -647,6 +648,7 @@ def test():
                 np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx_HOD (cen)")
                 np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx_HOD (sat)")
                 np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx_HOD (XB)")
+                np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in SigmaIx_HOD (twohalo)")
                 np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
@@ -669,17 +671,21 @@ def test():
         model.gas_log10beta = np.log10(0.40)
         model.gas_log10rc = np.log10(0.03*R500)
 
+        model.IxXB_Re = 0.01196
+        model.IxXB_CR = 6.56997872802e-05
+
         R = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(1.e2), 100))
 
         total = SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None)
         cen = SigmaIx(model, R, Mh, c, z, obs_type="cen", PSF=None)
         sat = SigmaIx(model, R, Mh, c, z, obs_type="sat", PSF=None)
         XB = SigmaIx(model, R, Mh, c, z, obs_type="XB", PSF=None)
+        twohalo = SigmaIx(model, R, Mh, c, z, obs_type="twohalo", PSF=None)
 
         model.hod = 1
 
         if compute_ref:
-            out = Table([R, total, cen, sat, XB], names=['R', 'total', 'cen', 'sat', 'XB'])
+            out = Table([R, total, cen, sat, XB, twohalo], names=['R', 'total', 'cen', 'sat', 'XB', 'twohalo'])
             ascii.write(out, HALOMODEL_DIRNAME+"/data/SigmaIx_ref.ascii", format="commented_header")
         else:
             sys.stderr.write("SigmaIx:")
@@ -688,6 +694,7 @@ def test():
                 np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx_HOD (cen)")
                 np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx_HOD (sat)")
                 np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx_HOD (XB)")
+                np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in SigmaIx_HOD (twohalo)")
                 np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
@@ -900,6 +907,8 @@ def SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None):
         obs_type = 2
     elif obs_type == "XB":
         obs_type = 4
+    elif obs_type == "twohalo":
+        obs_type = 33
     elif obs_type == "all":
         obs_type = 3
     else:

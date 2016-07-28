@@ -230,6 +230,7 @@ void FFTLog_free(FFTLog_config *fc);
 FFTLog_complex FFTLog_U_mu(double mu, FFTLog_complex z);
 
 double int_gsl(funcwithparsHalomodel func, void *params, double a, double b, double eps);
+double int_gsl_QNG(funcwithparsHalomodel func, void *params, double a, double b, double eps);
 double int_gsl_FFT(funcwithparsHalomodel func, void *params, double a, double b, double eps);
 double integrand_gsl(double x, void *p);
 

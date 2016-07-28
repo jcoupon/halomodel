@@ -24,14 +24,19 @@ void Ix1hs(const Model *model, double *r, int N, double Mh, double c, double z, 
 double intForIx1hs(double k, void *p);
 double PIx1hs(const Model *model, double k, const double Mh, const double c, const double z);
 double intForPIx1hs(double logMh, void *p);
+double NormIx(const Model *model, double Mh,  double c, double z);
+double intForNormIx(double logr, void *p);
 
-void uIx(const Model *model, const double *k, int N, double Mh, double c, double z, double *result);
+double uIx(const Model *model, double k, double Mh, double c, double z);
 double intForUIx(double r, void *p);
 
 void IxXB(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
 
-double NormIx(const Model *model, double Mh,  double c, double z);
-double intForNormIx(double logr, void *p);
+void IxTwohalo(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
+double intForIxTwohalo(double k, void *p);
+double P_Ix_twohalo(double k, void *p);
+double intForP_twohalo_Ix(double logMh, void *p);
+
 double ix(const Model *model, double r, double Mh, double c, double z);
 double MhToTx(const Model *model, double Mh, double z);
 double MhToZGas(const Model *model, double Mh, double z);

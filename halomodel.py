@@ -279,7 +279,7 @@ test
 
 """
 
-def test(args):
+def test():
     """ Performs basic tests
 
     ** DO NOT CHANGE ANYTHING HERE UNLESS YOU KNOW WHAT YOUR ARE DOING!!!! **
@@ -535,7 +535,7 @@ def test(args):
 
     if "wtheta_HOD" in actions:
 
-        nz = ascii.read("data/wtheta_nz.ascii", format="no_header")
+        nz = ascii.read(HALOMODEL_DIRNAME+"/data/wtheta_nz.ascii", format="no_header")
 
         # load n(z) in model object
         model.wtheta_nz_N = len(nz)

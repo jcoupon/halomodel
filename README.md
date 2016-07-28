@@ -19,7 +19,9 @@ Then:
 
 To test the installation:
 ```
-$ halomodel.py test
+$ python
+>>> import halomodel
+>>> halomodel.text()
 ```
 
 Requirements:

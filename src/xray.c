@@ -509,6 +509,7 @@ double CRToLx(const Model *model, double z, double Tx, double ZGas)
 
       /*    add python directory to python path to import xray module */
       char cmd[1000] = "";
+      PyRun_SimpleString("import os; import sys");
       sprintf(cmd, "dirname = os.path.dirname(\"%s\")", __FILE__);
       PyRun_SimpleString(cmd);
       PyRun_SimpleString("sys.path.insert(0, dirname+'/../python'); ");

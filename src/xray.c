@@ -22,35 +22,6 @@ int main()
    return 0;
 }
 
-
-void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, double z, double *result)
-{
-
-   int i;
-
-   double *result_tmp = (double *)malloc(N*sizeof(double));
-
-   SigmaIx(model, R, N, Mh, c, z, cen, result_tmp);
-   for(i=0;i<N;i++){
-      result[i] += result_tmp[i];
-   }
-
-   SigmaIx(model, R, N, Mh, c, z, sat, result_tmp);
-   for(i=0;i<N;i++){
-      result[i] += result_tmp[i];
-   }
-
-   SigmaIx(model, R, N, Mh, c, z, XB, result_tmp);
-   for(i=0;i<N;i++){
-      result[i] += result_tmp[i];
-   }
-
-   free(result_tmp);
-
-   return;
-}
-
-
 void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z, int obs_type, double *result)
 {
    /*
@@ -222,7 +193,38 @@ double intForIx(double logz, void *p)
    return result;
 }
 
-void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, double *result){
+
+
+void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, double z, double *result)
+{
+
+   int i;
+
+   double *result_tmp = (double *)malloc(N*sizeof(double));
+
+   SigmaIx(model, R, N, Mh, c, z, cen, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
+
+   SigmaIx(model, R, N, Mh, c, z, sat, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
+
+   SigmaIx(model, R, N, Mh, c, z, XB, result_tmp);
+   for(i=0;i<N;i++){
+      result[i] += result_tmp[i];
+   }
+
+   free(result_tmp);
+
+   return;
+}
+
+
+void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, double *result)
+{
    /*
     *    Returns the 1-halo central X-ray
     *    3D luminosity profile.
@@ -231,6 +233,8 @@ void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, 
    int i;
 
    if(model->hod){
+
+      /* Mh ignored here */
 
       params p;
       p.model = model;
@@ -264,7 +268,8 @@ void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, 
 }
 
 
-double intForIx1hc(double logMh, void *p) {
+double intForIx1hc(double logMh, void *p)
+{
    /* Integrand for nGas if HOD model */
 
    const Model *model = ((params *)p)->model;
@@ -290,31 +295,253 @@ double intForIx1hc(double logMh, void *p) {
 
 }
 
+void Ix1hs(const Model *model, double *r, int N, double Mh, double c, double z, double *result)
+{
 
-
-
-
-void Ix1hs(const Model *model, double *r, int N, double Mh, double c, double z, double *result){
-
-
-   int i;
-   for(i=0;i<N;i++){
-      result[i] = 0.0;
-   }
-
-
-}
-void IxXB(const Model *model, double *r, int N, double Mh, double c, double z, double *result){
+   /*
+    *    Returns the (backward) fourier transform of a
+    *    x-ray luminosity power spectrum.
+    */
 
    int i;
+
+   /*    FFTLog config */
+   double q = 0.0, mu = 0.5;
+   int j, FFT_N = 64;
+   FFTLog_config *fc = FFTLog_init(FFT_N, KMIN, KMAX, q, mu);
+   double *r_FFT = (double *)malloc(FFT_N*sizeof(double));
+   double *ar = (double *)malloc(FFT_N*sizeof(double));
+   double *logr_FFT = (double *)malloc(FFT_N*sizeof(double));
+
+   /*    parameters to pass to the function */
+   params p;
+   p.model = model;
+   p.Mh = Mh;
+   p.c = c;
+   p.z = z;
+
+   /*    fonction with parameters to fourier transform */
+   gsl_function Pk;
+   Pk.function = &intForIx1hs;
+   Pk.params = &p;
+
+   /*    fourier transform... */
+   FFTLog(fc, &Pk, r_FFT, ar, -1);
+
+   /*    return values through interpolation */
+   gsl_interp_accel *acc = gsl_interp_accel_alloc ();
+   gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, FFT_N);
+
+   /*    attention: N and FFT_N are different */
+   for(j=0;j<FFT_N;j++) logr_FFT[j] = log(r_FFT[j]);
+   gsl_spline_init (spline, logr_FFT, ar, FFT_N);
+
    for(i=0;i<N;i++){
-      result[i] = 0.0;
+      if (logr_FFT[0] < log(r[i]) && log(r[i]) <  logr_FFT[FFT_N-1] && r[i] < RMAX1){
+         result[i] = gsl_spline_eval(spline, log(r[i]), acc)*pow(2.0*M_PI*r[i],-1.5);
+      }else{
+         result[i] = 0.0;
+      }
    }
 
+   /* free memory */
+   free(r_FFT);
+   free(ar);
+   free(logr_FFT);
+   FFTLog_free(fc);
 
+   gsl_spline_free (spline);
+   gsl_interp_accel_free (acc);
+
+   return;
+}
+
+double intForIx1hs(double k, void *p){
+
+   const Model *model = ((params *)p)->model;
+   const double Mh = ((params *)p)->Mh;
+   const double c = ((params *)p)->c;
+   const double z = ((params *)p)->z;
+
+   return pow(k, 1.5 )* PIx1hs(model, k, Mh, c, z);
 
 }
 
+#define SCALE (1.e44)
+
+double PIx1hs(const Model *model, double k, const double Mh, const double c, const double z)
+{
+   double result;
+
+   if(model->hod){
+
+      /* Mh ignored here */
+
+      params p;
+      p.model = model;
+      p.k = k;
+      p.z = z;
+      p.c = NAN;  /*    for the HOD model, the concentration(Mh) relationship is fixed */
+
+      double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
+      return int_gsl(intForPIx1hs, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/ng;
+
+   }else{
+
+      double Tx, ZGas;
+      Tx = MhToTx(model, Mh, z);
+      ZGas = MhToZGas(model, Mh, z);
+
+      double fac = CRToLx(model, z, Tx, ZGas);
+      double Norm = NormIx(model, Mh, c, z);
+
+      if (fac*Norm > 0.0){
+         uIx(model, &k, 1, Mh, c, z, &result);
+         return pow(result, 2.0) * Norm / fac * SCALE;
+      }else{
+         return 0.0;
+      }
+   }
+}
+
+double intForPIx1hs(double logMh, void *p)
+{
+   /*    Integrand for nGas if HOD model */
+
+   const Model *model = ((params *)p)->model;
+   const double k = ((params *)p)->k;
+   const double c = ((params *)p)->c;
+   const double z = ((params *)p)->z;
+
+   double Mh = exp(logMh);
+
+   double result;
+
+   double Tx, ZGas;
+   Tx = MhToTx(model, Mh, z);
+   ZGas = MhToZGas(model, Mh, z);
+
+   double fac = CRToLx(model, z, Tx, ZGas);
+   double Norm = NormIx(model, Mh, c, z);
+
+   if (fac*Norm > 0.0){
+      uIx(model, &k, 1, Mh, c, z, &result);
+      return  Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
+         * pow(result, 2.0) * Norm
+         * dndlnMh(model, Mh, z) / fac * SCALE;
+
+   }else{
+      return 0.0;
+   }
+
+}
+
+void uIx(const Model *model, const double *k, int N, double Mh, double c, double z, double *result)
+{
+   /*
+    *    Returns the NOT normalised (out to r_vir radius)
+    *    fourier transform of the brightness profile.
+    *    The constants are set by the wrapper and depend on
+    *    halo properties, redshift, etc., so that all the
+    *    quantities depending on cosmology are managed by
+    *    the wrapper.
+    */
+
+   params p;
+   p.model = model;
+   p.Mh = Mh;
+   p.c = c;
+   p.z = z;
+
+   double Norm = NormIx(model, Mh, c, z);
+
+   int i;
+   for (i=0;i<N;i++){
+      p.k = k[i];
+      result[i] = 4.0*M_PI/Norm*int_gsl(intForUIx, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
+   }
+
+   return;
+}
+
+double intForUIx(double logr, void *p)
+{
+   /*
+    *    Integrand for uIx().
+    */
+
+   /*    Integrand for uHalo(). */
+   const Model *model = ((params *)p)->model;
+   const double Mh = ((params *)p)->Mh;
+   const double c = ((params *)p)->c;
+   const double z = ((params *)p)->z;
+   const double k = ((params *)p)->k;
+
+   double r = exp(logr);
+   return ix(model, r, Mh, c, z) * sinc(k*r) * r * r * r / SCALE;
+}
+
+double NormIx(const Model *model, double Mh, double c, double z)
+{
+   /*    Returns the integrated surface brightness  */
+
+   params p;
+   p.model = model;
+   p.Mh = Mh;
+   p.c = c;
+   p.z = z;
+
+   return int_gsl(intForNormIx, (void*)&p, log(RMIN), log(RMAX), 1.0e-3);
+}
+
+double intForNormIx(double logr, void *p){
+
+   const Model *model =  ((params *)p)->model;
+   const double r = exp(logr);
+   const double Mh = ((params *)p)->Mh;
+   const double c = ((params *)p)->c;
+   const double z = ((params *)p)->z;
+
+   return ix(model, r, Mh, c, z) * r / SCALE;
+}
+
+
+#undef SCALE
+
+
+
+void IxXB(const Model *model, double *r, int N, double Mh, double c, double z, double *result)
+{
+   /*
+    *    Returns the 2D gas brightness
+    *    in CR Mpc-2 assuming
+    *    a de Vaucouleur profile for binary stars
+    */
+
+   int i;
+
+   if (model->IxXB_Re < 0.0 || model->IxXB_CR < 0.0){
+      for(i=0;i<N;i++){
+         result[i] = 0.0;
+      }
+      return;
+   }
+
+   /* Re_XB in Mpc */
+   double Re = model->IxXB_Re;
+
+   /* total X-ray luminosity of binary stars in CR */
+   double CR = model->IxXB_CR;
+
+   double Ie = CR / (7.215 * M_PI * Re * Re);
+
+   for(i=0;i<N;i++){
+      /* De vaucouleur profile */
+      result[i] = Ie * exp(-7.669*(pow(r[i]/Re, 1.0/4.0) - 1.0));
+   }
+
+   return;
+}
 
 
 
@@ -323,7 +550,7 @@ double ix(const Model *model, double r, double Mh, double c, double z){
     *    Returns the 3D gas brightness
     *    in erg s^-1 Mpc-3 assuming
     *    a 3D gas profile
-    *    Ix3D \propto nGas^2
+    *    ix \propto nGas^2
     *    = Ix if non HOD
     *    = ix if HOD (to be integrated over halo mass function)
     */
@@ -399,7 +626,6 @@ double Lambda(double Tx, double ZGas)
     *    Tx: gas temperature
     *    Zgas: gas metallicity
     */
-
 
    static int firstcall = 1;
 
@@ -484,8 +710,6 @@ double CRToLx(const Model *model, double z, double Tx, double ZGas)
     */
 
 
-   // return 1.0;
-
    static int firstcall = 1;
    static gsl_interp_accel *acc;
    static gsl_spline *spline;
@@ -494,13 +718,13 @@ double CRToLx(const Model *model, double z, double Tx, double ZGas)
    static double z_tmp = NAN;
    static double ZGas_tmp = NAN;
 
-   if(firstcall || (!isnan(z_tmp) && fabs(z_tmp - z) > 1.e-5) || (!isnan(ZGas_tmp) && fabs(ZGas_tmp - ZGas) > 1.e-5) ){
+   if(firstcall || assert_float(z_tmp, z) || assert_float(ZGas_tmp, ZGas) ){
 
       firstcall = 0;
       ZGas_tmp = ZGas;
       z_tmp = z;
 
-      /*    the code above is necessary as xray.c is itself
+      /*    the code below is necessary as xray.c is itself
        *    wrapped into python code
        *    see https://docs.python.org/2/c-api/init.html for details
        */
@@ -561,8 +785,6 @@ double CRToLx(const Model *model, double z, double Tx, double ZGas)
          exit(EXIT_FAILURE);
       }
 
-
-
       /*    see https://docs.python.org/2/c-api/concrete.html for Tuple functions */
       PyObject *logTx = PyTuple_GetItem(pResTuple, 0);
       PyObject *logConv = PyTuple_GetItem(pResTuple, 1);
@@ -604,7 +826,6 @@ double CRToLx(const Model *model, double z, double Tx, double ZGas)
 }
 
 
-
 double nGas(const Model *model, double r, double Mh, double c, double z){
    /*
     *    Returns a 3D gas density profile given a set
@@ -625,7 +846,7 @@ double nGas(const Model *model, double r, double Mh, double c, double z){
 
       n0 = pow(10.0, inter_gas_log10n0(model, log10Mh));
       beta = pow(10.0, inter_gas_log10beta(model, log10Mh));
-      rc  = pow(10.0, inter_gas_log10rc(model, log10Mh));
+      rc = pow(10.0, inter_gas_log10rc(model, log10Mh));
 
    }else{
       n0 = pow(10.0, model->gas_log10n0);
@@ -815,329 +1036,103 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
 #undef CONCAT2
 #undef CONCAT
 
-#if  0
 
 
-void IxXB(double *r, int N, const Model *model, double *result){
+int changeModeXRay(const Model *model){
+   /* test if any of the X-ray parameters changed */
 
-   /*
-   Returns the luminosity profile of
-   X-Ray binary stars
-   */
-   int i;
+   static Model model_tmp;
+   static int firstcall = 1;
+   int result;
 
-   if (model->Ix_XB_Re < 0.0 || model->Ix_XB_L < 0.0){
-      for(i=0;i<N;i++){
-         result[i] = 0.0;
-      }
-      return;
+   if (firstcall) {
+      firstcall = 0;
+
+        model_tmp.gas_log10n0 = model->gas_log10n0;
+        model_tmp.gas_log10beta = model->gas_log10beta;
+        model_tmp.gas_log10rc = model->gas_log10rc;
+        model_tmp.gas_log10n0_1 = model->gas_log10n0_1;
+        model_tmp.gas_log10n0_2 = model->gas_log10n0_2;
+        model_tmp.gas_log10n0_3 = model->gas_log10n0_3;
+        model_tmp.gas_log10n0_4 = model->gas_log10n0_4;
+        model_tmp.gas_log10beta_1 = model->gas_log10beta_1;
+        model_tmp.gas_log10beta_2 = model->gas_log10beta_2;
+        model_tmp.gas_log10beta_3 = model->gas_log10beta_3;
+        model_tmp.gas_log10beta_4 = model->gas_log10beta_4;
+        model_tmp.gas_log10rc_1 = model->gas_log10rc_1;
+        model_tmp.gas_log10rc_2 = model->gas_log10rc_2;
+        model_tmp.gas_log10rc_3 = model->gas_log10rc_3;
+        model_tmp.gas_log10rc_4 = model->gas_log10rc_4;
+
    }
 
-   /* Re_XB in Mpc */
-   double Re = model->Ix_XB_Re;
-
-   /* total X-ray luminosity of binary stars in CR Mpc-2*/
-   double L = model->Ix_XB_L;
-
-   double Ie = L / (7.215 * M_PI * Re * Re);
-
-   for(i=0;i<N;i++){
-      /* De vaucouleur profile */
-      result[i] = Ie * exp(-7.669*(pow(r[i]/Re, 1.0/4.0) - 1.0));
+   result = 0;
+   if (assert_float(model_tmp.gas_log10n0, model->gas_log10n0)){
+      model_tmp.gas_log10n0 = model->gas_log10n0;
+      result = 1;
    }
-
-   return;
-}
-
-
-
-void Ix1hs(double *r, int N, const Model *model, double *result){
-
-   /*
-   Returns the (backward) fourier transform of a
-   x-ray luminosity power spectrum.
-   */
-
-   int i;
-
-   /* FFTLog config */
-   double q = 0.0, mu = 0.5;
-   int j, FFT_N = 64;
-   FFTLog_config *fc = FFTLog_init(FFT_N, KMIN, KMAX, q, mu);
-   double *r_FFT     = (double *)malloc(FFT_N*sizeof(double));
-   double *ar        = (double *)malloc(FFT_N*sizeof(double));
-   double *logr_FFT  = (double *)malloc(FFT_N*sizeof(double));
-
-   /* parameters to pass to the function */
-   params p;
-   p.model = model;
-
-   /* fonction with parameters to fourier transform */
-   gsl_function Pk;
-   Pk.function = &intForIx1hs;
-   Pk.params   = &p;
-
-   /* fourier transform... */
-   FFTLog(fc, &Pk, r_FFT, ar, -1);
-
-   /* return values through interpolation */
-   gsl_interp_accel *acc = gsl_interp_accel_alloc ();
-   gsl_spline *spline    = gsl_spline_alloc (gsl_interp_cspline, FFT_N);
-
-   /* attention: N and FFT_N are different */
-   for(j=0;j<FFT_N;j++) logr_FFT[j] = log(r_FFT[j]);
-   gsl_spline_init (spline, logr_FFT, ar, FFT_N);
-
-   for(i=0;i<N;i++){
-      if (logr_FFT[0] < log(r[i]) && log(r[i]) <  logr_FFT[FFT_N-1] && r[i] < RMAX1){
-         result[i] = gsl_spline_eval(spline, log(r[i]), acc)*pow(2.0*M_PI*r[i],-1.5);
-      }else{
-         result[i] = 0.0;
-      }
+   if (assert_float(model_tmp.gas_log10beta, model->gas_log10beta)){
+      model_tmp.gas_log10beta = model->gas_log10beta;
+      result = 1;
    }
-
-   /* free memory */
-   free(r_FFT);
-   free(ar);
-   free(logr_FFT);
-   FFTLog_free(fc);
-
-   gsl_spline_free (spline);
-   gsl_interp_accel_free (acc);
-
-   return;
-}
-
-double intForIx1hs(double k, void *p){
-
-   const Model *model   =  ((params *)p)->model;
-   return pow(k, 1.5 )* PIx1hs(k, model);
-
-}
-
-
-double PIx1hs(double k, const Model *model)
-{
-   double result;
-
-   if(model->hod){
-
-
-      // ************************************************************ //
-      // hack for tests - Don't ingegrate through dndM
-      // only returns model at mean Mstar
-      //printf("mh = %f\n", model->log10M1);
-      ///*
-      //double Norm = NormIx3D(model, model->pi_max, model->rh_trunc);
-      //uIx3D(&k, 1, model, model->pi_max, &result);
-      //return   Norm * pow(result, 2.0);
-      //*/
-      // ************************************************************ //
-
-
-      //printf("min= %f, max %f\n", model->log10Mstar_min, model->log10Mstar_max);
-
-
-      params p;
-      p.model = model;
-      p.k     = k;
-
-      double z = 0.0;
-
-      double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, cen)
-      + ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, sat);
-
-      //printf("%f\n", ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, sat)/ng);
-      //exit(-1);
-
-      return int_gsl(intForPIx1hs, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/ng;
-
-
-   }else{
-
-      // TODO change to r_vir
-      //double Norm = NormIx3D(model, -1, model->rh_trunc);
-      double Norm = NormIx3D(model, -1, 20.0);
-
-      uIx3D(&k, 1, model, -1, &result);
-      return   Norm * pow(result, 2.0);
+   if (assert_float(model_tmp.gas_log10rc, model->gas_log10rc)){
+      model_tmp.gas_log10rc = model->gas_log10rc;
+      result = 1;
    }
-
-}
-
-
-double intForPIx1hs(double logMh, void *p) {
-   /* Integrand for nGas if HOD model */
-
-   const Model *model    = ((params *)p)->model;
-   double k              = ((params *)p)->k;
-
-   double log10Mh = logMh/log(10.0);
-   double Mh = exp(logMh);
-
-   double result, Norm = NormIx3D(model, log10Mh, rh(model, Mh, 0.0));
-
-   uIx3D(&k, 1, model, log10Mh, &result);
-
-
-   double z = 0.0;
-
-   return Ngal_s(model, log10Mh, model->log10Mstar_min, model->log10Mstar_max)
-      * Norm * pow(result, 2.0)
-      * dndlnMh(model, z, log10Mh);
-
-}
-
-
-void uIx3D(double *k, int N, const Model *model, double log10Mh, double *result){
-
-   /*
-   Returns the normalised (out to rh_trunc radius)
-   fourier transform of the brightness profile.
-
-   The constants are set by the wrapper and depend on
-   halo properties, redshift, etc., so that all the
-   quantities depending on cosmology are managed by
-   the wrapper.
-
-   */
-
-   int i;
-
-   /* FFTLog config */
-   double q = 0.0, mu = 0.5;
-   int j, FFT_N = 64;
-   /* Note: a signicant increase in upper limit
-   should be compensated by a similar increase
-   in lower limit and presumably in FFT_N as well.
-   Otherwise it creates rather dramatic
-   wiggles.
-   */
-
-   FFTLog_config *fc = FFTLog_init(FFT_N, pow(10.0, model->gas_log10rc) * 1.e-2, 20.0, q, mu);
-   double *k_FFT     = (double *)malloc(FFT_N*sizeof(double));
-   double *ar        = (double *)malloc(FFT_N*sizeof(double));
-   double *logk_FFT  = (double *)malloc(FFT_N*sizeof(double));
-
-   /* parameters to pass to the function */
-   params p;
-   p.model    = model;
-   p.log10Mh  = log10Mh;
-
-   /* fonction with parameters to fourier transform */
-   gsl_function Pk;
-   Pk.function = &intForUIx3D;
-   Pk.params   = &p;
-
-   /* fourier transform... */
-   FFTLog(fc, &Pk, k_FFT, ar, -1);
-
-   /* return values through interpolation */
-   gsl_interp_accel *acc = gsl_interp_accel_alloc ();
-   gsl_spline *spline    = gsl_spline_alloc (gsl_interp_cspline, FFT_N);
-
-   /* attention: N and FFT_N are different */
-   for(j=0;j<FFT_N;j++) logk_FFT[j] = log(k_FFT[j]);
-   gsl_spline_init (spline, logk_FFT, ar, FFT_N);
-
-   double Mh = pow(10.0, log10Mh);
-
-   /* Normalisation */
-   double Norm;
-   if(model->hod){
-      Norm = NormIx3D(model, log10Mh, rh(model, Mh, 0.0));
-   }else{
-
-      // TODO change to R_VIR
-      // Norm = NormIx3D(model, log10Mh, model->rh_trunc);
-      Norm = NormIx3D(model, log10Mh, 20.0);
+   if (assert_float(model_tmp.gas_log10n0_1, model->gas_log10n0_1)){
+      model_tmp.gas_log10n0_1 = model->gas_log10n0_1;
+      result = 1;
    }
-
-   for(i=0;i<N;i++){
-      if (logk_FFT[0] < log(k[i]) && log(k[i]) < logk_FFT[FFT_N-1]){
-         result[i] = gsl_spline_eval(spline, log(k[i]), acc)*pow(k[i],-1.5) / Norm;
-      }else{
-         result[i] = 0.0;
-      }
+   if (assert_float(model_tmp.gas_log10n0_2, model->gas_log10n0_2)){
+      model_tmp.gas_log10n0_2 = model->gas_log10n0_2;
+      result = 1;
    }
-
-   /* free memory */
-   free(k_FFT);
-   free(ar);
-   free(logk_FFT);
-   FFTLog_free(fc);
-
-   gsl_spline_free (spline);
-   gsl_interp_accel_free (acc);
-
-   return;
-
-}
-
-double intForUIx3D(double r, void *p){
-   /*
-   Integrand for uUIx3D().
-   */
-
-   const Model *model = ((params *)p)->model;
-   double log10Mh     = ((params *)p)->log10Mh;
-
-   return pow(2.0*M_PI*r, 1.5) * Ix3D(r, log10Mh, model);
-
-}
-
-
-double Ix3D(double r, double log10Mh,  const Model *model){
-   /*
-   Returns the 3D gas brightness assuming
-   a 3D gas profile
-
-   Ix3D \propto nGas^2
-   */
-
-   return pow(nGas(r, log10Mh, model), 2.0);
-
-}
-
-
-
-
-
-
-
-double NormIx3D(const Model *model, double log10Mh,  double rmax){
-   /*
-   Returns the total surface brightness out to rh_trunc
-   */
-
-   /* parameters to pass to the function */
-   params p;
-   p.model   = model;
-   p.eps     = 1.0e-4;
-   p.log10Mh = log10Mh;
-
-   double result = int_gsl(intForNormIx3D, (void*)&p, log(1.e-6), log(rmax), p.eps);
+   if (assert_float(model_tmp.gas_log10n0_3, model->gas_log10n0_3)){
+      model_tmp.gas_log10n0_3 = model->gas_log10n0_3;
+      result = 1;
+   }
+   if (assert_float(model_tmp.gas_log10n0_4, model->gas_log10n0_4)){
+      model_tmp.gas_log10n0_4 = model->gas_log10n0_4;
+      result = 1;
+   }
+   if (assert_float(model_tmp.gas_log10beta_1, model->gas_log10beta_1)){
+      model_tmp.gas_log10beta_1 = model->gas_log10beta_1;
+      result = 1;
+   }
+   if (assert_float(model_tmp.gas_log10beta_2, model->gas_log10beta_2)){
+      model_tmp.gas_log10beta_2 = model->gas_log10beta_2;
+      result = 1;
+   }
+   if (assert_float(model_tmp.gas_log10beta_3, model->gas_log10beta_3)){
+      model_tmp.gas_log10beta_3 = model->gas_log10beta_3;
+      result = 1;
+   }
+   if (assert_float(model_tmp.gas_log10beta_4, model->gas_log10beta_4)){
+      model_tmp.gas_log10beta_4 = model->gas_log10beta_4;
+      result = 1;
+   }
+   if (assert_float(model_tmp.gas_log10rc_1, model->gas_log10rc_1)){
+      model_tmp.gas_log10rc_1 = model->gas_log10rc_1;
+      result = 1;
+   }
+   if (assert_float(model_tmp.gas_log10rc_2, model->gas_log10rc_2)){
+      model_tmp.gas_log10rc_2 = model->gas_log10rc_2;
+      result = 1;
+   }
+   if (assert_float(model_tmp.gas_log10rc_3, model->gas_log10rc_3)){
+      model_tmp.gas_log10rc_3 = model->gas_log10rc_3;
+      result = 1;
+   }
+   if (assert_float(model_tmp.gas_log10rc_4, model->gas_log10rc_4)){
+      model_tmp.gas_log10rc_4 = model->gas_log10rc_4;
+      result = 1;
+   }
 
    return result;
+
 }
 
-double intForNormIx3D(double logr, void *p){
-
-   const Model *model =  ((params *)p)->model;
-   double r           = exp(logr);
-   double log10Mh     =  ((params *)p)->log10Mh;
-
-   return Ix3D(r, log10Mh, model) * r;
-}
-
-
-double betaModel(double r, double n0, double beta, double rc){
-   /*
-   Returns a beta-model profile given n0, beta, and rc.
-   */
-
-   return n0 * pow(1.0 + pow(r/rc, 2.0), -3.0*beta/2.0);
-}
+#if  0
 
 
 double betaModelSqProj(double r, double n0, double beta, double rc){
@@ -1214,7 +1209,6 @@ double int_for_PLxGivenMh_norm(double logMh, void *p){
   return res;
 
 }
-
 
 double normal(double x, double mu, double sigma){
 

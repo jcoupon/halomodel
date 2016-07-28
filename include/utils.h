@@ -67,8 +67,8 @@ typedef struct Model
    int    hod;
 
    /* for X-ray binaries */
-   double Ix_XB_Re;
-   double Ix_XB_L;
+   double IxXB_Re;
+   double IxXB_CR;
 
    double gas_log10n0;
    double gas_log10beta;

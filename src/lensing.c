@@ -265,9 +265,9 @@ void DeltaSigmaStar(const Model *model, double *R, int N, double z, double *resu
 double intForDeltaSigmaStar(double log10Mstar, void *p)
 {
 
-   const Model *model    = ((params *)p)->model;
-   double r              = ((params *)p)->r;
-   double z              = ((params *)p)->z;
+   const Model *model = ((params *)p)->model;
+   double r = ((params *)p)->r;
+   double z = ((params *)p)->z;
 
    double Mstar = pow(10.0, log10Mstar);
 
@@ -317,10 +317,10 @@ void xi_gm_cen(const Model *model, double *r, int N, double z, double *result)
 double intForxi_gm_cen(double logMh, void *p)
 {
 
-   const Model *model    = ((params *)p)->model;
-   double r              = ((params *)p)->r;
-   double z              = ((params *)p)->z;
-   double c              = ((params *)p)->c;
+   const Model *model = ((params *)p)->model;
+   double r = ((params *)p)->r;
+   double z = ((params *)p)->z;
+   double c = ((params *)p)->c;
 
    double Mh = exp(logMh);
 

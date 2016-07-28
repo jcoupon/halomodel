@@ -21,8 +21,17 @@ void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, 
 double intForIx1hc(double logMh, void *p);
 
 void Ix1hs(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
+double intForIx1hs(double k, void *p);
+double PIx1hs(const Model *model, double k, const double Mh, const double c, const double z);
+double intForPIx1hs(double logMh, void *p);
+
+void uIx(const Model *model, const double *k, int N, double Mh, double c, double z, double *result);
+double intForUIx(double r, void *p);
+
 void IxXB(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
 
+double NormIx(const Model *model, double Mh,  double c, double z);
+double intForNormIx(double logr, void *p);
 double ix(const Model *model, double r, double Mh, double c, double z);
 double MhToTx(const Model *model, double Mh, double z);
 double MhToZGas(const Model *model, double Mh, double z);
@@ -40,6 +49,7 @@ double inter_gas_log10n0(const Model *model, double log10Mh);
 double inter_gas_log10beta(const Model *model, double log10Mh);
 double inter_gas_log10rc(const Model *model, double log10Mh);
 
+int changeModeXRay(const Model *model);
 
 #endif
 

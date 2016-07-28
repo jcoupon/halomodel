@@ -18,8 +18,8 @@ for python:
 
 """
 
+# see http://stackoverflow.com/questions/458550/standard-way-to-embed-version-into-python-package
 __version__ = "1.0.0"
-
 
 import os
 import numpy as np
@@ -92,8 +92,8 @@ class Model(ctypes.Structure):
         ("hod", ctypes.c_int),
 
         # for X-ray binaries
-        ("Ix_XB_Re", ctypes.c_double),
-        ("Ix_XB_L", ctypes.c_double),
+        ("IxXB_Re", ctypes.c_double),
+        ("IxXB_CR", ctypes.c_double),
 
         # X-ray, if hod = 0
         ("gas_log10n0", ctypes.c_double),
@@ -165,8 +165,8 @@ class Model(ctypes.Structure):
         self.hod = hod
 
         # for X-ray binaries
-        self.Ix_XB_Re = -1.0 # in Mpc
-        self.Ix_XB_L = -1.0 # in CR Mpc-2
+        self.IxXB_Re = 0.01196 # in h^-1 Mpc
+        self.IxXB_CR = 0.0 # in CR
 
         # X-ray, if hod = 0
         self.gas_log10n0 = -3.0
@@ -269,7 +269,7 @@ main
 
 def main(args):
 
-    function = getattr(sys.modules[__name__], args.option)(args)
+    function = getattr(sys.modules[__name__], args.option)()
     return
 
 """
@@ -293,10 +293,10 @@ def test():
     OK_MESSAGE="OK\n"
     FAIL_MESSAGE="FAILED\n"
 
-    compute_ref=False
+    compute_ref=True
 
-    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "SigmaIx_HOD", "SigmaIx"]
-    # actions = ["dist", "change_HOD"]
+    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "SigmaIx_HOD", "SigmaIx"]
+    actions = ["SigmaIx_HOD"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -624,6 +624,9 @@ def test():
         model.log10Mstar_min = 11.10 - 0.1549 #- 0.142668
         model.log10Mstar_max = 11.30 - 0.1549 #- 0.142668
 
+        model.IxXB_Re = 0.01196
+        model.IxXB_CR = 6.56997872802e-05
+
         R = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(1.e2), 100))
 
         Mh = np.nan
@@ -657,7 +660,7 @@ def test():
 
         model.hod = 0
 
-        Mh = 1.e13
+        Mh = 1.e14
         c  = np.nan
 
         R500 = c_halomodel.rh(model, Mh, Delta(model, z, "M500c"), z)

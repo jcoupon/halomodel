@@ -249,7 +249,8 @@ double int_gsl_FFT(funcwithparsHalomodel func, void *params, double a, double b,
   F.params = &p;
 
   gsl_set_error_handler_off();
-  status = gsl_integration_qag (&F, a, b, eps, eps, n, GSL_INTEG_GAUSS51, w, &result, &result_err);
+ //  status = gsl_integration_qag (&F, a, b, eps, eps, n, GSL_INTEG_GAUSS51, w, &result, &result_err);
+  status = gsl_integration_qag (&F, a, b, 0.0, eps, n, GSL_INTEG_GAUSS51, w, &result, &result_err);
 
   gsl_integration_workspace_free (w);
 

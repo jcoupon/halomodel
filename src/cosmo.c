@@ -293,7 +293,7 @@ double dndlnMh(const Model *model, double Mh, double z){
 double uHalo(const Model *model, double k, double Mh, double c, double z)
 {
    /*
-    *    Fourier transform of the halio profile.
+    *    Fourier transform of the halo profile.
     *    To assume c(Mh) relation, set c = -1.0;
     *    uHalo is interpolated in Mh k space if c(Mh) relation
     *    is assumed.

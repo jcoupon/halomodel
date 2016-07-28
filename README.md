@@ -21,7 +21,7 @@ To test the installation:
 ```
 $ python
 >>> import halomodel
->>> halomodel.text()
+>>> halomodel.test()
 ```
 
 Requirements:

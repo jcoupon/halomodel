@@ -30,14 +30,7 @@ void DeltaSigma(const Model *model, double *R, int N, double z, int obs_type, do
       return;
    }
 
-   double fac = 1.0, pi_max = model->ggl_pi_max;
-
-   /* comoving or physical coordinates */
-   //if(model->como){
-   //   fac = 1.0;
-   //}else{
-   //   fac = 1.0+z;
-   //}
+   double pi_max = model->ggl_pi_max;
 
    /* interpolate to speed up integration  */
    int Ninter = 40;
@@ -77,7 +70,7 @@ void DeltaSigma(const Model *model, double *R, int N, double z, int obs_type, do
       if(p.logrmin < log(R[i]) && log(R[i]) < p.logrmax){
          result[i] = 1.0e-12*rhobar*(2.0/(R[i]*R[i])
             * int_gsl(intForDeltaSigma, (void*)&p, log(rinter_min), log(R[i]), p.eps)
-            - gsl_spline_eval(spline, log(R[i]), acc)) * fac * fac * fac;
+            - gsl_spline_eval(spline, log(R[i]), acc));
       }else{
          result[i] = 0.0;
       }
@@ -114,14 +107,7 @@ void Sigma(const Model *model, double *R, int N, double z, int obs_type, double 
  * ---------------------------------------------------------------- */
 {
 
-   double fac = 1.0, pi_max = model->ggl_pi_max;
-
-   /* comoving or physical coordinates */
-   //if(model->como){
-   //   fac = 1.0;
-   //}else{
-   //   fac = 1.0+z;
-   //}
+   double pi_max = model->ggl_pi_max;
 
    /* interpolate to speed up integration  */
    int i, Ninter      = 40;
@@ -163,9 +149,9 @@ void Sigma(const Model *model, double *R, int N, double z, int obs_type, double 
    p.logrmax   = logrinter[Ninter-1];
 
    for(i=0;i<N;i++){
-      p.R = R[i]*fac;
-      //result[i] = 2.0*int_gsl(intForSigma, (void*)&p, log(rinter_min*fac), log(pi_max*fac), p.eps)/fac;
-      result[i] = 2.0*int_gsl(intForSigma, (void*)&p, log(R[i]*fac), log(pi_max*fac), p.eps)/fac;
+      p.R = R[i];
+      //result[i] = 2.0*int_gsl(intForSigma, (void*)&p, log(rinter_min), log(pi_max), p.eps);
+      result[i] = 2.0*int_gsl(intForSigma, (void*)&p, log(R[i]), log(pi_max), p.eps);
    }
 
    free(S);
@@ -243,7 +229,7 @@ void DeltaSigmaStar(const Model *model, double *R, int N, double z, double *resu
     */
 
    int i;
-   double fac=1.0, Mstar;
+   double Mstar;
 
    if(model->hod){
 
@@ -253,8 +239,8 @@ void DeltaSigmaStar(const Model *model, double *R, int N, double z, double *resu
 
       double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
       for(i=0;i<N;i++){
-         if (R[i]*fac < RMAX1){
-            p.r = R[i]*fac;
+         if (R[i] < RMAX1){
+            p.r = R[i];
             result[i] = int_gsl(intForDeltaSigmaStar, (void*)&p, model->log10Mstar_min, model->log10Mstar_max, 1.e-2)/ng;
          }else{
             result[i] = 0.0;
@@ -269,7 +255,7 @@ void DeltaSigmaStar(const Model *model, double *R, int N, double z, double *resu
          Mstar = pow(10.0, model->ggl_log10Mstar);
       }
       for(i=0;i<N;i++){
-         result[i] = 1.e-12 * Mstar/(M_PI*R[i]*R[i]*fac*fac);
+         result[i] = 1.e-12 * Mstar/(M_PI*R[i]*R[i]);
       }
    }
 

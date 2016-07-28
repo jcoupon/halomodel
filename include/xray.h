@@ -20,6 +20,9 @@ void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, doubl
 void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
 double intForIx1hc(double logMh, void *p);
 
+void Ix1hs(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
+void IxXB(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
+
 double ix(const Model *model, double r, double Mh, double c, double z);
 double MhToTx(const Model *model, double Mh, double z);
 double MhToZGas(const Model *model, double Mh, double z);

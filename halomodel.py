@@ -290,15 +290,17 @@ def test(args):
     from astropy.table import Table, Column
 
     OK_MESSAGE="OK\n"
+    FAIL_MESSAGE="FAILED\n"
 
-    compute_ref=True
+    compute_ref=False
 
-    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "SigmaIx_HOD" "SigmaIx"]
-    actions = ["SigmaIx_HOD", "SigmaIx"]
+    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "SigmaIx_HOD", "SigmaIx"]
+    # actions = ["dist", "change_HOD"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
     z = 0.308898
+    # z = 0.1
 
     if "dist" in actions:
         """ angular diameter distance """
@@ -312,8 +314,13 @@ def test(args):
             print c_halomodel.DA(model, z, 0)/h, cosmo.angular_diameter_distance([z])
         else:
             sys.stderr.write("dist:")
-            np.testing.assert_almost_equal(c_halomodel.DA(model, z, 0), 662.494287693, err_msg="in dist")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_almost_equal(c_halomodel.DA(model, z, 0), 662.494287693, err_msg="in dist")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "change_HOD" in actions:
 
@@ -324,13 +331,16 @@ def test(args):
             c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model)]
             c_halomodel.changeModelHOD.restype = ctypes.c_int
 
-            np.testing.assert_equal(c_halomodel.changeModelHOD(model), 0, err_msg="in change_HOD")
-
-            log10M1 = model.log10M1
-            model.log10M1 = 10.0
-            np.testing.assert_equal(c_halomodel.changeModelHOD(model), 1, err_msg="in change_HOD")
-            model.log10M1 = log10M1
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_equal(c_halomodel.changeModelHOD(model), 0, err_msg="in change_HOD")
+                log10M1 = model.log10M1
+                model.log10M1 = 10.0
+                np.testing.assert_equal(c_halomodel.changeModelHOD(model), 1, err_msg="in change_HOD")
+                model.log10M1 = log10M1
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
 
     if "MsMh" in actions:
@@ -344,8 +354,12 @@ def test(args):
         else:
             sys.stderr.write("MsMh:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(log10Mstar, ref['log10Mstar'], err_msg="in MsMh")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(log10Mstar, ref['log10Mstar'], err_msg="in MsMh")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
 
     if "concen" in actions:
@@ -354,8 +368,13 @@ def test(args):
             print concentration(model, 1.e14, z, concenDef="TJ03")
         else:
             sys.stderr.write("concen:")
-            np.testing.assert_almost_equal(concentration(model, 1.e14, z, concenDef="TJ03"), 5.25635255301, err_msg="in concen")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_almost_equal(concentration(model, 1.e14, z, concenDef="TJ03"), 5.25635255301, err_msg="in concen")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "mass_conv" in actions:
 
@@ -363,8 +382,13 @@ def test(args):
             print log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0]
         else:
             sys.stderr.write("mass_conv:")
-            np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0], 12.7112150386, err_msg="in mass_conv")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0], 12.7112150386, err_msg="in mass_conv")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "xi_dm" in actions:
 
@@ -377,8 +401,13 @@ def test(args):
         else:
             sys.stderr.write("xi_dm:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(xi, ref['xi'], err_msg="in xi_dm")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(xi, ref['xi'], err_msg="in xi_dm")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "uHalo" in actions:
         """ Fourrier transform of halo profile """
@@ -407,9 +436,14 @@ def test(args):
             ascii.write(out, HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii", format="commented_header")
         else:
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(numerical, ref['numerical'], err_msg="in uHalo (numerical)")
-            np.testing.assert_array_almost_equal(analytic, ref['analytic'], err_msg="in uHalo (analytic)")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(numerical, ref['numerical'], err_msg="in uHalo (numerical)")
+                np.testing.assert_array_almost_equal(analytic, ref['analytic'], err_msg="in uHalo (analytic)")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "smf" in actions:
         """ stellar mass function """
@@ -422,8 +456,13 @@ def test(args):
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/smf_ref.ascii", header_start=-1)
             log10Mstar = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)
             n = dndlog10Mstar(model, log10Mstar, z, obs_type="all")
-            np.testing.assert_array_almost_equal(n, ref['n'], err_msg="in smf")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(n, ref['n'], err_msg="in smf")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "ggl_HOD" in actions:
         """ Galaxy-galaxy lensing, HOD model """
@@ -445,12 +484,17 @@ def test(args):
         else:
             sys.stderr.write("ggl_HOD:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl_HOD (star)")
-            np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl_HOD (cen)")
-            np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl_HOD (sat)")
-            np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl_HOD (twohalo)")
-            np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl_HOD (total)")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl_HOD (star)")
+                np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl_HOD (cen)")
+                np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl_HOD (sat)")
+                np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl_HOD (twohalo)")
+                np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl_HOD (total)")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
 
     if "ggl" in actions:
@@ -477,12 +521,17 @@ def test(args):
         else:
             sys.stderr.write("ggl:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl (star)")
-            np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl (cen)")
-            np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl (sat)")
-            np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl (twohalo)")
-            np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl (star)")
+                np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl (cen)")
+                np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in ggl (sat)")
+                np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in ggl (twohalo)")
+                np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "wtheta_HOD" in actions:
 
@@ -509,11 +558,16 @@ def test(args):
         else:
             sys.stderr.write("wtheta:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/wtheta_HOD_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(censat, ref['censat'], err_msg="in wtheta (censat)")
-            np.testing.assert_array_almost_equal(satsat, ref['satsat'], err_msg="in wtheta (satsat)")
-            np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in wtheta (twohalo)")
-            np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(censat, ref['censat'], err_msg="in wtheta (censat)")
+                np.testing.assert_array_almost_equal(satsat, ref['satsat'], err_msg="in wtheta (satsat)")
+                np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in wtheta (twohalo)")
+                np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "Lambda" in actions:
 
@@ -528,10 +582,15 @@ def test(args):
         else:
             sys.stderr.write("Lambda:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/Lambda_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(Lambda_0_00, ref['Lambda_0_00'], err_msg="Lambda ZGAS 0.00")
-            np.testing.assert_array_almost_equal(Lambda_0_15, ref['Lambda_0_15'], err_msg="Lambda ZGAS 0.15")
-            np.testing.assert_array_almost_equal(Lambda_0_40, ref['Lambda_0_40'], err_msg="Lambda ZGAS 0.40")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(Lambda_0_00, ref['Lambda_0_00'], err_msg="Lambda ZGAS 0.00")
+                np.testing.assert_array_almost_equal(Lambda_0_15, ref['Lambda_0_15'], err_msg="Lambda ZGAS 0.15")
+                np.testing.assert_array_almost_equal(Lambda_0_40, ref['Lambda_0_40'], err_msg="Lambda ZGAS 0.40")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "CRToLx" in actions:
 
@@ -546,10 +605,15 @@ def test(args):
         else:
             sys.stderr.write("CRToLx:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(CRToLx_0_00, ref['CRToLx_0_00'], err_msg="CRToLx ZGAS 0.00")
-            np.testing.assert_array_almost_equal(CRToLx_0_15, ref['CRToLx_0_15'], err_msg="CRToLx ZGAS 0.15")
-            np.testing.assert_array_almost_equal(CRToLx_0_40, ref['CRToLx_0_40'], err_msg="CRToLx ZGAS 0.40")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(CRToLx_0_00, ref['CRToLx_0_00'], err_msg="CRToLx ZGAS 0.00")
+                np.testing.assert_array_almost_equal(CRToLx_0_15, ref['CRToLx_0_15'], err_msg="CRToLx ZGAS 0.15")
+                np.testing.assert_array_almost_equal(CRToLx_0_40, ref['CRToLx_0_40'], err_msg="CRToLx ZGAS 0.40")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "SigmaIx_HOD" in actions:
         """ X-ray projected profile, HOD model """
@@ -573,11 +637,16 @@ def test(args):
         else:
             sys.stderr.write("SigmaIx_HOD:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx_HOD (cen)")
-            np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx_HOD (sat)")
-            np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx_HOD (XB)")
-            np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+            try:
+                np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx_HOD (cen)")
+                np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx_HOD (sat)")
+                np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx_HOD (XB)")
+                np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
 
     if "SigmaIx" in actions:
@@ -607,16 +676,18 @@ def test(args):
             out = Table([R, total, cen, sat, XB], names=['R', 'total', 'cen', 'sat', 'XB'])
             ascii.write(out, HALOMODEL_DIRNAME+"/data/SigmaIx_ref.ascii", format="commented_header")
         else:
-            sys.stderr.write("SigmaIx_HOD:")
+            sys.stderr.write("SigmaIx:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/SigmaIx_ref.ascii", header_start=-1)
-            np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx_HOD (cen)")
-            np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx_HOD (sat)")
-            np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx_HOD (XB)")
-            np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
-            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
-
-
-
+            try:
+                np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx_HOD (cen)")
+                np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx_HOD (sat)")
+                np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx_HOD (XB)")
+                np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                # print sys.exc_info()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
 
 def fitBetaPara(args):

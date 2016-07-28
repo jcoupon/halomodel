@@ -30,17 +30,17 @@ void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, doubl
 
    double *result_tmp = (double *)malloc(N*sizeof(double));
 
-   SigmaIx(model, R, N, Mh, c,, z, cen, result_tmp);
+   SigmaIx(model, R, N, Mh, c, z, cen, result_tmp);
    for(i=0;i<N;i++){
       result[i] += result_tmp[i];
    }
 
-   SigmaIx(model, R, N, Mh, c,, z, sat, result_tmp);
+   SigmaIx(model, R, N, Mh, c, z, sat, result_tmp);
    for(i=0;i<N;i++){
       result[i] += result_tmp[i];
    }
 
-   SigmaIx(model, R, N, Mh, c,, z, XB, result_tmp);
+   SigmaIx(model, R, N, Mh, c, z, XB, result_tmp);
    for(i=0;i<N;i++){
       result[i] += result_tmp[i];
    }
@@ -49,9 +49,6 @@ void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, doubl
 
    return;
 }
-
-
-
 
 
 void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z, int obs_type, double *result)
@@ -94,10 +91,10 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
          Ix1hc(model, rinter, Ninter, Mh, c, z, Ix);
          break;
       case sat:
-         //Ix1hs(rinter, Ninter, model, Ix);
+         Ix1hs(model, rinter, Ninter, Mh, c, z, Ix);
          break;
       case XB:
-         //IxXB(rinter, Ninter, model, Ix);
+         IxXB(model, rinter, Ninter, Mh, c, z, Ix);
          break;
    }
 
@@ -162,7 +159,7 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
       for(i=0;i<N;i++){                                        /*    Main loop */
          for(j=0;j<N_PSF;j++){                                 /*    loop over R' - trapeze integration */
             for(k=0;k<N_PSF;k++){                              /*    loop over theta - trapeze integration  */
-               Rpp = sqrt(R[i]*fac*R[i]*fac + Rp[j]*Rp[j] - 2.0*R[i]*fac*Rp[j]*cos(theta[k]));
+               Rpp = sqrt(R[i]*R[i] + Rp[j]*Rp[j] - 2.0*R[i]*Rp[j]*cos(theta[k]));
                if(logrinter[0] < log(Rpp) && log(Rpp) < logrinter[Ninter-1]){
                   intForTheta[k] = gsl_spline_eval(spline, log(Rpp), acc);
                }
@@ -180,8 +177,8 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
    }else{
       /*    ... or simply return result */
       for(i=0;i<N;i++){
-         if(logrinter[0] < log(R[i]*fac) && log(R[i]*fac) < logrinter[Ninter-1]){
-            result[i] = gsl_spline_eval(spline, log(R[i]*fac), acc)/(fac*fac);
+         if(logrinter[0] < log(R[i]) && log(R[i]) < logrinter[Ninter-1]){
+            result[i] = gsl_spline_eval(spline, log(R[i]), acc);
          }else{
             result[i] = 0.0;
          }
@@ -260,8 +257,6 @@ void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, 
          }else{
             result[i] = 0.0;
          }
-
-
       }
    }
 
@@ -294,6 +289,34 @@ double intForIx1hc(double logMh, void *p) {
    }
 
 }
+
+
+
+
+
+void Ix1hs(const Model *model, double *r, int N, double Mh, double c, double z, double *result){
+
+
+   int i;
+   for(i=0;i<N;i++){
+      result[i] = 0.0;
+   }
+
+
+}
+void IxXB(const Model *model, double *r, int N, double Mh, double c, double z, double *result){
+
+   int i;
+   for(i=0;i<N;i++){
+      result[i] = 0.0;
+   }
+
+
+
+}
+
+
+
 
 double ix(const Model *model, double r, double Mh, double c, double z){
    /*
@@ -1077,201 +1100,8 @@ double Ix3D(double r, double log10Mh,  const Model *model){
 
 
 
-double nGas(double r, double log10Mh, const Model *model){
-   /*
-   Returns a 3D gas density profile given a set
-   of parameters, truncated at r = rh_trunc
-
-   If computed using the halo model, the gas
-   profile is integrated over the halo mass
-   function times the galaxy HOD.
-
-   Depends on log10Mh if log10Mh > 1
-   */
-
-   double Mh = pow(10.0, log10Mh);
-   if(log10Mh > 1.0){
 
 
-      if (r < rh(model, Mh, 0.0)){
-
-         double log10n0 = inter_gas_log10n0(model, log10Mh);
-         double beta      = inter_gas_log10beta(model, log10Mh);
-         double log10rc  = inter_gas_log10rc(model, log10Mh);
-
-         return betaModel(r, pow(10.0, log10n0), pow(10.0, beta), pow(10.0, log10rc));
-
-      }else{
-         return 0.0;
-      }
-
-   }else{
-
-      // TODO change to r_vir
-      // if (r < model->rh_trunc){
-      if (r < 20.0){
-         return betaModel(r, pow(10.0, model->gas_log10n0), pow(10.0, model->gas_log10beta), pow(10.0, model->gas_log10rc));
-      }else{
-         return 0.0;
-      }
-   }
-}
-
-
-
-
-#define LOG10MH_1 12.9478
-#define LOG10MH_2 13.2884
-#define LOG10MH_3 13.6673
-#define LOG10MH_4 14.0646
-
-
-#define CONCAT2(a, b)  a##b
-#define CONCAT(a, b) CONCAT2(a, b)
-
-#define PARA gas_log10n0
-double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
-
-   return model->CONCAT(PARA, _1) + model->CONCAT(PARA, _2) * (log10Mh-14.0);
-
-/*
-   static int firstcall = 1;
-   static gsl_interp_accel *acc;
-   static gsl_spline *spline;
-
-   static double *t_log10Mh;
-   static double *t_PARA;
-
-   if(firstcall){
-      firstcall = 0;
-      acc = gsl_interp_accel_alloc();
-      spline    = gsl_spline_alloc (gsl_interp_cspline, 4);
-      t_log10Mh =  (double *)malloc(4*sizeof(double));
-      t_PARA    =  (double *)malloc(4*sizeof(double));
-
-      t_log10Mh[0] = LOG10MH_1;
-      t_log10Mh[1] = LOG10MH_2;
-      t_log10Mh[2] = LOG10MH_3;
-      t_log10Mh[3] = LOG10MH_4;
-
-   }
-
-   t_PARA[0] = model->CONCAT(PARA, _1);
-   t_PARA[1] = model->CONCAT(PARA, _2);
-   t_PARA[2] = model->CONCAT(PARA, _3);
-   t_PARA[3] = model->CONCAT(PARA, _4);
-
-   gsl_spline_init(spline, t_log10Mh,  t_PARA, 4);
-
-   if (t_log10Mh[0] < log10Mh && log10Mh < t_log10Mh[3]){
-      return gsl_spline_eval(spline, log10Mh, acc);
-   }else if (log10Mh > t_log10Mh[3]){
-      return model->CONCAT(PARA, _4);
-   }else{
-      return model->CONCAT(PARA, _1);
-   }
-
-   */
-}
-#undef PARA
-
-#define PARA gas_log10beta
-double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
-
-   return model->CONCAT(PARA, _1) + model->CONCAT(PARA, _2) * (log10Mh-14.0);
-
-   /*
-   static int firstcall = 1;
-   static gsl_interp_accel *acc;
-   static gsl_spline *spline;
-
-   static double *t_log10Mh;
-   static double *t_PARA;
-
-   if(firstcall){
-      firstcall = 0;
-      acc = gsl_interp_accel_alloc();
-      spline    = gsl_spline_alloc (gsl_interp_cspline, 4);
-      t_log10Mh =  (double *)malloc(4*sizeof(double));
-      t_PARA    =  (double *)malloc(4*sizeof(double));
-
-      t_log10Mh[0] = LOG10MH_1;
-      t_log10Mh[1] = LOG10MH_2;
-      t_log10Mh[2] = LOG10MH_3;
-      t_log10Mh[3] = LOG10MH_4;
-
-
-   }
-
-   t_PARA[0] = model->CONCAT(PARA, _1);
-   t_PARA[1] = model->CONCAT(PARA, _2);
-   t_PARA[2] = model->CONCAT(PARA, _3);
-   t_PARA[3] = model->CONCAT(PARA, _4);
-
-   gsl_spline_init(spline, t_log10Mh,  t_PARA, 4);
-
-   if (t_log10Mh[0] < log10Mh && log10Mh < t_log10Mh[3]){
-      return gsl_spline_eval(spline, log10Mh, acc);
-   }else if (log10Mh > t_log10Mh[3]){
-      return model->CONCAT(PARA, _4);
-   }else{
-      return model->CONCAT(PARA, _1);
-   }
-   */
-}
-#undef PARA
-
-
-#define PARA gas_log10rc
-double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
-
-   return model->CONCAT(PARA, _1) + model->CONCAT(PARA, _2) * (log10Mh-14.0);
-
-
-/*
-
-
-   static int firstcall = 1;
-   static gsl_interp_accel *acc;
-   static gsl_spline *spline;
-
-   static double *t_log10Mh;
-   static double *t_PARA;
-
-   if(firstcall){
-      firstcall = 0;
-      acc = gsl_interp_accel_alloc();
-      spline    = gsl_spline_alloc (gsl_interp_cspline, 4);
-      t_log10Mh =  (double *)malloc(4*sizeof(double));
-      t_PARA    =  (double *)malloc(4*sizeof(double));
-
-      t_log10Mh[0] = LOG10MH_1;
-      t_log10Mh[1] = LOG10MH_2;
-      t_log10Mh[2] = LOG10MH_3;
-      t_log10Mh[3] = LOG10MH_4;
-
-
-   }
-
-   t_PARA[0] = model->CONCAT(PARA, _1);
-   t_PARA[1] = model->CONCAT(PARA, _2);
-   t_PARA[2] = model->CONCAT(PARA, _3);
-   t_PARA[3] = model->CONCAT(PARA, _4);
-
-   gsl_spline_init(spline, t_log10Mh,  t_PARA, 4);
-
-   if (t_log10Mh[0] < log10Mh && log10Mh < t_log10Mh[3]){
-      return gsl_spline_eval(spline, log10Mh, acc);
-   }else if (log10Mh > t_log10Mh[3]){
-      return model->CONCAT(PARA, _4);
-   }else{
-      return model->CONCAT(PARA, _1);
-   }
-
-   */
-
-}
-#undef PARA
 
 
 double NormIx3D(const Model *model, double log10Mh,  double rmax){

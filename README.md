@@ -9,13 +9,18 @@ To install the library:
 $ git clone https://github.com/jcoupon/halomodel.git
 $ cd halomodel
 $ make
-$ halomodel.py test
 ```
 
 Then:
 - set "HALOMODEL_DIRNAME" as the path to halomodel in halomodel.py
 - add the path to PYTHONPATH
 - in python: "import halomodel"
+
+
+To test the installation:
+```
+$ halomodel.py test
+```
 
 Requirements:
 

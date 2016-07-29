@@ -40,7 +40,6 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
       return;
    }
 
-
    /*    interpolate to speed up integration for projection and PSF convolution */
    int i, j, k, Ninter = 128;
 
@@ -195,7 +194,6 @@ double intForIx(double logz, void *p)
 
    return result;
 }
-
 
 void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, double z, double *result)
 {
@@ -437,7 +435,6 @@ double intForPIx1hs(double logMh, void *p)
 
 }
 
-//void uIx(const Model *model, const double *k, int N, double Mh, double c, double z, double *result)
 double uIx(const Model *model, double k, double Mh, double c, double z)
 {
    /*
@@ -507,7 +504,7 @@ double uIx(const Model *model, double k, double Mh, double c, double z)
    }
 
    if(firstcall || changeModeXRay(model) || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
-      /* If first call or model parameters have changed, the table must be recomputed */
+      /*    If first call or model parameters have changed, the table must be recomputed */
 
       firstcall = 0;
       c_tmp = c;
@@ -588,7 +585,7 @@ double NormIx(const Model *model, double Mh, double c, double z)
    }
 
    if(firstcall || changeModeXRay(model) || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
-      /* If first call or model parameters have changed, the table must be recomputed */
+      /*    if first call or model parameters have changed, the table must be recomputed */
 
       firstcall = 0;
       c_tmp = c;
@@ -648,16 +645,16 @@ void IxXB(const Model *model, double *r, int N, double Mh, double c, double z, d
       return;
    }
 
-   /* Re_XB in Mpc */
+   /*    Re_XB in Mpc */
    double Re = model->IxXB_Re;
 
-   /* total X-ray luminosity of binary stars in CR */
+   /*    total X-ray luminosity of binary stars in CR */
    double CR = model->IxXB_CR;
 
    double Ie = CR / (7.215 * M_PI * Re * Re);
 
    for(i=0;i<N;i++){
-      /* De vaucouleur profile */
+      /*    De vaucouleur profile */
       result[i] = Ie * exp(-7.669*(pow(r[i]/Re, 1.0/4.0) - 1.0));
    }
 
@@ -673,19 +670,19 @@ void IxTwohalo(const Model *model, double *r, int N, double Mh, double c, double
    int i;
    double bias_fac;
 
-   /* FFTLog config */
+   /*    FFTLog config */
    double q = 0.0, mu = 0.5;
    int FFT_N = 64;
    FFTLog_config *fc = FFTLog_init(FFT_N, KMIN, KMAX, q, mu);
 
-   /* parameters to pass to the function */
+   /*    parameters to pass to the function */
    params p;
    p.model = model;
    p.z = z;
    p.c = NAN;  /*    for the HOD model, the concentration(Mh) relationship is fixed */
    p.Mh = Mh;
 
-   /* fonction with parameters to fourier transform */
+   /*    fonction with parameters to fourier transform */
    gsl_function Pk;
    Pk.function = &intForIxTwohalo;
    Pk.params = &p;
@@ -709,6 +706,7 @@ void IxTwohalo(const Model *model, double *r, int N, double Mh, double c, double
    }
    FFTLog_free(fc);
 
+   free(xidm);
 
    return;
 
@@ -800,7 +798,6 @@ double ix(const Model *model, double r, double Mh, double c, double z){
    return Lambda(Tx, ZGas)*pow(1.21*nGas(model, r, Mh, c, z), 2.0) / CM3TOMPC3;
 
 }
-
 
 
 double MhToTx(const Model *model, double Mh, double z)

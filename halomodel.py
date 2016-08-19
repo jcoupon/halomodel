@@ -290,6 +290,7 @@ def test():
 
     from astropy.io import ascii
     from astropy.table import Table, Column
+    import traceback
 
     OK_MESSAGE="OK\n"
     FAIL_MESSAGE="FAILED\n"
@@ -297,7 +298,7 @@ def test():
     compute_ref=False
 
     actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "SigmaIx_HOD", "SigmaIx"]
-    # actions = ["SigmaIx", "SigmaIx_HOD"]
+    # actions = ["dist"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -320,7 +321,7 @@ def test():
                 np.testing.assert_almost_equal(c_halomodel.DA(model, z, 0), 662.494287693, err_msg="in dist")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -340,6 +341,8 @@ def test():
                 model.log10M1 = log10M1
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                traceback.print_exc()
+
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -359,6 +362,7 @@ def test():
                 np.testing.assert_array_almost_equal(log10Mstar, ref['log10Mstar'], err_msg="in MsMh")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -373,7 +377,7 @@ def test():
                 np.testing.assert_almost_equal(concentration(model, 1.e14, z, concenDef="TJ03"), 5.25635255301, err_msg="in concen")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -387,7 +391,7 @@ def test():
                 np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0], 12.7112150386, err_msg="in mass_conv")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -406,7 +410,7 @@ def test():
                 np.testing.assert_array_almost_equal(xi, ref['xi'], err_msg="in xi_dm")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -442,7 +446,7 @@ def test():
                 np.testing.assert_array_almost_equal(analytic, ref['analytic'], err_msg="in uHalo (analytic)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -461,7 +465,7 @@ def test():
                 np.testing.assert_array_almost_equal(n, ref['n'], err_msg="in smf")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -493,7 +497,7 @@ def test():
                 np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl_HOD (total)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -530,7 +534,7 @@ def test():
                 np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -567,7 +571,7 @@ def test():
                 np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in ggl (total)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -591,7 +595,7 @@ def test():
                 np.testing.assert_array_almost_equal(Lambda_0_40, ref['Lambda_0_40'], err_msg="Lambda ZGAS 0.40")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -615,7 +619,7 @@ def test():
                 np.testing.assert_array_almost_equal(CRToLx_0_40, ref['CRToLx_0_40'], err_msg="CRToLx ZGAS 0.40")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -653,7 +657,7 @@ def test():
                 np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
@@ -699,7 +703,7 @@ def test():
                 np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                # print sys.exc_info()
+                traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 

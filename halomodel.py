@@ -36,9 +36,8 @@ path to c library (absolute path)
 """
 
 # where you put this library
-HALOMODEL_DIRNAME="/Users/coupon/local/source/GitHub/halomodel"
-
-# c_halomodel = ctypes.cdll.LoadLibrary(os.path.dirname(os.path.realpath(__file__))+"/lib/libhalomodel.so")
+# HALOMODEL_DIRNAME="/Users/coupon/local/source/GitHub/halomodel"
+HALOMODEL_DIRNAME = os.path.dirname(os.path.realpath(__file__))
 c_halomodel = ctypes.cdll.LoadLibrary(HALOMODEL_DIRNAME+"/lib/libhalomodel.so")
 
 

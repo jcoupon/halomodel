@@ -21,7 +21,7 @@ OBJS    = $(SRCS:.c=.o)
 CFLAGS += -Iinclude -I$(FFTW)/include  -I$(GSL)/include -I$(NICAEA)
 LFLAGS += -lm  -lfftw3 -lgsl -lgslcblas -L$(FFTW)/lib -L$(GSL)/lib -L$(NICAEA)/Demo -lnicaea
 
-LDFLAGS += -Wl,-rpath,$(NICAEA)/Demo
+LDFLAGS += -Wl,-rpath,$(NICAEA)/Demo -Wl,-rpath,$(FFTW)/lib -Wl,-rpath,$(GSL)/lib
 
 # if trouble with link to conda python library, run
 # sudo install_name_tool -id /PATH/TO/anaconda/lib/libpythonx.x.dylib /PATH/TO/anaconda/lib/libpythonx.x.dylib

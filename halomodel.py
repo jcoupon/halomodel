@@ -25,7 +25,7 @@ import os
 import numpy as np
 import ctypes
 import sys
-
+import inspect
 
 """
 
@@ -36,17 +36,11 @@ path to c library (absolute path)
 """
 
 
-import inspect
-
-
-
-
 # where you put this library
 # HALOMODEL_DIRNAME="/Users/coupon/local/source/GitHub/halomodel"
 # HALOMODEL_DIRNAME = os.path.dirname(os.path.realpath(halomodel.__file__))
 HALOMODEL_DIRNAME = os.path.dirname(os.path.realpath(inspect.getfile(inspect.currentframe()))) # script directory
 c_halomodel = ctypes.cdll.LoadLibrary(HALOMODEL_DIRNAME+"/lib/libhalomodel.so")
-
 
 """
 

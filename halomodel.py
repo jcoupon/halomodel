@@ -239,6 +239,8 @@ c_halomodel.Omega_m_z.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes
 c_halomodel.Omega_m_z.restype = ctypes.c_double
 c_halomodel.Delta.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_char_p]
 c_halomodel.Delta.restype = ctypes.c_double
+c_halomodel.r_vir.argtypes = [ ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double ]
+c_halomodel.r_vir.restype = ctypes.c_double
 c_halomodel.Delta_vir.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.Delta_vir.restype = ctypes.c_double
 c_halomodel.msmh_log10Mh.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
@@ -945,12 +947,11 @@ def getCRtoLx_bremss(fileNameIn, redshift):
 
 
 def DA(model, z):
-    """ Returns the angular diamter distance
+    """ Returns the angular diameter distance
     Assumes OmegaR = 0.0
     """
 
     return c_halomodel.DA(model, z, 0)
-
 
 def rh(model, Mh, z):
     """ Returns rh in h^-1 Mpc """
@@ -974,6 +975,17 @@ def Delta(model, z, massDef):
 
     return c_halomodel.Delta(model, z, massDef)
 
+
+def r_vir(model, Mh, c, z):
+    """ Returns r_vir """
+
+
+    if c is None:
+        c = np.nan
+
+    return c_halomodel.r_vir(model, Mh, c, z)
+
+
 def msmh_log10Mstar(model, log10Mh):
     """  Wrapper for c-function msmh_log10Mstar()
 
@@ -995,6 +1007,31 @@ def msmh_log10Mstar(model, log10Mh):
         result = c_halomodel.msmh_log10Mstar(model, log10Mh)
 
     return result
+
+
+
+def msmh_log10Mh(model, log10Mstar):
+    """  Wrapper for c-function msmh_log10Mh()
+
+    Returns Mh = f(Mstar) for a given Mstar-Mh relation.
+
+    INPUT
+    log10Mstar: log10(Mstar) array or single value) in log10 Msun/h units
+
+    OUPUT
+    log10Mh evaluated at log10Mstar
+
+    """
+
+    if isinstance(log10Mstar, (list, tuple, np.ndarray)):
+        result = np.zeros(len(log10Mstar))
+        for i, m in enumerate(log10Mstar):
+            result[i] = c_halomodel.msmh_log10Mh(model, m)
+    else:
+        result = c_halomodel.msmh_log10Mh(model, log10Mstar)
+
+    return result
+
 
 def Lambda(Tx, ZGas):
     """  Wrapper for c-function Lambda()
@@ -1045,28 +1082,6 @@ def CRToLx(model, z, Tx, ZGas):
 
     return result
 
-
-def msmh_log10Mh(model, log10Mstar):
-    """  Wrapper for c-function msmh_log10Mh()
-
-    Returns Mh = f(Mstar) for a given Mstar-Mh relation.
-
-    INPUT
-    log10Mstar: log10(Mstar) array or single value) in log10 Msun/h units
-
-    OUPUT
-    log10Mh evaluated at log10Mstar
-
-    """
-
-    if isinstance(log10Mstar, (list, tuple, np.ndarray)):
-        result = np.zeros(len(log10Mstar))
-        for i, m in enumerate(log10Mstar):
-            result[i] = c_halomodel.msmh_log10Mh(model, m)
-    else:
-        result = c_halomodel.msmh_log10Mh(model, log10Mstar)
-
-    return result
 
 
 def M1_to_M2(model, M1, c1, Delta1, Delta2, z):

@@ -295,7 +295,7 @@ def test():
     OK_MESSAGE="OK\n"
     FAIL_MESSAGE="FAILED\n"
 
-    compute_ref=True
+    compute_ref=False
 
     # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "SigmaIx_HOD", "SigmaIx"]
     actions = ["CRToLx"]
@@ -607,17 +607,18 @@ def test():
         CRToLx_0_15 = CRToLx(model, z, Tx, 0.15)
         CRToLx_0_40 = CRToLx(model, z, Tx, 0.40)
 
+        # formats={'CRToLx_0_00':'%.8g', 'CRToLx_0_15':'%.8g', 'CRToLx_0_40':'%.8g'}
+
         if compute_ref:
-            formats={'CRToLx_0_00':'%.6g', 'CRToLx_0_15':'%.6g', 'CRToLx_0_40':'%.6g'}
             out = Table([Tx, CRToLx_0_00, CRToLx_0_15, CRToLx_0_40], names=['Tx', 'CRToLx_0_00', 'CRToLx_0_15', 'CRToLx_0_40'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", format="commented_header", formats=formats)
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", format="commented_header")
         else:
             sys.stderr.write("CRToLx:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", header_start=-1)
             try:
-                np.testing.assert_array_almost_equal(CRToLx_0_00, ref['CRToLx_0_00'], err_msg="CRToLx ZGAS 0.00")
-                np.testing.assert_array_almost_equal(CRToLx_0_15, ref['CRToLx_0_15'], err_msg="CRToLx ZGAS 0.15")
-                np.testing.assert_array_almost_equal(CRToLx_0_40, ref['CRToLx_0_40'], err_msg="CRToLx ZGAS 0.40")
+                np.testing.assert_array_almost_equal(CRToLx_0_00, ref['CRToLx_0_00'], decimal=5, err_msg="CRToLx ZGAS 0.00")
+                np.testing.assert_array_almost_equal(CRToLx_0_15, ref['CRToLx_0_15'], decimal=5, err_msg="CRToLx ZGAS 0.15")
+                np.testing.assert_array_almost_equal(CRToLx_0_40, ref['CRToLx_0_40'], decimal=5, err_msg="CRToLx ZGAS 0.40")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()

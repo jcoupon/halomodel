@@ -608,9 +608,9 @@ def test():
         CRToLx_0_40 = CRToLx(model, z, Tx, 0.40)
 
         if compute_ref:
-            formats={'CRToLx_0_00':'%.6f', 'CRToLx_0_15':'%.6f', 'CRToLx_0_40':'%.6f'}
-            out = Table([Tx, CRToLx_0_00, CRToLx_0_15, CRToLx_0_40], names=['Tx', 'CRToLx_0_00', 'CRToLx_0_15', 'CRToLx_0_40'], formats=formats)
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", format="commented_header")
+            formats={'CRToLx_0_00':'%.6g', 'CRToLx_0_15':'%.6g', 'CRToLx_0_40':'%.6g'}
+            out = Table([Tx, CRToLx_0_00, CRToLx_0_15, CRToLx_0_40], names=['Tx', 'CRToLx_0_00', 'CRToLx_0_15', 'CRToLx_0_40'])
+            ascii.write(out, HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", format="commented_header", formats=formats)
         else:
             sys.stderr.write("CRToLx:")
             ref = ascii.read(HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", header_start=-1)

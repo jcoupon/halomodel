@@ -25,7 +25,6 @@ $ make
 ```
 
 Then:
-- set "HALOMODEL_DIRNAME" as the path to halomodel in halomodel.py
 - add the path to PYTHONPATH
 - in python: "import halomodel"
 

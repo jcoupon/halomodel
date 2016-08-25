@@ -48,10 +48,10 @@ void SigmaIx(const Model *model, double *theta, int N, double Mh, double c, doub
    int i, j, k, Ninter = 128;
 
    /*    to convert from Mpc units to degree
-    *    R[i] = theta[i] * degToMpc
-    *    CR [... deg^-2 ] = CR [... Mpc^-1]*degToMpc^2
+    *    R[i] = theta[i] * degToMpcDegComo
+    *    CR [... deg^-2 ] = CR [... Mpc^-1]*degToMpcDegComo^2
     */
-   double degToMpc = DM(model, z, 0) * M_PI / 180.0;
+   double degToMpcDegComo = DM(model, z, 0) * M_PI / 180.0;
 
    double *logrinter = (double *)malloc(Ninter*sizeof(double));
    double *rinter = (double *)malloc(Ninter*sizeof(double));
@@ -122,7 +122,7 @@ void SigmaIx(const Model *model, double *theta, int N, double Mh, double c, doub
    if (!isnan(model->XMM_PSF_rc_deg)){
 
       int N_PSF = 128;
-      double Rpp;
+      double Rpp, dlogr_PSF = log(rinter_max/rinter_min)/(double)N_PSF;
       double *phi = (double *)malloc(N_PSF*sizeof(double));
       double *Rp = (double *)malloc(N_PSF*sizeof(double));
       double *intForPhi = (double *)malloc(N_PSF*sizeof(double));
@@ -131,26 +131,29 @@ void SigmaIx(const Model *model, double *theta, int N, double Mh, double c, doub
       double *PSF_profile = (double *)malloc(N_PSF*sizeof(double));
 
       for(i=0;i<N_PSF;i++){
-         Rp[i] = exp(log(rinter_min)+dlogrinter*(double)i);
+         Rp[i] = exp(log(rinter_min)+dlogr_PSF*(double)i);
+         //Rp[i] = rinter_min+exp(dlogr_PSF)*(double)i;
          phi[i] = 0.0+2.0*M_PI / (double)(N_PSF-1) * (double)i;
          intForPhi[i] = 0.0;
          intForRp[i] = 0.0;
-         PSF_profile[i] = King(Rp[i], 1.0, model->XMM_PSF_rc_deg*degToMpc, model->XMM_PSF_alpha)*pow(degToMpc, 2.0);
+         PSF_profile[i] = King(Rp[i], 1.0, model->XMM_PSF_rc_deg*degToMpcDegComo, model->XMM_PSF_alpha)*pow(degToMpcDegComo, 2.0);
       }
+
+      // printf("%g %g\n", Rp[0]/degToMpcDegComo, Rp[N_PSF-1]/degToMpcDegComo );
 
       double norm_PSF = 1.0/trapz(Rp, PSF_profile, N_PSF);
 
       for(i=0;i<N;i++){                                        /*    Main loop */
          for(j=0;j<N_PSF;j++){                                 /*    loop over R' - trapeze integration */
             for(k=0;k<N_PSF;k++){                              /*    loop over phi - trapeze integration  */
-               Rpp = sqrt(pow(theta[i]*degToMpc, 2.0) + Rp[j]*Rp[j] - 2.0*theta[i]*degToMpc*Rp[j]*cos(phi[k]));
+               Rpp = sqrt(pow(theta[i]*degToMpcDegComo, 2.0) + Rp[j]*Rp[j] - 2.0*theta[i]*degToMpcDegComo*Rp[j]*cos(phi[k]));
                if(logrinter[0] < log(Rpp) && log(Rpp) < logrinter[Ninter-1]){
                   intForPhi[k] = gsl_spline_eval(spline, log(Rpp), acc);
                }
             }
-            intForRp[j] = King(Rp[j], 1.0, model->XMM_PSF_rc_deg*degToMpc, model->XMM_PSF_alpha)*pow(degToMpc, 2.0)*trapz(phi, intForPhi, N_PSF);
+            intForRp[j] = King(Rp[j], 1.0, model->XMM_PSF_rc_deg*degToMpcDegComo, model->XMM_PSF_alpha)*pow(degToMpcDegComo, 2.0)*trapz(phi, intForPhi, N_PSF);
          }
-         result[i] = norm_PSF*1.0/(2.0* M_PI)*trapz(Rp, intForRp, N_PSF)*pow(degToMpc, 2.0);
+         result[i] = norm_PSF*1.0/(2.0* M_PI)*trapz(Rp, intForRp, N_PSF)*pow(degToMpcDegComo, 2.0);
       }
 
       free(intForPhi);
@@ -161,8 +164,8 @@ void SigmaIx(const Model *model, double *theta, int N, double Mh, double c, doub
    }else{
       /*    ... or simply return result */
       for(i=0;i<N;i++){
-         if(logrinter[0] < log(theta[i]*degToMpc) && log(theta[i]*degToMpc) < logrinter[Ninter-1]){
-            result[i] = gsl_spline_eval(spline, log(theta[i]*degToMpc), acc)*pow(degToMpc, 2.0) ;
+         if(logrinter[0] < log(theta[i]*degToMpcDegComo) && log(theta[i]*degToMpcDegComo) < logrinter[Ninter-1]){
+            result[i] = gsl_spline_eval(spline, log(theta[i]*degToMpcDegComo), acc)*pow(degToMpcDegComo, 2.0) ;
          }else{
             result[i] = 0.0;
          }

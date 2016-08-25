@@ -252,6 +252,8 @@ c_halomodel.DA.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
 c_halomodel.DA.restype = ctypes.c_double
 c_halomodel.DM.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
 c_halomodel.DM.restype = ctypes.c_double
+c_halomodel.DL.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
+c_halomodel.DL.restype = ctypes.c_double
 c_halomodel.msmh_log10Mstar.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.msmh_log10Mstar.restype = ctypes.c_double
 c_halomodel.Lambda.argtypes = [ctypes.c_double, ctypes.c_double]
@@ -1050,6 +1052,13 @@ def DM(model, z):
     """
 
     return c_halomodel.DM(model, z, 0)
+
+def DL(model, z):
+    """ Returns the luminosity distance
+    Assumes OmegaR = 0.0
+    """
+
+    return c_halomodel.DL(model, z, 0)
 
 
 def rh(model, Mh, z):

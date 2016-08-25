@@ -1245,10 +1245,21 @@ double DM(const Model *model, double z, int wOmegar)
 double DA(const Model *model, double z, int wOmegar)
 {
    /*
-    *    wrapper for angular diameter distance in Mpc/h
+    *    Angular diameter distance in Mpc/h
     */
 
    return DM(model, z, wOmegar)/(1.0+z);
+
+}
+
+
+double DL(const Model *model, double z, int wOmegar)
+{
+   /*
+    *    Luminosity distance in Mpc/h
+    */
+
+   return DM(model, z, wOmegar)*(1.0+z);
 
 }
 

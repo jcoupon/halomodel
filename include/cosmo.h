@@ -91,5 +91,6 @@ double dr_dz(const Model *model, double z);
 double DC(const Model *model, double z, int wOmegar);
 double DM(const Model *model, double z, int wOmegar);
 double DA(const Model *model, double z, int wOmegar);
+double DL(const Model *model, double z, int wOmegar);
 
 #endif

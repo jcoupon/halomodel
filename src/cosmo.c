@@ -177,9 +177,9 @@ double intForxi_m(double k, void *p)
  * ---------------------------------------------------------------- */
 
 double bias_h(const Model *model, double Mh, double z){
-   /*
-   Halo bias with respect to matter density.
-   Units: Mh in M_sol^-1 h.
+  /*
+   *     Halo bias with respect to matter density.
+   *     Units: Mh in M_sol^-1 h.
    */
 
    static int firstcall = 1;
@@ -187,16 +187,20 @@ double bias_h(const Model *model, double Mh, double z){
    static gsl_spline *spline;
    static double inter_min, inter_max;
 
-   if(firstcall){
+   static double z_tmp = NAN;
+
+   if(firstcall || assert_float(z_tmp, z)){
+      // TODO: also check model didn't change
 
       firstcall = 0;
+      z_tmp = z;
 
       double sigma;
 
       int i, Ninter  = 64;
-      double dx      = (LNMH_MAX-LNMH_MIN)/(double)Ninter;
-      double *x      = (double *)malloc(Ninter*sizeof(double));
-      double *y      = (double *)malloc(Ninter*sizeof(double));
+      double dx = (LNMH_MAX-LNMH_MIN)/(double)Ninter;
+      double *x = (double *)malloc(Ninter*sizeof(double));
+      double *y = (double *)malloc(Ninter*sizeof(double));
 
       for(i=0;i<Ninter;i++){
          x[i]  = LNMH_MIN+dx*(double)i;
@@ -207,8 +211,8 @@ double bias_h(const Model *model, double Mh, double z){
       inter_min = exp(x[0]);
       inter_max = exp(x[Ninter-1]);
 
-      acc     = gsl_interp_accel_alloc();
-      spline  = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+      acc = gsl_interp_accel_alloc();
+      spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
       gsl_spline_init(spline, x, y, Ninter);
 
       free(x);
@@ -596,13 +600,15 @@ double r_vir(const Model *model, double Mh, double c, double z)
    static gsl_spline *spline;
    static double inter_min, inter_max;
 
-   static double c_tmp;
+   static double c_tmp = NAN;
+   static double z_tmp = NAN;
 
 
-   if(firstcall || assert_float(c_tmp, c)){
+   if(firstcall || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
 
       firstcall = 0;
       c_tmp = c;
+      z_tmp = z;
 
       int i, Ninter = 64;
       double dx = (LNMH_MAX-LNMH_MIN)/(double)Ninter;

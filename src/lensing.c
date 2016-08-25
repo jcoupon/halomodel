@@ -15,7 +15,14 @@ void DeltaSigma(const Model *model, double *R, int N, double z, int obs_type, do
     *    Computes DeltaSigma = Sigma(<r) - Sigma(r)
     *    See Yoo et al. (2006), Leauthaud et al. (2011)
     *    This is gamma X Sigma_crit X 1e-12
-    *    R in Mpc/h
+    *
+    *    ** DS and R IN COMOVING UNITS **
+    *
+    *    R in [h^-1 Mpc]
+    *    DS in [Msun h^2 pc^-2]
+    *    R_como  = R_phys * (1+z)
+    *    DS_como = DS_phys / (1+z)^2
+
     */
 
    int i;

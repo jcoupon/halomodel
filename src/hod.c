@@ -127,9 +127,12 @@ double msmh_log10Mstar(const Model *model, double log10Mh){
    static double *t_log10Mh;
    static double *t_log10Mstar;
    static double dlog10Mstar;
+   static Model model_tmp;
 
    if (firstcall) {
       firstcall = 0;
+
+      copyModelHOD(model, &model_tmp);
 
       /*    tabulate log10Mh = f(log10Mstar) */
       t_log10Mh = (double *)malloc(N*sizeof(double));
@@ -148,7 +151,10 @@ double msmh_log10Mstar(const Model *model, double log10Mh){
 
    }
 
-   if (changeModelHOD(model)) {
+   if (changeModelHOD(model, &model_tmp)) {
+
+      copyModelHOD(model, &model_tmp);
+
       /*    update log10Mh = f(log10Mstar) */
       for(i=0;i<N;i++){
          t_log10Mh[i] = msmh_log10Mh(model, t_log10Mstar[i]);
@@ -192,91 +198,49 @@ double msmh_log10Mh(const Model *model, double log10Mstar){
 
 #define EPS 1.e-8
 
-int changeModelHOD(const Model *model){
-   /* test if any of the HOD parameters changed */
+void copyModelHOD(const Model *from, Model *to){
+   /*    Copies model "from" to model "to" */
+
+   to->hod = from->hod;
+   to->log10M1 = from->log10M1;
+   to->log10Mstar0 = from->log10Mstar0;
+   to->beta = from->beta;
+   to->delta = from->delta;
+   to->gamma = from->gamma;
+   to->sigma_log_M0 = from->sigma_log_M0;
+   to->sigma_lambda = from->sigma_lambda;
+   to->B_cut = from->B_cut;
+   to->B_sat = from->B_sat;
+   to->beta_cut = from->beta_cut;
+   to->beta_sat = from->beta_sat;
+   to->alpha = from->alpha;
+   to->fcen1 = from->fcen1;
+   to->fcen2 = from->fcen2;
+
+   return;
+}
 
 
-   static Model model_tmp;
-   static int firstcall = 1;
-   int result;
+int changeModelHOD(const Model *before, const Model *after){
+   /* test if any of the X-ray parameters changed */
 
-   if (firstcall) {
-      firstcall = 0;
+   int result = 0;
 
-      model_tmp.log10M1 = model->log10M1;
-      model_tmp.log10Mstar0 = model->log10Mstar0;
-      model_tmp.beta = model->beta;
-      model_tmp.delta = model->delta;
-      model_tmp.gamma = model->gamma;
-      model_tmp.sigma_log_M0 = model->sigma_log_M0;
-      model_tmp.sigma_lambda = model->sigma_lambda;
-      model_tmp.B_cut = model->B_cut;
-      model_tmp.B_sat = model->B_sat;;
-      model_tmp.beta_cut = model->beta_cut;
-      model_tmp.beta_sat = model->beta_sat;
-      model_tmp.alpha = model->alpha;
-      model_tmp.fcen1 = model->fcen1;
-      model_tmp.fcen2 = model->fcen2;
-
-   }
-
-   result = 0;
-   if (fabs(model_tmp.log10M1 - model->log10M1) > EPS) {
-      model_tmp.log10M1 = model->log10M1;
-      result = 1;
-   }
-   if (fabs(model_tmp.log10Mstar0 - model->log10Mstar0) > EPS) {
-      model_tmp.log10Mstar0 = model->log10Mstar0;
-      result = 1;
-   }
-   if (fabs(model_tmp.beta - model->beta) > EPS) {
-      model_tmp.beta = model->beta;
-      result = 1;
-   }
-   if (fabs(model_tmp.delta - model->delta) > EPS) {
-      model_tmp.delta = model->delta;
-      result = 1;
-   }
-   if (fabs(model_tmp.gamma - model->gamma) > EPS) {
-      model_tmp.gamma = model->gamma;
-      result = 1;
-   }
-   if (fabs(model_tmp.sigma_log_M0 - model->sigma_log_M0) > EPS) {
-      model_tmp.sigma_log_M0 = model->sigma_log_M0;
-      result = 1;
-   }
-   if (fabs(model_tmp.sigma_lambda - model->sigma_lambda) > EPS) {
-      model_tmp.sigma_lambda = model->sigma_lambda;
-      result = 1;
-   }
-   if (fabs(model_tmp.B_cut - model->B_cut) > EPS) {
-      model_tmp.B_cut = model->B_cut;
-      result = 1;
-   }
-   if (fabs(model_tmp.B_sat - model->B_sat) > EPS) {
-      model_tmp.B_sat = model->B_sat;
-      result = 1;
-   }
-   if (fabs(model_tmp.beta_cut - model->beta_cut) > EPS) {
-      model_tmp.beta_cut = model->beta_cut;
-      result = 1;
-   }
-   if (fabs(model_tmp.beta_sat - model->beta_sat) > EPS) {
-      model_tmp.beta_sat = model->beta_sat;
-      result = 1;
-   }
-   if (fabs(model_tmp.alpha - model->alpha) > EPS) {
-      model_tmp.alpha = model->alpha;
-      result = 1;
-   }
-   if (fabs(model_tmp.fcen1 - model->fcen1) > EPS) {
-      model_tmp.fcen1 = model->fcen1;
-      result = 1;
-   }
-   if (fabs(model_tmp.fcen2 - model->fcen2) > EPS) {
-      model_tmp.fcen2 = model->fcen2;
-      result = 1;
-   }
+   result += assert_int(before->hod, after->hod);
+   result += assert_float(before->log10M1, after->log10M1);
+   result += assert_float(before->log10Mstar0, after->log10Mstar0);
+   result += assert_float(before->beta, after->beta);
+   result += assert_float(before->delta, after->delta);
+   result += assert_float(before->gamma, after->gamma);
+   result += assert_float(before->sigma_log_M0, after->sigma_log_M0);
+   result += assert_float(before->sigma_lambda, after->sigma_lambda);
+   result += assert_float(before->B_cut, after->B_cut);
+   result += assert_float(before->B_sat, after->B_sat);
+   result += assert_float(before->beta_cut, after->beta_cut);
+   result += assert_float(before->beta_sat, after->beta_sat);
+   result += assert_float(before->alpha, after->alpha);
+   result += assert_float(before->fcen1, after->fcen1);
+   result += assert_float(before->fcen2, after->fcen2);
 
    return result;
 

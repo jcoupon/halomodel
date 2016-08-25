@@ -22,11 +22,15 @@ int main()
    return 0;
 }
 
-void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z, int obs_type, double *result)
+void SigmaIx(const Model *model, double *theta, int N, double Mh, double c, double z, int obs_type, double *result)
 {
    /*
-    *    Computes projected  X-ray luminosity profiles
+    *    Computes projected  X-ray flux profiles
     *    See Vikhlinin et al. (2006) and Cavaliere & Fusco-Femiano (1978)
+    *
+    *    theta in [deg]
+    *    SigmaIx in [CR s^-1 deg^-2]
+    *    Mh in h^-1 Msun
     *
     *    If model.hod is set to 1, it will use the full
     *    HOD parametrisation, and needs a halo mass function. Otherwise
@@ -36,12 +40,18 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
 
 
    if(obs_type == all){
-      SigmaIxAll(model, R, N, Mh, c, z, result);
+      SigmaIxAll(model, theta, N, Mh, c, z, result);
       return;
    }
 
    /*    interpolate to speed up integration for projection and PSF convolution */
    int i, j, k, Ninter = 128;
+
+   /*    to convert from Mpc units to degree
+    *    R[i] = theta[i] * degToMpc
+    *    CR [... deg^-2 ] = CR [... Mpc^-1]*degToMpc^2
+    */
+   double degToMpc = DM(model, z, 0) * M_PI / 180.0;
 
    double *logrinter = (double *)malloc(Ninter*sizeof(double));
    double *rinter = (double *)malloc(Ninter*sizeof(double));
@@ -109,50 +119,50 @@ void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z
    gsl_spline_init(spline, logrinter, SigmaIx_tmp, Ninter);
 
    /*    convolve with PSF... */
-   if (!isnan(model->XMM_PSF_A)){
+   if (!isnan(model->XMM_PSF_rc_deg)){
 
       int N_PSF = 128;
       double Rpp;
-      double *theta = (double *)malloc(N_PSF*sizeof(double));
+      double *phi = (double *)malloc(N_PSF*sizeof(double));
       double *Rp = (double *)malloc(N_PSF*sizeof(double));
-      double *intForTheta = (double *)malloc(N_PSF*sizeof(double));
+      double *intForPhi = (double *)malloc(N_PSF*sizeof(double));
       double *intForRp = (double *)malloc(N_PSF*sizeof(double));
 
       double *PSF_profile = (double *)malloc(N_PSF*sizeof(double));
 
       for(i=0;i<N_PSF;i++){
-         Rp[i]    = exp(log(rinter_min)+dlogrinter*(double)i);
-         theta[i] = 0.0+2.0*M_PI / (double)(N_PSF-1) * (double)i;
-         intForTheta[i] = 0.0;
+         Rp[i] = exp(log(rinter_min)+dlogrinter*(double)i);
+         phi[i] = 0.0+2.0*M_PI / (double)(N_PSF-1) * (double)i;
+         intForPhi[i] = 0.0;
          intForRp[i] = 0.0;
-         PSF_profile[i] = King(Rp[i], model->XMM_PSF_A, model->XMM_PSF_rc, model->XMM_PSF_alpha);
+         PSF_profile[i] = King(Rp[i], 1.0, model->XMM_PSF_rc_deg*degToMpc, model->XMM_PSF_alpha)*pow(degToMpc, 2.0);
       }
 
       double norm_PSF = 1.0/trapz(Rp, PSF_profile, N_PSF);
 
       for(i=0;i<N;i++){                                        /*    Main loop */
          for(j=0;j<N_PSF;j++){                                 /*    loop over R' - trapeze integration */
-            for(k=0;k<N_PSF;k++){                              /*    loop over theta - trapeze integration  */
-               Rpp = sqrt(R[i]*R[i] + Rp[j]*Rp[j] - 2.0*R[i]*Rp[j]*cos(theta[k]));
+            for(k=0;k<N_PSF;k++){                              /*    loop over phi - trapeze integration  */
+               Rpp = sqrt(pow(theta[i]*degToMpc, 2.0) + Rp[j]*Rp[j] - 2.0*theta[i]*degToMpc*Rp[j]*cos(phi[k]));
                if(logrinter[0] < log(Rpp) && log(Rpp) < logrinter[Ninter-1]){
-                  intForTheta[k] = gsl_spline_eval(spline, log(Rpp), acc);
+                  intForPhi[k] = gsl_spline_eval(spline, log(Rpp), acc);
                }
             }
-            intForRp[j] = King(Rp[j], model->XMM_PSF_A, model->XMM_PSF_rc, model->XMM_PSF_alpha) * trapz(theta, intForTheta, N_PSF);
+            intForRp[j] = King(Rp[j], 1.0, model->XMM_PSF_rc_deg*degToMpc, model->XMM_PSF_alpha)*pow(degToMpc, 2.0)*trapz(phi, intForPhi, N_PSF);
          }
-         result[i] = norm_PSF * 1.0 / (2.0 * M_PI) * trapz(Rp, intForRp, N_PSF);
+         result[i] = norm_PSF*1.0/(2.0* M_PI)*trapz(Rp, intForRp, N_PSF)*pow(degToMpc, 2.0);
       }
 
-      free(intForTheta);
+      free(intForPhi);
       free(intForRp);
-      free(theta);
+      free(phi);
       free(Rp);
 
    }else{
       /*    ... or simply return result */
       for(i=0;i<N;i++){
-         if(logrinter[0] < log(R[i]) && log(R[i]) < logrinter[Ninter-1]){
-            result[i] = gsl_spline_eval(spline, log(R[i]), acc);
+         if(logrinter[0] < log(theta[i]*degToMpc) && log(theta[i]*degToMpc) < logrinter[Ninter-1]){
+            result[i] = gsl_spline_eval(spline, log(theta[i]*degToMpc), acc)*pow(degToMpc, 2.0) ;
          }else{
             result[i] = 0.0;
          }
@@ -305,7 +315,7 @@ void Ix1hs(const Model *model, double *r, int N, double Mh, double c, double z, 
 
    /*
     *    Returns the (backward) fourier transform of a
-    *    x-ray luminosity power spectrum.
+    *    x-ray luminosity power spectrum (for satellites).
     */
 
    int i;
@@ -444,8 +454,27 @@ double uIx(const Model *model, double k, double Mh, double c, double z)
     *    halo properties, redshift, etc., so that all the
     *    quantities depending on cosmology are managed by
     *    the wrapper.
+    *
+    *    c is only used to compute the truncation radius
     */
 
+
+#if 0
+   // DEBUGGING
+   params p;
+   p.model = model;
+   p.c = c;
+   p.z = z;
+
+   p.Mh = Mh;
+   double Norm2 = NormIx(model, p.Mh, c, z);
+   p.k = k;
+   return 4.0*M_PI/Norm2*int_gsl(intForUIx, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
+
+#endif
+
+
+   // TODO  no interpolation if c != nan ?
 
    static int firstcall = 1;
 
@@ -458,14 +487,16 @@ double uIx(const Model *model, double k, double Mh, double c, double z)
    static double *y = NULL, *logy = NULL, dlogy = 0.0;
    static double *za;
 
-   static int i, j, Nx = 64, Ny = 64;
+   // static int i, j, Nx = 64, Ny = 64;
+   static int i, j, Nx = 256, Ny = 256;
 
    static double c_tmp = NAN;
    static double z_tmp = NAN;
+   static Model model_tmp;
 
    if(firstcall){
 
-      changeModeXRay(model);
+      copyModelXRay(model, &model_tmp);
 
       /*    initialize interpolation */
       const gsl_interp2d_type *T = gsl_interp2d_bilinear;
@@ -503,12 +534,13 @@ double uIx(const Model *model, double k, double Mh, double c, double z)
 
    }
 
-   if(firstcall || changeModeXRay(model) || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
+   if( firstcall || changeModelXRay(model, &model_tmp) || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
       /*    If first call or model parameters have changed, the table must be recomputed */
 
       firstcall = 0;
       c_tmp = c;
       z_tmp = z;
+      copyModelXRay(model, &model_tmp);
 
       params p;
       p.model = model;
@@ -517,12 +549,17 @@ double uIx(const Model *model, double k, double Mh, double c, double z)
 
       for(i=0;i<Nx;i++){    /*      loop over halo mass */
          p.Mh = x[i];
-         Norm = NormIx(model, Mh, c, z);
+         Norm = NormIx(model, p.Mh, c, z);
          for(j=0;j<Ny;j++){ /*      loop over k */
             p.k = y[j];
             result = 4.0*M_PI/Norm*int_gsl(intForUIx, (void*)&p, log(1.e-6), log(2.0*M_PI/KMIN), 1.e-3);
-            gsl_spline2d_set(spline, za, i, j, result);
+            if (Norm > 0.0){
+               gsl_spline2d_set(spline, za, i, j, result);
+            }else{
+               gsl_spline2d_set(spline, za, i, j, 0.0);
+            }
          }
+
       }
       /*    fill in interpolation space */
       gsl_spline2d_init(spline, logx, logy, za, Nx, Ny);
@@ -554,7 +591,9 @@ double intForUIx(double logr, void *p)
 
 double NormIx(const Model *model, double Mh, double c, double z)
 {
-   /*    Returns the integrated surface brightness  */
+   /*    Returns the integrated surface brightness
+    *    c is only used to compute the truncation radius
+    */
 
    static int firstcall = 1;
 
@@ -569,7 +608,11 @@ double NormIx(const Model *model, double Mh, double c, double z)
    static double c_tmp;
    static double z_tmp;
 
+   static Model model_tmp;
+
    if(firstcall){
+
+      copyModelXRay(model, &model_tmp);
 
       dx = (LNMH_MAX-LNMH_MIN)/(double)Ninter;
       x = (double *)malloc(Ninter*sizeof(double));
@@ -584,12 +627,13 @@ double NormIx(const Model *model, double Mh, double c, double z)
 
    }
 
-   if(firstcall || changeModeXRay(model) || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
+   if(firstcall || changeModelXRay(model, &model_tmp) || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
       /*    if first call or model parameters have changed, the table must be recomputed */
 
       firstcall = 0;
       c_tmp = c;
       z_tmp = z;
+      copyModelXRay(model, &model_tmp);
 
       params p;
       p.model = model;
@@ -679,7 +723,6 @@ void IxTwohalo(const Model *model, double *r, int N, double Mh, double c, double
    params p;
    p.model = model;
    p.z = z;
-   p.c = NAN;  /*    for the HOD model, the concentration(Mh) relationship is fixed */
    p.Mh = Mh;
 
    /*    fonction with parameters to fourier transform */
@@ -696,7 +739,11 @@ void IxTwohalo(const Model *model, double *r, int N, double Mh, double c, double
       bias_fac = sqrt(pow(1.0+1.17*xidm[i],1.49)/pow(1.0+0.69*xidm[i],2.09));
       p.logMlim = logM_lim(model, r[i], p.c, z, all);
       p.r = r[i];
-      p.ngp = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
+      if(model->hod){
+         p.ngp = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
+      }else{
+         p.ngp = p.ng;
+      }
 
       if(p.ng < 1.0e-14 || p.ngp < 1.0e-14 || r[i] < RMIN2){
          result[i] = 0.0;
@@ -728,6 +775,8 @@ double P_Ix_twohalo(double k, void *p)
    ((params *)p)->k = k;
 
    if(model->hod){
+
+      ((params *)p)->c = NAN;  /*    for the HOD model, the concentration(Mh) relationship is fixed */
 
       return P_m_nonlin(model, k, z)*pow(int_gsl(intForP_twohalo_Ix, p, LNMH_MIN, logMlim, 1.e-3), 2.0)/ngp;
 
@@ -1273,97 +1322,51 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
 #undef CONCAT2
 #undef CONCAT
 
+void copyModelXRay(const Model *from, Model *to){
+   /*    Copies model "from" to model "to" */
 
+   to->hod = from->hod;
+   to->gas_log10n0 = from->gas_log10n0;
+   to->gas_log10beta = from->gas_log10beta;
+   to->gas_log10rc = from->gas_log10rc;
+   to->gas_log10n0_1 = from->gas_log10n0_1;
+   to->gas_log10n0_2 = from->gas_log10n0_2;
+   to->gas_log10n0_3 = from->gas_log10n0_3;
+   to->gas_log10n0_4 = from->gas_log10n0_4;
+   to->gas_log10beta_1 = from->gas_log10beta_1;
+   to->gas_log10beta_2 = from->gas_log10beta_2;
+   to->gas_log10beta_3 = from->gas_log10beta_3;
+   to->gas_log10beta_4 = from->gas_log10beta_4;
+   to->gas_log10rc_1 = from->gas_log10rc_1;
+   to->gas_log10rc_2 = from->gas_log10rc_2;
+   to->gas_log10rc_3 = from->gas_log10rc_3;
+   to->gas_log10rc_4 = from->gas_log10rc_4;
 
-int changeModeXRay(const Model *model){
+   return;
+
+}
+
+int changeModelXRay(const Model *before, const Model *after){
    /* test if any of the X-ray parameters changed */
 
-   static Model model_tmp;
-   static int firstcall = 1;
-   int result;
+   int result = 0;
 
-   if (firstcall) {
-      firstcall = 0;
-
-        model_tmp.gas_log10n0 = model->gas_log10n0;
-        model_tmp.gas_log10beta = model->gas_log10beta;
-        model_tmp.gas_log10rc = model->gas_log10rc;
-        model_tmp.gas_log10n0_1 = model->gas_log10n0_1;
-        model_tmp.gas_log10n0_2 = model->gas_log10n0_2;
-        model_tmp.gas_log10n0_3 = model->gas_log10n0_3;
-        model_tmp.gas_log10n0_4 = model->gas_log10n0_4;
-        model_tmp.gas_log10beta_1 = model->gas_log10beta_1;
-        model_tmp.gas_log10beta_2 = model->gas_log10beta_2;
-        model_tmp.gas_log10beta_3 = model->gas_log10beta_3;
-        model_tmp.gas_log10beta_4 = model->gas_log10beta_4;
-        model_tmp.gas_log10rc_1 = model->gas_log10rc_1;
-        model_tmp.gas_log10rc_2 = model->gas_log10rc_2;
-        model_tmp.gas_log10rc_3 = model->gas_log10rc_3;
-        model_tmp.gas_log10rc_4 = model->gas_log10rc_4;
-
-   }
-
-   result = 0;
-   if (assert_float(model_tmp.gas_log10n0, model->gas_log10n0)){
-      model_tmp.gas_log10n0 = model->gas_log10n0;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10beta, model->gas_log10beta)){
-      model_tmp.gas_log10beta = model->gas_log10beta;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10rc, model->gas_log10rc)){
-      model_tmp.gas_log10rc = model->gas_log10rc;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10n0_1, model->gas_log10n0_1)){
-      model_tmp.gas_log10n0_1 = model->gas_log10n0_1;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10n0_2, model->gas_log10n0_2)){
-      model_tmp.gas_log10n0_2 = model->gas_log10n0_2;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10n0_3, model->gas_log10n0_3)){
-      model_tmp.gas_log10n0_3 = model->gas_log10n0_3;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10n0_4, model->gas_log10n0_4)){
-      model_tmp.gas_log10n0_4 = model->gas_log10n0_4;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10beta_1, model->gas_log10beta_1)){
-      model_tmp.gas_log10beta_1 = model->gas_log10beta_1;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10beta_2, model->gas_log10beta_2)){
-      model_tmp.gas_log10beta_2 = model->gas_log10beta_2;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10beta_3, model->gas_log10beta_3)){
-      model_tmp.gas_log10beta_3 = model->gas_log10beta_3;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10beta_4, model->gas_log10beta_4)){
-      model_tmp.gas_log10beta_4 = model->gas_log10beta_4;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10rc_1, model->gas_log10rc_1)){
-      model_tmp.gas_log10rc_1 = model->gas_log10rc_1;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10rc_2, model->gas_log10rc_2)){
-      model_tmp.gas_log10rc_2 = model->gas_log10rc_2;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10rc_3, model->gas_log10rc_3)){
-      model_tmp.gas_log10rc_3 = model->gas_log10rc_3;
-      result = 1;
-   }
-   if (assert_float(model_tmp.gas_log10rc_4, model->gas_log10rc_4)){
-      model_tmp.gas_log10rc_4 = model->gas_log10rc_4;
-      result = 1;
-   }
+   result += assert_int(before->hod, after->hod);
+   result += assert_float(before->gas_log10n0, after->gas_log10n0);
+   result += assert_float(before->gas_log10beta, after->gas_log10beta);
+   result += assert_float(before->gas_log10rc, after->gas_log10rc);
+   result += assert_float(before->gas_log10n0_1, after->gas_log10n0_1);
+   result += assert_float(before->gas_log10n0_2, after->gas_log10n0_2);
+   result += assert_float(before->gas_log10n0_3, after->gas_log10n0_3);
+   result += assert_float(before->gas_log10n0_4, after->gas_log10n0_4);
+   result += assert_float(before->gas_log10beta_1, after->gas_log10beta_1);
+   result += assert_float(before->gas_log10beta_2, after->gas_log10beta_2);
+   result += assert_float(before->gas_log10beta_3, after->gas_log10beta_3);
+   result += assert_float(before->gas_log10beta_4, after->gas_log10beta_4);
+   result += assert_float(before->gas_log10rc_1, after->gas_log10rc_1);
+   result += assert_float(before->gas_log10rc_2, after->gas_log10rc_2);
+   result += assert_float(before->gas_log10rc_3, after->gas_log10rc_3);
+   result += assert_float(before->gas_log10rc_4, after->gas_log10rc_4);
 
    return result;
 

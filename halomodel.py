@@ -35,10 +35,6 @@ path to c library (absolute path)
 
 """
 
-
-# where you put this library
-# HALOMODEL_DIRNAME="/Users/coupon/local/source/GitHub/halomodel"
-# HALOMODEL_DIRNAME = os.path.dirname(os.path.realpath(halomodel.__file__))
 HALOMODEL_DIRNAME = os.path.dirname(os.path.realpath(inspect.getfile(inspect.currentframe()))) # script directory
 c_halomodel = ctypes.cdll.LoadLibrary(HALOMODEL_DIRNAME+"/lib/libhalomodel.so")
 
@@ -126,8 +122,8 @@ class Model(ctypes.Structure):
         ("wtheta_nz", ctypes.POINTER(ctypes.c_double)),
 
         # XMM PSF, King function parameters
-        ("XMM_PSF_A", ctypes.c_double),
-        ("XMM_PSF_rc", ctypes.c_double),
+        # ("XMM_PSF_A", ctypes.c_double),
+        ("XMM_PSF_rc_deg", ctypes.c_double),
         ("XMM_PSF_alpha", ctypes.c_double),
         ]
 
@@ -199,8 +195,9 @@ class Model(ctypes.Structure):
         self.wtheta_nz = None
 
         # XMM PSF
-        self.XMM_PSF_A = np.nan
-        self.XMM_PSF_rc = np.nan
+        # ATTENTION: rc is in degrees
+        # self.XMM_PSF_A = np.nan
+        self.XMM_PSF_rc_deg = np.nan
         self.XMM_PSF_alpha = np.nan
 
 
@@ -252,7 +249,9 @@ c_halomodel.inter_gas_log10beta.restype = ctypes.c_double
 c_halomodel.inter_gas_log10rc.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.inter_gas_log10rc.restype = ctypes.c_double
 c_halomodel.DA.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
-c_halomodel.DA.restype  = ctypes.c_double
+c_halomodel.DA.restype = ctypes.c_double
+c_halomodel.DM.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
+c_halomodel.DM.restype = ctypes.c_double
 c_halomodel.msmh_log10Mstar.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.msmh_log10Mstar.restype = ctypes.c_double
 c_halomodel.Lambda.argtypes = [ctypes.c_double, ctypes.c_double]
@@ -285,7 +284,7 @@ test
 def test():
     """ Performs basic tests
 
-    ** DO NOT CHANGE ANYTHING HERE UNLESS YOU KNOW WHAT YOUR ARE DOING!!!! **
+    ** DO NOT CHANGE ANYTHING HERE UNLESS YOU KNOW WHAT YOU ARE DOING!!!! **
 
     """
 
@@ -293,18 +292,19 @@ def test():
     from astropy.table import Table, Column
     import traceback
 
-    OK_MESSAGE="OK\n"
-    FAIL_MESSAGE="FAILED\n"
+    OK_MESSAGE = "OK\n"
+    FAIL_MESSAGE = "FAILED\n"
 
-    compute_ref=False
-
-    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "SigmaIx_HOD", "SigmaIx"]
-    # actions = ["CRToLx"]
+    compute_ref = False
+    printModelChanges = False
+    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx"]
+    # actions = ["SigmaIx"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
     z = 0.308898
     # z = 0.1
+    m1 =  dumpModel(model)
 
     if "dist" in actions:
         """ angular diameter distance """
@@ -327,19 +327,17 @@ def test():
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "change_HOD" in actions:
-
         if compute_ref:
             pass
         else:
             sys.stderr.write("change_HOD:")
-            c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model)]
-            c_halomodel.changeModelHOD.restype = ctypes.c_int
             try:
-                np.testing.assert_equal(c_halomodel.changeModelHOD(model), 0, err_msg="in change_HOD")
-                log10M1 = model.log10M1
-                model.log10M1 = 10.0
-                np.testing.assert_equal(c_halomodel.changeModelHOD(model), 1, err_msg="in change_HOD")
-                model.log10M1 = log10M1
+                c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model), ctypes.POINTER(Model)]
+                c_halomodel.changeModelHOD.restype = ctypes.c_int
+                model2 = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
+                np.testing.assert_equal(c_halomodel.changeModelHOD(model, model2), 0, err_msg="in change_HOD")
+                model2.hod = 0
+                np.testing.assert_equal(c_halomodel.changeModelHOD(model, model2), 1, err_msg="in change_HOD")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()
@@ -347,18 +345,19 @@ def test():
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
-
     if "MsMh" in actions:
 
         log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
         log10Mstar = msmh_log10Mstar(model, log10Mh)
 
+        fileOutName = HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii"
         if compute_ref:
             out = Table([log10Mh, log10Mstar], names=['log10Mh', 'log10Mstar'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii", format="commented_header")
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("MsMh:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii", header_start=-1)
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(log10Mstar, ref['log10Mstar'], err_msg="in MsMh")
             except:
@@ -367,9 +366,7 @@ def test():
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
-
     if "concen" in actions:
-
         if compute_ref:
             print concentration(model, 1.e14, z, concenDef="TJ03")
         else:
@@ -401,12 +398,14 @@ def test():
         r = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(200.0), 100.00))
         xi = xi_dm(model, r, z)
 
+        fileOutName = HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii"
         if compute_ref:
             out = Table([r, xi], names=['r', 'xi'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii", format="commented_header")
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("xi_dm:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii", header_start=-1)
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(xi, ref['xi'], err_msg="in xi_dm")
             except:
@@ -432,16 +431,18 @@ def test():
         numerical = np.asarray(np.zeros(len(k)), dtype=np.float64)
         analytic  = np.asarray(np.zeros(len(k)), dtype=np.float64)
 
-        sys.stderr.write("uHalo:")
         for i in range(len(k)):
             numerical[i] = c_halomodel.uHalo(model, k[i], Mh, c, z)
             analytic[i]  = c_halomodel.uHaloClosedFormula(model, k[i], Mh, c, z)
 
+        fileOutName = HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii"
         if compute_ref:
             out = Table([k, numerical, analytic], names=['k', 'numerical', 'analytic'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii", format="commented_header")
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii", header_start=-1)
+            sys.stderr.write("uHalo:")
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(numerical, ref['numerical'], err_msg="in uHalo (numerical)")
                 np.testing.assert_array_almost_equal(analytic, ref['analytic'], err_msg="in uHalo (analytic)")
@@ -454,14 +455,17 @@ def test():
     if "smf" in actions:
         """ stellar mass function """
 
+        log10Mstar = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)
+        n = dndlog10Mstar(model, log10Mstar, z, obs_type="all")
+
+        fileOutName = HALOMODEL_DIRNAME+"/data/smf_ref.ascii"
         if compute_ref:
             out = Table([log10Mstar, n], names=['log10Mstar', 'n'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/smf_ref.ascii", format="commented_header")
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("smf:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/smf_ref.ascii", header_start=-1)
-            log10Mstar = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)
-            n = dndlog10Mstar(model, log10Mstar, z, obs_type="all")
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(n, ref['n'], err_msg="in smf")
             except:
@@ -484,12 +488,14 @@ def test():
         sat = DeltaSigma(model, R, z, obs_type="sat")
         twohalo = DeltaSigma(model, R, z, obs_type="twohalo")
 
+        fileOutName = HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii"
         if compute_ref:
             out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii", format="commented_header")
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("ggl_HOD:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii", header_start=-1)
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl_HOD (star)")
                 np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl_HOD (cen)")
@@ -521,12 +527,14 @@ def test():
 
         model.hod = 1
 
+        fileOutName = HALOMODEL_DIRNAME+"/data/ggl_ref.ascii"
         if compute_ref:
             out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/ggl_ref.ascii", format="commented_header")
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("ggl:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/ggl_ref.ascii", header_start=-1)
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(star, ref['star'], err_msg="in ggl (star)")
                 np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in ggl (cen)")
@@ -559,12 +567,14 @@ def test():
         twohalo = wOfTheta(model, theta, z, obs_type="twohalo")
         total = wOfTheta(model, theta, z, obs_type="all")
 
+        fileOutName = HALOMODEL_DIRNAME+"/data/wtheta_HOD_ref.ascii"
         if compute_ref:
             out = Table([theta, total, censat, satsat, twohalo], names=['theta', 'total', 'censat', 'satsat', 'twohalo'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/wtheta_HOD_ref.ascii", format="commented_header")
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("wtheta:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/wtheta_HOD_ref.ascii", header_start=-1)
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(censat, ref['censat'], err_msg="in wtheta (censat)")
                 np.testing.assert_array_almost_equal(satsat, ref['satsat'], err_msg="in wtheta (satsat)")
@@ -584,12 +594,14 @@ def test():
         Lambda_0_15 = Lambda(Tx, 0.15)
         Lambda_0_40 = Lambda(Tx, 0.40)
 
+        fileOutName = HALOMODEL_DIRNAME+"/data/Lambda_ref.ascii"
         if compute_ref:
             out = Table([Tx, Lambda_0_00, Lambda_0_15, Lambda_0_40], names=['Tx', 'Lambda_0_00', 'Lambda_0_15', 'Lambda_0_40'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/Lambda_ref.ascii", format="commented_header")
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("Lambda:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/Lambda_ref.ascii", header_start=-1)
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(Lambda_0_00, ref['Lambda_0_00'], err_msg="Lambda ZGAS 0.00")
                 np.testing.assert_array_almost_equal(Lambda_0_15, ref['Lambda_0_15'], err_msg="Lambda ZGAS 0.15")
@@ -610,12 +622,14 @@ def test():
 
         # formats={'CRToLx_0_00':'%.8g', 'CRToLx_0_15':'%.8g', 'CRToLx_0_40':'%.8g'}
 
+        fileOutName = HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii"
         if compute_ref:
             out = Table([Tx, CRToLx_0_00, CRToLx_0_15, CRToLx_0_40], names=['Tx', 'CRToLx_0_00', 'CRToLx_0_15', 'CRToLx_0_40'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", format="commented_header")
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("CRToLx:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii", header_start=-1)
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(CRToLx_0_00, ref['CRToLx_0_00'], decimal=5, err_msg="CRToLx ZGAS 0.00")
                 np.testing.assert_array_almost_equal(CRToLx_0_15, ref['CRToLx_0_15'], decimal=5, err_msg="CRToLx ZGAS 0.15")
@@ -626,32 +640,85 @@ def test():
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
+    if "uIx" in actions:
+        """ Fourrier transform of X-ray profile """
+
+        c_halomodel.uIx.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+        c_halomodel.uIx.restype = ctypes.c_double
+
+        Mh = 1.e14
+        c = np.nan
+
+        k = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(1.e4), 100))
+
+        numerical = np.asarray(np.zeros(len(k)), dtype=np.float64)
+
+        # model.hod = 1
+        # model.log10Mstar_min = 11.10
+        # model.log10Mstar_max = 11.30
+
+        # model.IxXB_Re = 0.01196
+        # model.IxXB_CR = 6.56997872802e-05
+
+        # twohalo = SigmaIx(model, k, Mh, c, z, obs_type="twohalo", PSF=None)
+
+        # model.hod = 0
+        # twohalo = SigmaIx(model, k, Mh, c, z, obs_type="twohalo", PSF=None)
+
+        # print twohalo[0]
+
+        # return
+
+        for i in range(len(k)):
+            numerical[i] = c_halomodel.uIx(model, k[i], Mh, c, z)
+
+        # print numerical[0]
+
+        fileOutName = HALOMODEL_DIRNAME+"/data/uIx_ref.ascii"
+        if compute_ref:
+            out = Table([k, numerical], names=['k', 'numerical'])
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
+        else:
+            sys.stderr.write("uIx:")
+            ref = ascii.read(fileOutName, header_start=-1)
+            try:
+                np.testing.assert_array_almost_equal(numerical, ref['numerical'], err_msg="in uIx")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                traceback.print_exc()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+
+
     if "SigmaIx_HOD" in actions:
         """ X-ray projected profile, HOD model """
 
-        model.log10Mstar_min = 11.10 - 0.1549 #- 0.142668
-        model.log10Mstar_max = 11.30 - 0.1549 #- 0.142668
+        model.log10Mstar_min = 10.60 - 0.1549 #- 0.142668
+        model.log10Mstar_max = 10.80 - 0.1549 #- 0.142668
 
         model.IxXB_Re = 0.01196
         model.IxXB_CR = 6.56997872802e-05
 
-        R = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(5.e0), 1000))
+        theta = pow(10.0, np.linspace(np.log10(1.e-4), np.log10(5.e0), 100))
 
         Mh = np.nan
         c = np.nan
 
-        cen = SigmaIx(model, R, Mh, c, z, obs_type="cen", PSF=None)
-        sat = SigmaIx(model, R, Mh, c, z, obs_type="sat", PSF=None)
-        XB = SigmaIx(model, R, Mh, c, z, obs_type="XB", PSF=None)
-        twohalo = SigmaIx(model, R, Mh, c, z, obs_type="twohalo", PSF=None)
-        total = SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None)
+        cen = SigmaIx(model, theta, Mh, c, z, obs_type="cen", PSF=None)
+        sat = SigmaIx(model, theta, Mh, c, z, obs_type="sat", PSF=None)
+        XB = SigmaIx(model, theta, Mh, c, z, obs_type="XB", PSF=None)
+        twohalo = SigmaIx(model, theta, Mh, c, z, obs_type="twohalo", PSF=None)
+        total = SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None)
 
+        fileOutName = HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_ref.ascii"
         if compute_ref:
-            out = Table([R, total, cen, sat, XB, twohalo], names=['R', 'total', 'cen', 'sat', 'XB', 'twohalo'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_ref.ascii", format="commented_header")
+            out = Table([theta, total, cen, sat, XB, twohalo], names=['theta', 'total', 'cen', 'sat', 'XB', 'twohalo'])
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("SigmaIx_HOD:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_ref.ascii", header_start=-1)
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
                 np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx_HOD (cen)")
                 np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx_HOD (sat)")
@@ -671,7 +738,7 @@ def test():
         model.hod = 0
 
         Mh = 1.e14
-        c  = np.nan
+        c = np.nan
 
         R500 = c_halomodel.rh(model, Mh, Delta(model, z, "M500c"), z)
 
@@ -682,33 +749,51 @@ def test():
         model.IxXB_Re = 0.01196
         model.IxXB_CR = 6.56997872802e-05
 
-        R = pow(10.0, np.linspace(np.log10(1.e-3), np.log10(1.e2), 100))
+        theta = pow(10.0, np.linspace(np.log10(1.e-4), np.log10(1.e2), 100))
+        PSF = [0.00211586211541, 1.851542]
 
-        total = SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None)
-        cen = SigmaIx(model, R, Mh, c, z, obs_type="cen", PSF=None)
-        sat = SigmaIx(model, R, Mh, c, z, obs_type="sat", PSF=None)
-        XB = SigmaIx(model, R, Mh, c, z, obs_type="XB", PSF=None)
-        twohalo = SigmaIx(model, R, Mh, c, z, obs_type="twohalo", PSF=None)
+        total = SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None)
+        cen = SigmaIx(model, theta, Mh, c, z, obs_type="cen", PSF=PSF)
+        # DEBUGGING
+        # out = Table([theta, cen], names=['theta', 'cen'])
+        # ascii.write(out, HALOMODEL_DIRNAME+"/data/SigmaIx_deg_ref.ascii", format="commented_header")
+        # return
+        sat = SigmaIx(model, theta, Mh, c, z, obs_type="sat", PSF=None)
+        XB = SigmaIx(model, theta, Mh, c, z, obs_type="XB", PSF=None)
+        twohalo = SigmaIx(model, theta, Mh, c, z, obs_type="twohalo", PSF=None)
 
-        model.hod = 1
-
+        fileOutName = HALOMODEL_DIRNAME+"/data/SigmaIx_ref.ascii"
         if compute_ref:
-            out = Table([R, total, cen, sat, XB, twohalo], names=['R', 'total', 'cen', 'sat', 'XB', 'twohalo'])
-            ascii.write(out, HALOMODEL_DIRNAME+"/data/SigmaIx_ref.ascii", format="commented_header")
+            out = Table([theta, total, cen, sat, XB, twohalo], names=['theta', 'total', 'cen', 'sat', 'XB', 'twohalo'])
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("SigmaIx:")
-            ref = ascii.read(HALOMODEL_DIRNAME+"/data/SigmaIx_ref.ascii", header_start=-1)
+            ref = ascii.read(fileOutName, header_start=-1)
             try:
-                np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx_HOD (cen)")
-                np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx_HOD (sat)")
-                np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx_HOD (XB)")
-                np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in SigmaIx_HOD (twohalo)")
-                np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
+                np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx (cen)")
+                np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx (sat)")
+                np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx (XB)")
+                np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in SigmaIx (twohalo)")
+                np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx (total)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+
+    m2 = dumpModel(model)
+
+    if printModelChanges:
+        if m1 != m2:
+            sys.stderr.write("Changes in the model:\n")
+            import difflib
+            m1 = m1.splitlines(1)
+            m2 = m2.splitlines(1)
+            diff = difflib.unified_diff(m1, m2)
+            sys.stderr.write(''.join(diff))
+
+    return
 
 
 def fitBetaPara(args):
@@ -785,7 +870,7 @@ def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
     Returns the stellar mass function in units of (Mpc/h)^-3 dex^-1
     Mstar in [h^-1 Msun]
 
-    ** Mpc in comoving units **
+    ** volume in comoving units **
 
     INPUT
     log10Mstar: log10(Mstar) array or single value) in log10 Msun/h units
@@ -816,13 +901,13 @@ def DeltaSigma(model, R, zl, obs_type="all"):
     """ Returns DeltaSigma for NFW halo mass profile (in h Msun/pc^2) -
     PHYSICAL UNITS, unless como=True set
 
-    ** DS and Mpc in comoving units **
+    ** DS and R in comoving units **
 
-    r_como  = r_phys * (1+z)
+    R_como  = R_phys * (1+z)
     DS_como = DS_phys / (1+z)^2
 
     INPUT
-    R: (array or single value) in physical units (Mpc/h)
+    R: (array or single value) in comoving units [h^-1 Mpc]
     zl: redshift of the lens
     obs_type: [cen, sat, twohalo, star, all], for "star"
 
@@ -856,22 +941,22 @@ def DeltaSigma(model, R, zl, obs_type="all"):
     return result
 
 
-def wOfTheta(model, R, zl, obs_type="all"):
+def wOfTheta(model, theta, z, obs_type="all"):
     """
-    Returns w(theta) for NFW halo mass profile (in h Msun/pc^2) -
+    Returns w(theta) for NFW halo mass profile -
 
     INPUT PARAMETERS:
-    R: (array or single value) in physical units (Mpc/h)
+    theta: (array or single value) in degree
     z: mean redshift of the population
 
     OUTPUT
-    W(theta)
+    w(theta)
 
     obs_type: [censat, satsat, twohalo, all]
     """
 
-    R = np.asarray(R, dtype=np.float64)
-    result = np.asarray(np.zeros(len(R)), dtype=np.float64)
+    theta = np.asarray(theta, dtype=np.float64)
+    result = np.asarray(np.zeros(len(theta)), dtype=np.float64)
 
     if obs_type == "censat":
         obs_type = 12
@@ -884,18 +969,17 @@ def wOfTheta(model, R, zl, obs_type="all"):
     else:
         raise ValueError("wOfTheta: obs_type \"{0:s}\" is not recognised".format(obs_type))
 
-
-    c_halomodel.wOfTheta(model, R, len(R), zl, obs_type, result)
+    c_halomodel.wOfTheta(model, theta, len(theta), z, obs_type, result)
 
     return result
 
-def SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None):
+def SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None):
     """ Wrapper for c-function SigmaIx()
 
-    Returns the X-ray luminosity profile
+    Returns the X-ray brightness profile in CR s^-1 deg^-2
 
     INPUT
-    R: (array or single value) in physical units (Mpc)
+    theta: (array or single value) in degree
     Mh: mass of the host halo (not used if HOD set)
     c: concentration of the host halo (not used if HOD set)
     z: redshift
@@ -906,8 +990,8 @@ def SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None):
     SigmaIx(R)
     """
 
-    R = np.asarray(R, dtype=np.float64)
-    result = np.asarray(np.zeros(len(R)), dtype=np.float64)
+    theta = np.asarray(theta, dtype=np.float64)
+    result = np.asarray(np.zeros(len(theta)), dtype=np.float64)
 
     if obs_type == "cen":
         obs_type = 1
@@ -924,11 +1008,11 @@ def SigmaIx(model, R, Mh, c, z, obs_type="all", PSF=None):
 
     # PSF in model
     if PSF is not None:
-        model.XMM_PSF_A = PSF[0]
-        model.XMM_PSF_rc = PSF[1]
-        model.XMM_PSF_alpha = PSF[2]
+        # model.XMM_PSF_A = PSF[0]
+        model.XMM_PSF_rc_deg = PSF[0]
+        model.XMM_PSF_alpha = PSF[1]
 
-    c_halomodel.SigmaIx(model, R, len(R), Mh, c, z, obs_type, result)
+    c_halomodel.SigmaIx(model, theta, len(theta), Mh, c, z, obs_type, result)
 
     return result
 
@@ -958,6 +1042,15 @@ def DA(model, z):
     """
 
     return c_halomodel.DA(model, z, 0)
+
+
+def DM(model, z):
+    """ Returns the transverse comoving distance
+    Assumes OmegaR = 0.0
+    """
+
+    return c_halomodel.DM(model, z, 0)
+
 
 def rh(model, Mh, z):
     """ Returns rh in h^-1 Mpc """
@@ -1144,8 +1237,26 @@ def setInterParaGas(model, log10Mh):
 
         return [model.gas_log10n0 , model.gas_log10beta, model.gas_log10rc]
 
+def dumpModel(model, fileOutName=None):
+    """ Returns model parameters as a string
+    If a file name is given, it will prepend
+    the string as a header.
+    """
+
+    string = ""
+    for a in model._fields_:
+        string+= "# {0:s} = {1}\n".format(a[0], getattr(model, a[0]))
+
+    if fileOutName is not None:
+        fileIn = file(fileOutName, 'r')
+        new = string+fileIn.read()
+        fileIn.close()
+
+        fileOut = open(fileOutName, 'w')
+        fileOut.write(new)
 
 
+    return string
 
 
 # ----------------------------------------------------- #
@@ -1163,6 +1274,41 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ----------------------------------------------------- #
@@ -1256,7 +1402,7 @@ def Ix_DEPRECATED(R, model, PSF=None, obs_type="cen", log10Mh=-1.0, z=0.0):
     # PSF in model
     if PSF is not None:
         model.XMM_PSF_A     = PSF[0]
-        model.XMM_PSF_rc   = PSF[1]
+        model.XMM_PSF_rc_deg  = PSF[1]
         model.XMM_PSF_alpha = PSF[2]
 
     # this is used if model.HOD = 0 (non HOD modelling =)

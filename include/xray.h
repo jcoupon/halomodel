@@ -12,10 +12,10 @@
 #include "abundance.h"
 #include "cosmo.h"
 
-void SigmaIx(const Model *model, double *R, int N, double Mh, double c, double z, int obs_type, double *result);
+void SigmaIx(const Model *model, double *theta, int N, double Mh, double c, double z, int obs_type, double *result);
 double intForIx(double logz, void *p);
 
-void SigmaIxAll(const Model *model, double *R, int N, double Mh, double c, double z, double *result);
+void SigmaIxAll(const Model *model, double *theta, int N, double Mh, double c, double z, double *result);
 
 void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, double *result);
 double intForIx1hc(double logMh, void *p);
@@ -54,7 +54,8 @@ double inter_gas_log10n0(const Model *model, double log10Mh);
 double inter_gas_log10beta(const Model *model, double log10Mh);
 double inter_gas_log10rc(const Model *model, double log10Mh);
 
-int changeModeXRay(const Model *model);
+void copyModelXRay(const Model *from, Model *to);
+int changeModelXRay(const Model *before, const Model *after);
 
 #endif
 

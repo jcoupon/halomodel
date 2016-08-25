@@ -98,8 +98,8 @@ typedef struct Model
    double *wtheta_nz;
 
    /* XMM PSF (King's profile, must be normalised) */
-   double XMM_PSF_A;
-   double XMM_PSF_rc;
+   // double XMM_PSF_A;
+   double XMM_PSF_rc_deg;
    double XMM_PSF_alpha;
 
 }  Model;
@@ -239,6 +239,7 @@ double sinc(double x);
 double trapz(double *x, double *y, int N);
 double King(double r, double A, double rc, double alpha);
 int assert_float(double before, double after);
+int assert_int(double before, double after);
 
 
 #endif

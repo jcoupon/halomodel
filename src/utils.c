@@ -349,7 +349,27 @@ int assert_float(double before, double after){
       return 1;
    }else if(!isnan(before) && isnan(after)){
       return 1;
-   }else if(fabs(before - after) > 1.e-8){
+   }else if(fabs(before - after) > 1.e-15){
+      return 1;
+   }else{
+      return 0;
+   }
+
+
+}
+
+int assert_int(double before, double after){
+   /*
+    *    asserts two floats
+    */
+
+   if (isnan(before) && isnan(after)){
+      return 0;
+   }else if (isnan(before) && !isnan(after)){
+      return 1;
+   }else if(!isnan(before) && isnan(after)){
+      return 1;
+   }else if(before != after){
       return 1;
    }else{
       return 0;

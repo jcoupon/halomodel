@@ -29,14 +29,14 @@ void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, 
 
    /* tabulate xi(r) */
    int i,j,k,Ninter = 40;
-   double *u        = malloc(Ninter*sizeof(double));
-   double *logu     = malloc(Ninter*sizeof(double));
-   double umin      = RMIN, umax = RMAX;
-   double dlogu     = log(umax/umin)/(double)Ninter;
+   double *u = malloc(Ninter*sizeof(double));
+   double *logu = malloc(Ninter*sizeof(double));
+   double umin = RMIN, umax = RMAX;
+   double dlogu = log(umax/umin)/(double)Ninter;
 
    for(i=0;i<Ninter;i++){
       logu[i] = log(umin)+dlogu*(double)i;
-      u[i]    = exp(logu[i]);
+      u[i] = exp(logu[i]);
    }
 
    double *xi = malloc(Ninter*sizeof(double));
@@ -44,14 +44,14 @@ void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, 
 
    /* interpolate xi(r) */
    gsl_interp_accel *acc = gsl_interp_accel_alloc();
-   gsl_spline *spline    = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+   gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
    gsl_spline_init(spline, logu, xi, Ninter);
 
    double deg_to_rad_sqr = pow(M_PI/180.0, 2.0);
    double r, x, sum;
 
    double nz_Norm = trapz(model->wtheta_nz_z, model->wtheta_nz, model->wtheta_nz_N);
-   double nz_dz   =  model->wtheta_nz_z[1] - model->wtheta_nz_z[0];
+   double nz_dz = model->wtheta_nz_z[1] - model->wtheta_nz_z[0];
 
    /* Limber equation - project xi to get w */
    for(i=0;i<N;i++){ /* loop over theta */
@@ -62,7 +62,7 @@ void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, 
          x = DM(model, z, 0);
          sum = 0.0;
          for (k=0;k<Ninter;k++) {
-            r    = sqrt(u[k]*u[k] + x*x*theta[i]*theta[i]*deg_to_rad_sqr);
+            r = sqrt(u[k]*u[k] + x*x*theta[i]*theta[i]*deg_to_rad_sqr);
             if (log(r) < logu[Ninter-1]) {
                /* to unsure log(r) lies within interpolation limits */
                sum += u[k]*gsl_spline_eval(spline,log(r),acc);
@@ -73,7 +73,7 @@ void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, 
          result[i] += nsqr_dzdr * sum;
       }
 
-      result[i] *= 2.0 * nz_dz * dlogu / pow(nz_Norm, 2.0);
+      result[i] *= 2.0*nz_dz*dlogu/pow(nz_Norm, 2.0);
    }
 
    free(xi);

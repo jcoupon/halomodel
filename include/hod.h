@@ -21,7 +21,7 @@ double Ngal(const Model *model, double Mh, double log10Mstar_min, double log10Ms
 double msmh_log10Mstar(const Model *model, double Mh);
 double msmh_log10Mh(const Model *model, double log10Mstar);
 
-int changeModelHOD(const Model *model);
-
+void copyModelHOD(const Model *from, Model *to);
+int changeModelHOD(const Model *before, const Model *after);
 
 #endif

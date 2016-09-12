@@ -747,7 +747,7 @@ double f_sigma(const Model *model, double sigma, double z)
    /* f(sigma) */
 
    double result;
-   double a, p, A, b, c, log_Delta;
+   double a, p, A, b, c, log10_Delta, log10_alpha;
 
    double x  = Dplus(model, z)*sigma;
    double nu = delta_c(model, z)/x;
@@ -775,13 +775,21 @@ double f_sigma(const Model *model, double sigma, double z)
 
    } else if( !strcmp(model->hmfDef, "T08")){
       // Tinker et al. (2008)
-      log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) ); // z=0.0 <- comoving units
-      A = 0.1*log_Delta - 0.05;
-      a = 1.43 + pow(log_Delta - 2.30,  1.5);
-      b = 1.00 + pow(log_Delta - 1.60, -1.5);
-      c = 1.20 + pow(log_Delta - 2.35,  1.6);
+      log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) ); // z=0.0 <- comoving units
+
+      A = 0.1*log10_Delta - 0.05;
+      a = 1.43 + pow(log10_Delta - 2.30,  1.5);
+      b = 1.00 + pow(log10_Delta - 1.60, -1.5);
+      c = 1.20 + pow(MAX(log10_Delta - 2.35, 0.0),  1.6);
+
+      // redshift evolution
+      log10_alpha = - pow(0.75/(log10_Delta - log10(75.0)), 1.2);
+      A *= pow(1.+z, -0.14);
+      a *= pow(1.+z, -0.06);
+      b *= pow(1.+z, -pow(10.0, log10_alpha));
 
       result = A * (pow(x/b, -a)+1.0)*exp(-c/(x*x));
+
 
    } else {
       fprintf(stderr, "f_sigma(): halo mass definition \"%s\" is not defined (%s:%d). Exiting...\n", model->hmfDef, __FILE__, __LINE__);

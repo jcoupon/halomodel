@@ -559,7 +559,7 @@ double Delta(const Model *model, double z, char *massDef)
 
    if( !strcmp(massDef, "M200m")){
 
-      result = 200.0 * Omega_m_z(model, 0.0, -1.0); // z=0.0 <- comoving units
+      result = 200.0 * Omega_m_z(model, z, -1.0); // z=0.0 <- comoving units ??
 
    }else if( !strcmp(massDef, "M200c")){
 
@@ -567,7 +567,7 @@ double Delta(const Model *model, double z, char *massDef)
 
    }else if( !strcmp(massDef, "M500m")){
 
-      result = 500.0 * Omega_m_z(model, 0.0, -1.0); // z=0.0 <- comoving units
+      result = 500.0 * Omega_m_z(model, z, -1.0); // z=0.0 <- comoving units
 
    } else if( !strcmp(massDef, "M500c")){
 
@@ -579,7 +579,7 @@ double Delta(const Model *model, double z, char *massDef)
 
    } else if( !strcmp(massDef, "MvirC15")){
 
-      result = Delta_vir(model, z)* Omega_m_z(model, 0.0, -1.0); // matches Coupon et al. (2015)
+      result = Delta_vir(model, z)* Omega_m_z(model, 0.8, -1.0); // matches Coupon et al. (2015)
 
    } else {
 
@@ -620,7 +620,7 @@ double r_vir(const Model *model, double Mh, double c, double z)
          if( !strcmp(model->massDef, "MvirC15")){
             y[i] = rh(model, exp(x[i]), NAN, z);  // DEBUGGING: matches Coupon et al. (2015) but is not exactly correct
          }else{
-            y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, 0.0)*Delta_vir(model, z)), 1.0/3.0);
+            y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, z)*Delta_vir(model, z)), 1.0/3.0);
          }
       }
 
@@ -775,7 +775,13 @@ double f_sigma(const Model *model, double sigma, double z)
 
    } else if( !strcmp(model->hmfDef, "T08")){
       // Tinker et al. (2008)
-      log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) ); // z=0.0 <- comoving units
+
+
+      // log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) ); // z=0.0 <- comoving units
+
+      log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) ); // z=0.0 <- comoving units
+
+
 
       A = 0.1*log10_Delta - 0.05;
       a = 1.43 + pow(log10_Delta - 2.30,  1.5);
@@ -845,7 +851,7 @@ double b_sigma(const Model *model, double sigma, double z)
    }else if( !strcmp(model->biasDef, "T08")){
       // Tinker et al. (2008, 2010)
 
-      log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) ); // z=0.0 <- comoving units
+      log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) ); // z=0.0 <- comoving units
 
       A = 1.0+0.24*log_Delta*exp(-pow(4.0/log_Delta,4.0));
       a = 0.44*log_Delta-0.88;
@@ -935,8 +941,7 @@ double rh(const Model *model, double Mh, double D, double z){
    if (isnan(D)){
       D = Delta(model, z, model->massDef);
    }
-
-   return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, 0.0)*D), 1.0/3.0);
+   return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, z)*D), 1.0/3.0);
 }
 
 double Mh_rh(const Model *model, double r, double z)
@@ -944,7 +949,9 @@ double Mh_rh(const Model *model, double r, double z)
   /* Mass of a halo with radius rh. If Delta = Delta_vir, this
   is virial mass. This is NOT the mass integrated within r, Mh(r). */
 
-  return (4.0/3.0)*M_PI*r*r*r*rho_crit(model, 0.0)*Delta(model, z, model->massDef);
+  // TODO rho_crit(model, z) ??
+
+  return (4.0/3.0)*M_PI*r*r*r*rho_crit(model, z)*Delta(model, z, model->massDef);
 }
 
 /* ---------------------------------------------------------------- *

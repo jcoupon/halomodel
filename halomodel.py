@@ -297,7 +297,7 @@ def test():
     OK_MESSAGE = "OK\n"
     FAIL_MESSAGE = "FAILED\n"
 
-    compute_ref = True
+    compute_ref = False
     printModelChanges = False
     actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx"]
     # actions = ["SigmaIx"]

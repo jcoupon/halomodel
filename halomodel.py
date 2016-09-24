@@ -388,7 +388,7 @@ def test():
         else:
             sys.stderr.write("mass_conv:")
             try:
-                np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0], 12.7112150386, err_msg="in mass_conv")
+                np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0], 12.86819824083611, err_msg="in mass_conv")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()

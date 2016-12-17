@@ -238,7 +238,6 @@ double dndlnMh(const Model *model, double Mh, double z){
              = rho_0 / M * f(sigma) * dsigma^{-1} / dln M
    Units: [dn/dlnM] = h^3 Mpc^-3  Msun^-1 h.
 
-   This function support HUBBLE_UNIT = 0
    if unset, it will take input as Msol and
    outputs dn/dlnM in Mpc^-3  Msun.
 

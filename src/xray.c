@@ -1166,10 +1166,17 @@ double betaModel(double r, double n0, double beta, double rc){
 }
 
 
+/*
 #define LOG10MH_1 12.9478
 #define LOG10MH_2 13.2884
 #define LOG10MH_3 13.6673
 #define LOG10MH_4 14.0646
+*/
+#define LOG10MH_1 12.00
+#define LOG10MH_2 13.00
+#define LOG10MH_3 14.00
+#define LOG10MH_4 15.00
+
 
 #define CONCAT2(a, b)  a##b
 #define CONCAT(a, b) CONCAT2(a, b)
@@ -1179,7 +1186,7 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
 
    return model->CONCAT(PARA, _1) + model->CONCAT(PARA, _2) * (log10Mh-14.0);
 
-/*
+
    static int firstcall = 1;
    static gsl_interp_accel *acc;
    static gsl_spline *spline;
@@ -1216,16 +1223,16 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
       return model->CONCAT(PARA, _1);
    }
 
-   */
+
 }
 #undef PARA
 
 #define PARA gas_log10beta
 double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
 
-   return model->CONCAT(PARA, _1) + model->CONCAT(PARA, _2) * (log10Mh-14.0);
+   // return model->CONCAT(PARA, _1) + model->CONCAT(PARA, _2) * (log10Mh-14.0);
 
-   /*
+
    static int firstcall = 1;
    static gsl_interp_accel *acc;
    static gsl_spline *spline;
@@ -1262,7 +1269,7 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
    }else{
       return model->CONCAT(PARA, _1);
    }
-   */
+
 }
 #undef PARA
 
@@ -1270,9 +1277,7 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
 #define PARA gas_log10rc
 double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
 
-   return model->CONCAT(PARA, _1) + model->CONCAT(PARA, _2) * (log10Mh-14.0);
-
-/*
+   // return model->CONCAT(PARA, _1) + model->CONCAT(PARA, _2) * (log10Mh-14.0);
 
 
    static int firstcall = 1;
@@ -1312,7 +1317,7 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
       return model->CONCAT(PARA, _1);
    }
 
-   */
+
 
 }
 #undef PARA

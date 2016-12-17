@@ -175,7 +175,7 @@ class Model(ctypes.Structure):
         self.gas_log10n0_3 = np.nan         # not used
         self.gas_log10n0_4 = np.nan         # not used
         self.gas_log10beta_1 = -0.32104805  # log10beta = gas_log10beta_1  + gas_log10beta_2 * (log10Mh-14.0)
-        self.gas_log10beta_2 = +0.26463453  #
+        self.gas_log10beta_2 = +0.26463453  # unitless
         self.gas_log10beta_3 = np.nan       # not used
         self.gas_log10beta_4 = np.nan       # not used
         self.gas_log10rc_1 = -1.12356845357 # log10beta = gas_log10rc_1  + gas_log10rc_2 * (log10Mh-14.0)
@@ -220,8 +220,12 @@ c function prototypes
 
 """
 
+
+
 c_halomodel.xi_m.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.dndlog10Mstar.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
+c_halomodel.dndlnMh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+c_halomodel.dndlnMh.restype = ctypes.c_double
 c_halomodel.DeltaSigma.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.wOfTheta.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.SigmaIx.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
@@ -242,6 +246,10 @@ c_halomodel.Delta_vir.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.Delta_vir.restype = ctypes.c_double
 c_halomodel.msmh_log10Mh.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.msmh_log10Mh.restype = ctypes.c_double
+
+c_halomodel.nGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+c_halomodel.nGas.restype = ctypes.c_double
+
 c_halomodel.inter_gas_log10n0.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.inter_gas_log10n0.restype = ctypes.c_double
 c_halomodel.inter_gas_log10beta.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
@@ -844,6 +852,34 @@ main functions
 
 """
 
+
+def nGas(model, r, log10Mh, c, z):
+    """ Wrapper for c-function nGas()
+
+    Returns the gas profile density
+
+    ** Mpc in comoving units **
+
+    INPUT
+    r: distance in h^-1 Mpc
+
+    OUTPUT
+    nGas evaluated at r
+    """
+
+    Mh = pow(10.0, log10Mh)
+
+    if isinstance(r, (list, tuple, np.ndarray)):
+        r = np.asarray(r, dtype=np.float64)
+        result = np.asarray(np.zeros(len(r)), dtype=np.float64)
+        for i in range(len(r)):
+            result[i] = c_halomodel.nGas(model, r[i], Mh, c, z)
+    else:
+        result = c_halomodel.nGas(model, r, Mh, c, z)
+
+    return result
+
+
 def xi_dm(model, r, z):
     """ Wrapper for c-function xi_dm()
 
@@ -898,6 +934,31 @@ def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
     c_halomodel.dndlog10Mstar(model, log10Mstar, len(log10Mstar), z, obs_type, result)
 
     return result
+
+def dndlnMh(model, log10Mh, z):
+    """ Wrapper for c-function dndlnMh()
+
+    Returns the stellar mass function in units of (Mpc/h)^-3 dex^-1
+    Mh in [h^-1 Msun]
+
+    ** volume in comoving units **
+
+    INPUT
+    log10Mh: log10(Mh) array or single value) in log10 Msun/h units
+    z: redshift of the sample
+
+    OUTPUT
+    dndlnMstar evaluated at log10Mh
+    """
+
+    Mh = np.asarray(pow(10.0, log10Mh), dtype=np.float64)
+    result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
+
+    for i, m in enumerate(Mh):
+        result[i] = c_halomodel.dndlnMh(model, m,  z)
+
+    return result
+
 
 def DeltaSigma(model, R, zl, obs_type="all"):
     """ Returns DeltaSigma for NFW halo mass profile (in h Msun/pc^2) -
@@ -1063,7 +1124,15 @@ def DL(model, z):
 
 def rh(model, Mh, z):
     """ Returns rh in h^-1 Mpc """
-    return c_halomodel.rh(model, Mh, z)
+
+    # Mh = np.asarray(Mh, dtype=np.float64)
+    result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
+
+    D = Delta(model, z, model.massDef)
+    for i, m in enumerate(Mh):
+        result[i] = c_halomodel.rh(model, Mh[i], D, z)
+
+    return result
 
 def bias_h(model, Mh, z):
     """ Returns halo bias """
@@ -1217,6 +1286,37 @@ def log10M1_to_log10M2(model, log10M1, log10c1, Delta1, Delta2, z):
     M2, c2 = M1_to_M2(model, pow(10.0, log10M1), c1, Delta1, Delta2, z)
 
     return np.log10(M2), np.log10(c2)
+
+
+def getInterParaGas(model, log10Mh):
+    """
+    get log10n0, log10beta and log10rc in model
+    from interpolated values, and returns
+    the values
+    """
+
+    if isinstance(log10Mh, np.ndarray):
+
+        N = len(log10Mh)
+
+        gas_log10n0 = np.zeros(N)
+        gas_log10beta = np.zeros(N)
+        gas_log10rc  = np.zeros(N)
+        for i, m in enumerate(log10Mh):
+            gas_log10n0[i] = c_halomodel.inter_gas_log10n0(model, m)
+            gas_log10beta[i] = c_halomodel.inter_gas_log10beta(model, m)
+            gas_log10rc[i] = c_halomodel.inter_gas_log10rc(model, m)
+
+    else:
+
+        gas_log10n0 = c_halomodel.inter_gas_log10n0(model, log10Mh)
+        gas_log10beta = c_halomodel.inter_gas_log10beta(model, log10Mh)
+        gas_log10rc  = c_halomodel.inter_gas_log10rc(model, log10Mh)
+
+
+    return [gas_log10n0, gas_log10beta, gas_log10rc]
+
+
 
 def setInterParaGas(model, log10Mh):
     """

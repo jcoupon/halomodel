@@ -507,7 +507,9 @@ void xi_gm_twohalo(const Model *model, double *r, int N, double z, double *resul
 
       bh = bias_h(model, Mh, z);
       for(i=0;i<N;i++){
-         if(r[i] < r_vir(model, Mh, c, z)){
+         // DEBUGGING
+         //if(r[i] < r_vir(model, Mh, c, z)){
+         if(r[i] < rh(model, Mh, NAN, z)){
             result[i] = 0.0;
          }else{
             result[i] *= bh;

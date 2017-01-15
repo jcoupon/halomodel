@@ -446,7 +446,12 @@ double rhoHalo(const Model *model, double r, double Mh, double c, double z)
    static int firstcall = 1;
 
    /* If truncated halo. This matches Leauthaud et al. (2011) */
+   /*
    if(r > r_vir(model, Mh, c, z)){
+      return 0.0;
+   }
+   */
+   if(r > rh(model, Mh, NAN, z)){
       return 0.0;
    }
 
@@ -560,6 +565,7 @@ double Delta(const Model *model, double z, char *massDef)
 
       result = 200.0 * Omega_m_z(model, z, -1.0); // z=0.0 <- comoving units ??
 
+
    }else if( !strcmp(massDef, "M200c")){
 
       result = 200.0;
@@ -603,7 +609,6 @@ double r_vir(const Model *model, double Mh, double c, double z)
    static double c_tmp = NAN;
    static double z_tmp = NAN;
 
-
    if(firstcall || assert_float(c_tmp, c) || assert_float(z_tmp, z)){
 
       firstcall = 0;
@@ -617,14 +622,15 @@ double r_vir(const Model *model, double Mh, double c, double z)
 
       for(i=0;i<Ninter;i++){
          x[i]  = LNMH_MIN+dx*(double)i;
+         y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, 0.0)*Delta_vir(model, z)), 1.0/3.0);
+         /*
          if( !strcmp(model->massDef, "MvirC15")){
             y[i] = rh(model, exp(x[i]), NAN, z);  // DEBUGGING: matches Coupon et al. (2015) but is not exactly correct
          }else{
             // TODO: check this
-            // y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, z)*Delta_vir(model, z)), 1.0/3.0);
             y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, 0.0)*Delta_vir(model, z)), 1.0/3.0);
-
          }
+         */
       }
 
       inter_min = exp(x[0]);
@@ -779,7 +785,8 @@ double f_sigma(const Model *model, double sigma, double z)
       /*    Tinker et al. (2008) */
 
       // TODO: check this -> comoving unit, z=0 ??
-      log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) );
+      // log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) );
+      log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) );
 
       A = 0.1*log10_Delta - 0.05;
       a = 1.43 + pow(log10_Delta - 2.30,  1.5);
@@ -850,7 +857,8 @@ double b_sigma(const Model *model, double sigma, double z)
       /*    Tinker et al. (2008, 2010) */
 
       // TODO: check this -> comoving unit, z=0 ??
-      log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) );
+      // log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) );
+      log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) );
 
       A = 1.0+0.24*log_Delta*exp(-pow(4.0/log_Delta,4.0));
       a = 0.44*log_Delta-0.88;

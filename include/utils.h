@@ -97,6 +97,14 @@ typedef struct Model
    double *wtheta_nz_z;
    double *wtheta_nz;
 
+   int     HOD_cen_N;
+   double *HOD_cen_log10Mh;
+   double *HOD_cen_Ngal;
+
+   int     HOD_sat_N;
+   double *HOD_sat_log10Mh;
+   double *HOD_sat_Ngal;
+
    /* XMM PSF (King's profile, must be normalised) */
    // double XMM_PSF_A;
    double XMM_PSF_rc_deg;
@@ -239,7 +247,9 @@ double sinc(double x);
 double trapz(double *x, double *y, int N);
 double King(double r, double A, double rc, double alpha);
 int assert_float(double before, double after);
-int assert_int(double before, double after);
+int assert_int(int before, int after);
+int assert_pointer(void *before, void *after);
+int assert_float_table(double *before, int before_N, double *after, int after_N);
 
 
 #endif

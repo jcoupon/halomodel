@@ -203,9 +203,9 @@ double bias_h(const Model *model, double Mh, double z){
       double *y = (double *)malloc(Ninter*sizeof(double));
 
       for(i=0;i<Ninter;i++){
-         x[i]  = LNMH_MIN+dx*(double)i;
+         x[i] = LNMH_MIN+dx*(double)i;
          sigma = sqrt(sigma2M(model, exp(x[i])));
-         y[i]  = b_sigma(model, sigma, z);
+         y[i] = b_sigma(model, sigma, z);
       }
 
       inter_min = exp(x[0]);
@@ -256,10 +256,10 @@ double dndlnMh(const Model *model, double Mh, double z){
 
       double rhobar = rho_bar(model, 0.0);
 
-      int i, Ninter  = 128;
-      double dx      = (LNMH_MAX-LNMH_MIN)/(double)Ninter;
-      double *x      = (double *)malloc(Ninter*sizeof(double));
-      double *y      = (double *)malloc(Ninter*sizeof(double));
+      int i, Ninter = 128;
+      double dx = (LNMH_MAX-LNMH_MIN)/(double)Ninter;
+      double *x = (double *)malloc(Ninter*sizeof(double));
+      double *y = (double *)malloc(Ninter*sizeof(double));
 
       for(i=0;i<Ninter;i++){
          x[i]  = LNMH_MIN+dx*(double)i;
@@ -270,8 +270,8 @@ double dndlnMh(const Model *model, double Mh, double z){
       inter_min = exp(x[0]);
       inter_max = exp(x[Ninter-1]);
 
-      acc     = gsl_interp_accel_alloc();
-      spline  = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+      acc = gsl_interp_accel_alloc();
+      spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
 
       gsl_spline_init(spline, x, y, Ninter);
 

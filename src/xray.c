@@ -1186,7 +1186,7 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
 
    return model->CONCAT(PARA, _1) + model->CONCAT(PARA, _2) * (log10Mh-14.0);
 
-
+#if 0
    static int firstcall = 1;
    static gsl_interp_accel *acc;
    static gsl_spline *spline;
@@ -1223,6 +1223,7 @@ double CONCAT(inter_, PARA)(const Model *model, double log10Mh){
       return model->CONCAT(PARA, _1);
    }
 
+#endif
 
 }
 #undef PARA

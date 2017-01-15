@@ -358,7 +358,7 @@ int assert_float(double before, double after){
 
 }
 
-int assert_int(double before, double after){
+int assert_int(int before, int after){
    /*
     *    asserts two floats
     */
@@ -375,5 +375,48 @@ int assert_int(double before, double after){
       return 0;
    }
 
+
+}
+
+
+int assert_pointer(void *before, void *after){
+   /*
+    *    asserts two pointers
+    */
+
+   if(before != after){
+      return 1;
+   }else{
+      return 0;
+   }
+
+}
+
+
+int assert_float_table(double *before, int before_N, double *after, int after_N){
+   /*
+    *    asserts two float tables
+    */
+   int i;
+
+   /*    first check the two tables have equal lengths */
+   if (before_N != after_N){
+      return 1;
+   }
+
+   for (i=0;i<before_N;i++){
+
+      if (isnan(before[i]) && isnan(after[i])){
+         return 0;
+      }else if (isnan(before[i]) && !isnan(after[i])){
+         return 1;
+      }else if(!isnan(before[i]) && isnan(after[i])){
+         return 1;
+      }else if(fabs(before[i] - after[i]) > 1.e-15){
+         return 1;
+      }else{
+         return 0;
+      }
+   }
 
 }

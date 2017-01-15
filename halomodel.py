@@ -121,10 +121,21 @@ class Model(ctypes.Structure):
         ("wtheta_nz_z", ctypes.POINTER(ctypes.c_double)),
         ("wtheta_nz", ctypes.POINTER(ctypes.c_double)),
 
+        # if hod = 1, one may input non-parametric HOD - centrals
+        ("HOD_cen_N", ctypes.c_int),
+        ("HOD_cen_log10Mh", ctypes.POINTER(ctypes.c_double)),
+        ("HOD_cen_Ngal", ctypes.POINTER(ctypes.c_double)),
+
+        # if hod = 1, one may input non-parametric HOD - satellites
+        ("HOD_sat_N", ctypes.c_int),
+        ("HOD_sat_log10Mh", ctypes.POINTER(ctypes.c_double)),
+        ("HOD_sat_Ngal", ctypes.POINTER(ctypes.c_double)),
+
         # XMM PSF, King function parameters
         # ("XMM_PSF_A", ctypes.c_double),
         ("XMM_PSF_rc_deg", ctypes.c_double),
-        ("XMM_PSF_alpha", ctypes.c_double),
+        ("XMM_PSF_alpha", ctypes.c_double)
+
         ]
 
     # default parameters
@@ -194,6 +205,16 @@ class Model(ctypes.Structure):
         self.wtheta_nz_z = None
         self.wtheta_nz = None
 
+        # if hod = 1, one may input non-parametric HOD - centrals
+        self.HOD_cen_N = 0
+        self.HOD_cen_log10Mh = None
+        self.HOD_cen_Ngal = None
+
+        # if hod = 1, one may input non-parametric HOD - satellites
+        self.HOD_sat_N = 0
+        self.HOD_sat_log10Mh = None
+        self.HOD_sat_Ngal = None
+
         # XMM PSF
         # ATTENTION: rc is in degrees
         # self.XMM_PSF_A = np.nan
@@ -228,6 +249,7 @@ c_halomodel.dndlnMh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c
 c_halomodel.dndlnMh.restype = ctypes.c_double
 c_halomodel.DeltaSigma.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.wOfTheta.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
+c_halomodel.xi_gg.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.SigmaIx.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 c_halomodel.rh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.rh.restype = ctypes.c_double
@@ -269,6 +291,14 @@ c_halomodel.Lambda.restype = ctypes.c_double
 c_halomodel.CRToLx.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.CRToLx.restype = ctypes.c_double
 
+c_halomodel.Ngal_s.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
+c_halomodel.Ngal_s.restype = ctypes.c_double
+c_halomodel.Ngal_c.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
+c_halomodel.Ngal_c.restype = ctypes.c_double
+c_halomodel.Ngal.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
+c_halomodel.Ngal.restype = ctypes.c_double
+
+
 """
 
 -------------------------------------------------------------
@@ -307,8 +337,8 @@ def test():
 
     compute_ref = False
     printModelChanges = False
-    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx"]
-    # actions = ["SigmaIx"]
+    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx"]
+    actions = ["Ngal"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -354,6 +384,29 @@ def test():
 
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+
+    if "Ngal" in actions:
+
+        log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
+        N = Ngal(model, log10Mh, 10.0, 11.0)
+
+        fileOutName = HALOMODEL_DIRNAME+"/data/Ngal_ref.ascii"
+        if compute_ref:
+            out = Table([log10Mh, N], names=['log10Mh', 'N'])
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
+        else:
+            sys.stderr.write("Ngal:")
+            ref = ascii.read(fileOutName, header_start=-1)
+            try:
+                np.testing.assert_array_almost_equal(N, ref['N'], err_msg="in Ngal")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                traceback.print_exc()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+
+
 
     if "MsMh" in actions:
 
@@ -1003,6 +1056,38 @@ def DeltaSigma(model, R, zl, obs_type="all"):
 
     return result
 
+def xi_gg(model, r, z, obs_type="all"):
+    """
+    Returns xi_gg(r) for NFW halo mass profile -
+
+    INPUT PARAMETERS:
+    r: (array or single value) in Mpc/h
+    z: mean redshift of the population
+
+    OUTPUT
+    xi(r)
+
+    obs_type: [censat, satsat, twohalo, all]
+    """
+
+    r = np.asarray(r, dtype=np.float64)
+    result = np.asarray(np.zeros(len(r)), dtype=np.float64)
+
+    if obs_type == "censat":
+        obs_type = 12
+    elif obs_type == "satsat":
+        obs_type = 22
+    elif obs_type == "twohalo":
+        obs_type = 33
+    elif obs_type == "all":
+        obs_type = 3
+    else:
+        raise ValueError("xi(r): obs_type \"{0:s}\" is not recognised".format(obs_type))
+
+    c_halomodel.xi_gg(model, r, len(r), z, obs_type, result)
+
+    return result
+
 
 def wOfTheta(model, theta, z, obs_type="all"):
     """
@@ -1076,6 +1161,40 @@ def SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None):
         model.XMM_PSF_alpha = PSF[1]
 
     c_halomodel.SigmaIx(model, theta, len(theta), Mh, c, z, obs_type, result)
+
+    return result
+
+
+
+def Ngal(model, log10Mh, log10Mstar_min, log10Mstar_max, obs_type="all"):
+    """ Wrapper for c-functions "Ngal"
+
+    Returns the HOD Ngal(Mh)
+
+    INPUT
+    Mh: mass of the host halo
+    log10Mstar_min: lower stellar mass bin
+    log10Mstar_max: upper stellar mass bin
+    obs_type: [cen, sat, all]
+
+    OUTPUT
+    N(Mh)
+    """
+
+    Mh = np.asarray(pow(10.0, log10Mh), dtype=np.float64)
+    result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
+
+    if obs_type == "cen":
+        for i, m in enumerate(Mh):
+            result[i] = c_halomodel.Ngal_c(model, m,  log10Mstar_min, log10Mstar_max)
+    elif obs_type == "sat":
+        for i, m in enumerate(Mh):
+            result[i] = c_halomodel.Ngal_s(model, m,  log10Mstar_min, log10Mstar_max)
+    elif obs_type == "all":
+        for i, m in enumerate(Mh):
+            result[i] = c_halomodel.Ngal(model, m,  log10Mstar_min, log10Mstar_max)
+    else:
+        raise ValueError("Ngal: obs_type \"{0:s}\" is not recognised".format(obs_type))
 
     return result
 

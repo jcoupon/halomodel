@@ -44,8 +44,8 @@
 # ggl_log10Mh = 14.0
 # ggl_log10Mstar = nan
 # wtheta_nz_N = 0
-# wtheta_nz_z = <__main__.LP_c_double object at 0x10d2ff7a0>
-# wtheta_nz = <__main__.LP_c_double object at 0x10d2ff7a0>
+# wtheta_nz_z = <__main__.LP_c_double object at 0x10a6f2dd0>
+# wtheta_nz = <__main__.LP_c_double object at 0x10a6f2dd0>
 # XMM_PSF_rc_deg = nan
 # XMM_PSF_alpha = nan
 # log10Mh log10Mstar

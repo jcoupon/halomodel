@@ -1,23 +1,22 @@
-/* ------------------------------------------------------------ *
- * clustering.c                                                 *
- * halomodel library                                            *
- * Jean Coupon 2016                                             *
- * ------------------------------------------------------------ */
+/*
+ *    clustering.c
+ *    halomodel library
+ *    Jean Coupon 2016
+ */
 
 #include "clustering.h"
-
 
 void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, double *result)
 {
    /*
-    First compute xi, project using Limber equation at mean z
-    and return w(theta).
-    See Bartelmann & Schneider (2001) eq. (2.79),
-    Tinker et al. 2010 eq. (3), Ross et al. 2009 eq (27), ...
-    Theta in degrees.
-    Ninter is the number of points that sample xi.The speed of the code
-    is basically inversely proportional to this number...choose
-    it carefuly!! You can also play with N in FFTLog routines.
+    *    First compute xi, project using Limber equation at mean z
+    *    and return w(theta).
+    *    See Bartelmann & Schneider (2001) eq. (2.79),
+    *    Tinker et al. 2010 eq. (3), Ross et al. 2009 eq (27), ...
+    *    Theta in degrees.
+    *    Ninter is the number of points that sample xi.The speed of the code
+    *    is basically inversely proportional to this number...choose
+    *    it carefuly!! You can also play with N in FFTLog routines.
     */
 
    if(obs_type == all){
@@ -86,10 +85,14 @@ void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, 
 }
 
 void xi_gg(const Model *model, double *r, int N, double z, int obs_type, double *result)
-/* ---------------------------------------------------------------- *
- * Computes xi(r)                                                   *
- * ---------------------------------------------------------------- */
 {
+   /*
+    *    Computes xi(r)
+    */
+
+   int i;
+   double *result_tmp;
+
    switch (obs_type){
       case censat:
          xi_gg_censat(model, r, N, z, result);
@@ -100,20 +103,27 @@ void xi_gg(const Model *model, double *r, int N, double z, int obs_type, double 
       case twohalo:
          xi_gg_twohalo(model, r, N, z, result);
          break;
+      case all:
+         result_tmp = (double *)malloc(N*sizeof(double));
+         xi_gg_censat(model, r, N, z, result_tmp); for(i=0;i<N;i++){result[i]  = result_tmp[i];}
+         xi_gg_satsat(model, r, N, z, result_tmp); for(i=0;i<N;i++){result[i] += result_tmp[i];}
+         xi_gg_twohalo(model, r, N, z, result_tmp); for(i=0;i<N;i++){result[i] += result_tmp[i];}
+         free(result_tmp);
+         break;
    }
    return;
 }
 
-void wOfThetaAll(const Model *model, double *R, int N, double z, double *result)
+void wOfThetaAll(const Model *model, double *theta, int N, double z, double *result)
 {
 
    int i;
 
    double *result_tmp = (double *)malloc(N*sizeof(double));
 
-   wOfTheta(model, R, N, z, censat,  result_tmp); for(i=0;i<N;i++){result[i]  = result_tmp[i];}
-   wOfTheta(model, R, N, z, satsat,  result_tmp); for(i=0;i<N;i++){result[i] += result_tmp[i];}
-   wOfTheta(model, R, N, z, twohalo, result_tmp); for(i=0;i<N;i++){result[i] += result_tmp[i];}
+   wOfTheta(model, theta, N, z, censat,  result_tmp); for(i=0;i<N;i++){result[i]  = result_tmp[i];}
+   wOfTheta(model, theta, N, z, satsat,  result_tmp); for(i=0;i<N;i++){result[i] += result_tmp[i];}
+   wOfTheta(model, theta, N, z, twohalo, result_tmp); for(i=0;i<N;i++){result[i] += result_tmp[i];}
 
    free(result_tmp);
 
@@ -124,8 +134,8 @@ void wOfThetaAll(const Model *model, double *R, int N, double z, double *result)
 void xi_gg_censat(const Model *model, double *r, int N, double z, double *result)
 {
    /*
-   Returns the central/sagtellite
-   two-point correlation function.
+    *    Returns the central/sagtellite
+    *    two-point correlation function.
    */
 
    int i;
@@ -134,8 +144,8 @@ void xi_gg_censat(const Model *model, double *r, int N, double z, double *result
 
       params p;
       p.model = model;
-      p.z     = z;
-      p.c     = NAN;  // for the HOD model, the concentration(Mh) relationship is fixed
+      p.z = z;
+      p.c = NAN;  // for the HOD model, the concentration(Mh) relationship is fixed
 
       double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
       p.ng = ng;
@@ -158,11 +168,11 @@ void xi_gg_censat(const Model *model, double *r, int N, double z, double *result
 double intForxi_gg_censat(double logMh, void *p)
 {
 
-   const Model *model    = ((params *)p)->model;
-   double r              = ((params *)p)->r;
-   double z              = ((params *)p)->z;
-   double c              = ((params *)p)->c;
-   double ng             = ((params *)p)->ng;
+   const Model *model = ((params *)p)->model;
+   double r = ((params *)p)->r;
+   double z = ((params *)p)->z;
+   double c = ((params *)p)->c;
+   double ng = ((params *)p)->ng;
 
    double Mh = exp(logMh);
 
@@ -176,38 +186,38 @@ void xi_gg_satsat(const Model *model, double *r, int N, double z, double *result
 {
 
    /*
-   Returns the fourier transform of the
-   sat-sat two-point correlation function.
-   */
+    *    Returns the fourier transform of the
+    *    sat-sat two-point correlation function.
+    */
 
    int i;
 
-   /* FFTLog config */
+   /*    FFTLog config */
    double q = 0.0, mu = 0.5;
    int j, FFT_N = 64;
    FFTLog_config *fc = FFTLog_init(FFT_N, KMIN, KMAX, q, mu);
-   double *r_FFT     = (double *)malloc(FFT_N*sizeof(double));
-   double *ar        = (double *)malloc(FFT_N*sizeof(double));
-   double *logr_FFT  = (double *)malloc(FFT_N*sizeof(double));
+   double *r_FFT = (double *)malloc(FFT_N*sizeof(double));
+   double *ar = (double *)malloc(FFT_N*sizeof(double));
+   double *logr_FFT = (double *)malloc(FFT_N*sizeof(double));
 
-   /* parameters to pass to the function */
+   /*    parameters to pass to the function */
    params p;
    p.model = model;
-   p.z     = z;
+   p.z = z;
 
-   /* fonction with parameters to fourier transform */
+   /*    fonction with parameters to fourier transform */
    gsl_function Pk;
    Pk.function = &intForxi_gg_satsat;
-   Pk.params   = &p;
+   Pk.params  = &p;
 
-   /* fourier transform... */
+   /*    fourier transform... */
    FFTLog(fc, &Pk, r_FFT, ar, -1);
 
-   /* return values through interpolation */
+   /*    return values through interpolation */
    gsl_interp_accel *acc = gsl_interp_accel_alloc ();
    gsl_spline *spline    = gsl_spline_alloc (gsl_interp_cspline, FFT_N);
 
-   /* attention: N and FFT_N are different */
+   /*    attention: N and FFT_N are different */
    for(j=0;j<FFT_N;j++) logr_FFT[j] = log(r_FFT[j]);
    gsl_spline_init (spline, logr_FFT, ar, FFT_N);
 
@@ -219,7 +229,7 @@ void xi_gg_satsat(const Model *model, double *r, int N, double z, double *result
       }
    }
 
-   /* free memory */
+   /*    free memory */
    free(r_FFT);
    free(ar);
    free(logr_FFT);
@@ -233,8 +243,8 @@ void xi_gg_satsat(const Model *model, double *r, int N, double z, double *result
 
 double intForxi_gg_satsat(double k, void *p){
 
-   const Model *model   =  ((params *)p)->model;
-   const double z       =  ((params *)p)->z;
+   const Model *model = ((params *)p)->model;
+   const double z = ((params *)p)->z;
 
    return pow(k, 1.5 )* P_gg_satsat(model, k, z);
 
@@ -247,9 +257,9 @@ double P_gg_satsat(const Model *model, double k, double z)
 
       params p;
       p.model = model;
-      p.k     = k;
-      p.z     = z;
-      p.c     = NAN;
+      p.k = k;
+      p.z = z;
+      p.c = NAN;
 
       double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
       return int_gsl(intForP_gg_satsat, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/pow(ng, 2.0);
@@ -261,10 +271,10 @@ double P_gg_satsat(const Model *model, double k, double z)
 
 double intForP_gg_satsat(double logMh, void *p){
 
-   const Model *model    = ((params *)p)->model;
-   double k              = ((params *)p)->k;
-   double z              = ((params *)p)->z;
-   double c              = ((params *)p)->c;
+   const Model *model = ((params *)p)->model;
+   double k = ((params *)p)->k;
+   double z = ((params *)p)->z;
+   double c = ((params *)p)->c;
 
    double Mh = exp(logMh);
 
@@ -278,28 +288,28 @@ double intForP_gg_satsat(double logMh, void *p){
 void xi_gg_twohalo(const Model *model, double *r, int N, double z, double *result){
 
    /*
-   Returns the 2-halo galaxy-dark matter
-   two-point correlation function.
-   */
+    *    Returns the 2-halo galaxy-dark matter
+    *    two-point correlation function.
+    */
    int i;
    double bias_fac;
 
    if(model->hod){
-      /* FFTLog config */
+      /*    FFTLog config */
       double q = 0.0, mu = 0.5;
       int FFT_N = 64;
       FFTLog_config *fc = FFTLog_init(FFT_N, KMIN, KMAX, q, mu);
 
-      /* parameters to pass to the function */
+      /*    parameters to pass to the function */
       params p;
       p.model = model;
       p.z = z;
       p.c = NAN;  // for the HOD model, the concentration(Mh) relationship is fixed
 
-      /* fonction with parameters to fourier transform */
+      /*    fonction with parameters to fourier transform */
       gsl_function Pk;
       Pk.function = &intForxi_gg_twohalo;
-      Pk.params   = &p;
+      Pk.params = &p;
 
       double *xidm = malloc(N*sizeof(double));
       xi_m(model, r, N, z, xidm);
@@ -307,10 +317,10 @@ void xi_gg_twohalo(const Model *model, double *r, int N, double z, double *resul
       p.ng  = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
       for(i=0;i<N;i++){
 
-			bias_fac  = sqrt(pow(1.0+1.17*xidm[i],1.49)/pow(1.0+0.69*xidm[i],2.09));
+			bias_fac = sqrt(pow(1.0+1.17*xidm[i],1.49)/pow(1.0+0.69*xidm[i],2.09));
          p.logMlim = logM_lim(model, r[i], p.c, z, all);
-         p.r       = r[i];
-         p.ngp     = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
+         p.r = r[i];
+         p.ngp = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
 
          if(p.ng < 1.0e-14 || p.ngp < 1.0e-14 || r[i] < RMIN2){
             result[i] = 0.0;
@@ -334,10 +344,10 @@ double intForxi_gg_twohalo(double k, void *p){
 double P_gg_twohalo(double k, void *p)
 {
 
-   const Model *model   =  ((params *)p)->model;
-   const double z       =  ((params *)p)->z;
-   const double ngp     =  ((params *)p)->ngp;
-   const double logMlim =  ((params *)p)->logMlim;
+   const Model *model = ((params *)p)->model;
+   const double z  = ((params *)p)->z;
+   const double ngp = ((params *)p)->ngp;
+   const double logMlim = ((params *)p)->logMlim;
 
    ((params *)p)->k = k;
 
@@ -347,10 +357,10 @@ double P_gg_twohalo(double k, void *p)
 
 double intForP_gg_twohalo(double logMh, void *p){
 
-   const Model *model    = ((params *)p)->model;
-   const double k              = ((params *)p)->k;
-   const double z              = ((params *)p)->z;
-   const double c              = ((params *)p)->c;
+   const Model *model = ((params *)p)->model;
+   const double k = ((params *)p)->k;
+   const double z = ((params *)p)->z;
+   const double c = ((params *)p)->c;
 
    const double Mh = exp(logMh);
 

@@ -49,7 +49,7 @@ void DeltaSigma(const Model *model, double *R, int N, double z, int obs_type, do
 
    for(i=0;i<Ninter;i++){
       logrinter[i] = log(rinter_min)+dlogrinter*(double)i;
-      rinter[i]    = exp(logrinter[i]);
+      rinter[i] = exp(logrinter[i]);
    }
 
    /* projected density contrast (see Yoo et al. (2006) Eq. 2 */
@@ -63,11 +63,11 @@ void DeltaSigma(const Model *model, double *R, int N, double z, int obs_type, do
    gsl_spline_init(spline, logrinter, Sigma_inter, Ninter);
 
    params p;
-   p.acc       = acc;
-   p.spline    = spline;
-   p.eps       = 1.0e-4;
-   p.logrmin   = logrinter[0];
-   p.logrmax   = logrinter[Ninter-1];
+   p.acc = acc;
+   p.spline = spline;
+   p.eps = 1.0e-4;
+   p.logrmin = logrinter[0];
+   p.logrmax = logrinter[Ninter-1];
 
    double rhobar = rho_bar(model, 0.0);
 
@@ -92,12 +92,12 @@ void DeltaSigma(const Model *model, double *R, int N, double z, int obs_type, do
 
 double intForDeltaSigma(double logR, void *p)
 {
-   double result         = 0.0;
-   double R              = exp(logR);
-   double logrmin        = ((params *)p)->logrmin;
-   double logrmax        = ((params *)p)->logrmax;
+   double result = 0.0;
+   double R = exp(logR);
+   double logrmin = ((params *)p)->logrmin;
+   double logrmax = ((params *)p)->logrmax;
    gsl_interp_accel *acc = ((params *)p)->acc;
-   gsl_spline *spline    = ((params *)p)->spline;
+   gsl_spline *spline = ((params *)p)->spline;
 
    if(logrmin < logR && logR < logrmax){
       result = R*R*gsl_spline_eval(spline, logR, acc);
@@ -527,10 +527,10 @@ double intForxi_gm_twohalo(double k, void *p){
 double P_gm_twohalo(double k, void *p)
 {
 
-   const Model *model   =  ((params *)p)->model;
-   const double z       =  ((params *)p)->z;
-   const double ngp     =  ((params *)p)->ngp;
-   const double logMlim =  ((params *)p)->logMlim;
+   const Model *model = ((params *)p)->model;
+   const double z = ((params *)p)->z;
+   const double ngp = ((params *)p)->ngp;
+   const double logMlim = ((params *)p)->logMlim;
 
    ((params *)p)->k = k;
 
@@ -539,10 +539,10 @@ double P_gm_twohalo(double k, void *p)
 
 double intForP_twohalo_g(double logMh, void *p){
 
-   const Model *model    = ((params *)p)->model;
-   const double k              = ((params *)p)->k;
-   const double z              = ((params *)p)->z;
-   const double c              = ((params *)p)->c;
+   const Model *model = ((params *)p)->model;
+   const double k = ((params *)p)->k;
+   const double z = ((params *)p)->z;
+   const double c = ((params *)p)->c;
 
    const double Mh = exp(logMh);
 
@@ -552,13 +552,12 @@ double intForP_twohalo_g(double logMh, void *p){
 
 double intForP_twohalo_m(double logMh, void *p){
 
-   const Model *model    = ((params *)p)->model;
-   const double k              = ((params *)p)->k;
-   const double z              = ((params *)p)->z;
-   const double c              = ((params *)p)->c;
+   const Model *model = ((params *)p)->model;
+   const double k = ((params *)p)->k;
+   const double z = ((params *)p)->z;
+   const double c = ((params *)p)->c;
 
    double Mh = exp(logMh);
    return  (Mh / rho_bar(model, 0.0))* uHalo(model, k, Mh, c, z)
       * bias_h(model, Mh, z) * dndlnMh(model, Mh, z);
-
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Jean coupon - 2016
+Jean coupon - 2016 - 2017
 script to run wrapped halomodel routines in c
 
 Required librairies:
@@ -337,8 +337,8 @@ def test():
 
     compute_ref = False
     printModelChanges = False
-    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx"]
-    actions = ["Ngal"]
+    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "Ngal"]
+    actions = ["wtheta_HOD"]
 
     # this model matches Coupon et al. (2015)
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")

@@ -20,7 +20,7 @@
 void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, double *result);
 
 void xi_gg(const Model *model, double *r, int N, double z, int obs_type, double *result);
-void wOfThetaAll(const Model *model, double *R, int N, double z, double *result);
+void wOfThetaAll(const Model *model, double *theta, int N, double z, double *result);
 
 void xi_gg_censat(const Model *model, double *r, int N, double z, double *result);
 double intForxi_gg_censat(double logMh, void *p);

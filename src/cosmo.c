@@ -190,7 +190,7 @@ double bias_h(const Model *model, double Mh, double z){
    static double z_tmp = NAN;
 
    if(firstcall || assert_float(z_tmp, z)){
-      // TODO: also check model didn't change
+      // TODO: also check that model didn't change
 
       firstcall = 0;
       z_tmp = z;
@@ -566,7 +566,7 @@ double Delta(const Model *model, double z, char *massDef)
 
    }else if( !strcmp(massDef, "M500m")){
 
-      result = 500.0 * Omega_m_z(model, z, -1.0); // z=0.0 <- comoving units
+      result = 500.0 * Omega_m_z(model, z, -1.0); // z=0.0 <- comoving units ??
 
    } else if( !strcmp(massDef, "M500c")){
 
@@ -578,7 +578,8 @@ double Delta(const Model *model, double z, char *massDef)
 
    } else if( !strcmp(massDef, "MvirC15")){
 
-      result = Delta_vir(model, z)* Omega_m_z(model, 0.8, -1.0); // matches Coupon et al. (2015)
+      // result = Delta_vir(model, z)* Omega_m_z(model, 0.8, -1.0); // matches Coupon et al. (2015)
+      result = Delta_vir(model, z)* Omega_m_z(model, 0.0, -1.0); // matches Coupon et al. (2015)
 
    } else {
 
@@ -619,7 +620,10 @@ double r_vir(const Model *model, double Mh, double c, double z)
          if( !strcmp(model->massDef, "MvirC15")){
             y[i] = rh(model, exp(x[i]), NAN, z);  // DEBUGGING: matches Coupon et al. (2015) but is not exactly correct
          }else{
-            y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, z)*Delta_vir(model, z)), 1.0/3.0);
+            // TODO: check this
+            // y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, z)*Delta_vir(model, z)), 1.0/3.0);
+            y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, 0.0)*Delta_vir(model, z)), 1.0/3.0);
+
          }
       }
 
@@ -657,7 +661,6 @@ double M_vir(const Model *model, double Mh, char *massDef, double c, double z)
 
    return M2;
 }
-
 
 
 void M1_to_M2(const Model *model, double M1, double c1, double Delta1, double Delta2, double z, double *M2, double *c2)
@@ -743,7 +746,7 @@ double Delta_vir(const Model *model, double z)
 
 double f_sigma(const Model *model, double sigma, double z)
 {
-   /* f(sigma) */
+   /*    f(sigma) */
 
    double result;
    double a, p, A, b, c, log10_Delta, log10_alpha;
@@ -752,19 +755,19 @@ double f_sigma(const Model *model, double sigma, double z)
    double nu = delta_c(model, z)/x;
 
    if( !strcmp(model->hmfDef, "PS74")){
-      // Press & Schechter (1974)
+      /*    Press & Schechter (1974) */
       p = 0.0; a = 1.0;
       A = 1.0/(1.0 + pow(2.0, -p)*exp(gammln(0.5-p))/sqrt(M_PI));
       result = A * nu * sqrt(2.0*a/M_PI) * (1.0 + pow(a*nu*nu, -p)) * exp(-a*nu*nu/2.0);
 
    }else if( !strcmp(model->hmfDef, "ST99")){
-      // Sheth & Tormen (1999)
+      /*    Sheth & Tormen (1999) */
       p = 0.3; a = 0.75;
       A = 1.0/(1.0 + pow(2.0, -p)*exp(gammln(0.5-p))/sqrt(M_PI));
       result = A * nu * sqrt(2.0*a/M_PI) * (1.0 + pow(a*nu*nu, -p)) * exp(-a*nu*nu/2.0);
 
    }else if( !strcmp(model->hmfDef, "ST02")){
-      // Sheth & Tormen (2002)
+      /*    Sheth & Tormen (2002) */
       p = 0.3; a = 1.0/sqrt(2.0);
       A = 1.0/(1.0 + pow(2.0, -p)*exp(gammln(0.5-p))/sqrt(M_PI));
       result = A * nu * sqrt(2.0*a/M_PI) * (1.0 + pow(a*nu*nu, -p)) * exp(-a*nu*nu/2.0);
@@ -773,14 +776,10 @@ double f_sigma(const Model *model, double sigma, double z)
       result = 0.315 * exp(-pow(fabs(log(1.0/(x)) + 0.61), 3.8));
 
    } else if( !strcmp(model->hmfDef, "T08")){
-      // Tinker et al. (2008)
+      /*    Tinker et al. (2008) */
 
-
-      // log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) ); // z=0.0 <- comoving units
-
-      log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) ); // z=0.0 <- comoving units
-
-
+      // TODO: check this -> comoving unit, z=0 ??
+      log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) );
 
       A = 0.1*log10_Delta - 0.05;
       a = 1.43 + pow(log10_Delta - 2.30,  1.5);
@@ -808,7 +807,7 @@ double f_sigma(const Model *model, double sigma, double z)
 
 double b_sigma(const Model *model, double sigma, double z)
 {
-   /* bias(sigma) */
+   /*    bias(sigma) */
 
    double result;
    double a, p, A, b, c, log_Delta, B, C;
@@ -825,32 +824,33 @@ double b_sigma(const Model *model, double sigma, double z)
    }
 
    if( !strcmp(model->biasDef, "PS74")){
-      // Press & Schechter (1974)
+      /*    Press & Schechter (1974) */
       p = 0.0; a = 1.0;
-      // Cooray and Sheth (2002) Eq. (68)
+      /*    Cooray and Sheth (2002) Eq. (68) */
       result = 1.0 + (a*nu*nu - 1.0)/(dc) + (2.0*p/dc)/(1.0+pow(a*nu*nu,p));
 
    }else if( !strcmp(model->biasDef, "ST99")){
-      // Sheth & Tormen (1999)
+      /*    Sheth & Tormen (1999) */
       p = 0.3; a = 0.75;
-      // Cooray and Sheth (2002) Eq. (68)
+      /* Cooray and Sheth (2002) Eq. (68) */
       result = 1.0 + (a*nu*nu - 1.0)/(dc) + (2.0*p/dc)/(1.0+pow(a*nu*nu,p));
 
    }else if( !strcmp(model->biasDef, "ST02")){
-      // Sheth & Tormen (2002)
+      /*    Sheth & Tormen (2002) */
       p = 0.3; a = 1.0/sqrt(2.0);
-      // Cooray and Sheth (2002) Eq. (68)
+      /* Cooray and Sheth (2002) Eq. (68) */
       result = 1.0 + (a*nu*nu - 1.0)/(dc) + (2.0*p/dc)/(1.0+pow(a*nu*nu,p));
 
    }else if( !strcmp(model->biasDef, "J01")){
-       // Jenkins et al. (2001)
+      /*       Jenkins et al. (2001) */
       fprintf(stderr, "b_sigma(): \"%s\" is not implemented yet (%s:%d). Exiting...\n", model->biasDef, __FILE__, __LINE__);
       exit(EXIT_FAILURE);
 
    }else if( !strcmp(model->biasDef, "T08")){
-      // Tinker et al. (2008, 2010)
+      /*    Tinker et al. (2008, 2010) */
 
-      log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) ); // z=0.0 <- comoving units
+      // TODO: check this -> comoving unit, z=0 ??
+      log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) );
 
       A = 1.0+0.24*log_Delta*exp(-pow(4.0/log_Delta,4.0));
       a = 0.44*log_Delta-0.88;
@@ -867,9 +867,7 @@ double b_sigma(const Model *model, double sigma, double z)
    }
 
    return result;
-
 }
-
 
 double dsigmaM_m1_dlnM(const Model *model, double Mh)
 {
@@ -919,7 +917,7 @@ double int_for_sigma2R(double lnk, void *p)
 
    x = k*R;
 
-   // Fourier transform of tophat filter
+   /*    Fourier transform of tophat filter */
    if (x < 1.e-8){
       W = 1.0 - x*x/10.0 + pow(x, 4.0)/280.0;
    }else{
@@ -940,7 +938,10 @@ double rh(const Model *model, double Mh, double D, double z){
    if (isnan(D)){
       D = Delta(model, z, model->massDef);
    }
-   return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, z)*D), 1.0/3.0);
+
+   // return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, z)*D), 1.0/3.0);
+   // DEBUGGING
+   return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, 0.0)*D), 1.0/3.0);
 }
 
 double Mh_rh(const Model *model, double r, double z)
@@ -948,9 +949,7 @@ double Mh_rh(const Model *model, double r, double z)
   /* Mass of a halo with radius rh. If Delta = Delta_vir, this
   is virial mass. This is NOT the mass integrated within r, Mh(r). */
 
-  // TODO rho_crit(model, z) ??
-
-  return (4.0/3.0)*M_PI*r*r*r*rho_crit(model, z)*Delta(model, z, model->massDef);
+  return (4.0/3.0)*M_PI*r*r*r*rho_crit(model, 0.0)*Delta(model, z, model->massDef);
 }
 
 /* ---------------------------------------------------------------- *
@@ -959,7 +958,7 @@ double Mh_rh(const Model *model, double r, double z)
 
 double delta_c(const Model *model, double z)
 {
-   /* Critical collapse overdensity */
+   /*    Critical collapse overdensity */
 
    double delta_EdS, alpha;
 
@@ -967,11 +966,11 @@ double delta_c(const Model *model, double z)
 
    delta_EdS = 1.68647;
 
-   /* WK03 (18) */
+   /*    WK03 (18) */
    alpha = 0.131 + cosmo->w0_de*(0.555 + cosmo->w0_de*(1.128 + cosmo->w0_de*(1.044 + cosmo->w0_de*0.353)));
 
-   /* KS96 (A.6). Note: typo (0.123) in astro-ph version. Correct in ApJ. */
-   //alpha = 0.0123;
+   /*    KS96 (A.6). Note: typo (0.123) in astro-ph version. Correct in ApJ. */
+   // alpha = 0.0123;
 
    return delta_EdS*(1. + alpha*log10(Omega_m_z(model, z, -1.0)));
 
@@ -980,7 +979,7 @@ double delta_c(const Model *model, double z)
 
 double Dplus(const Model *model, double z)
 {
-   /* wrapper for D+ function */
+   /*    wrapper for D+ function */
 
 
    static double Dp = 0.0, z_tmp = -1.0;
@@ -1006,10 +1005,10 @@ double Dplus(const Model *model, double z)
 double P_m_nonlin(const Model *model, double k, double z)
 {
    /*
-   Wrapper for the non-linear power spectrum
-   at redshift z from the NICAEA library.
-   Input k must be in Mpc and outputs P(k) in Mpc-3 .
-   */
+    *    Wrapper for the non-linear power spectrum
+    *    at redshift z from the NICAEA library.
+    *    Input k must be in Mpc and outputs P(k) in Mpc-3 .
+    */
 
    static int firstcall = 1;
    static gsl_interp_accel *acc;
@@ -1060,10 +1059,10 @@ double P_m_nonlin(const Model *model, double k, double z)
 double P_m_lin(const Model *model, double k, double z)
 {
    /*
-   Wrapper for the linear power spectrum
-   at redshift z from the NICAEA library.
-   Input k must be in Mpc and outputs P(k) in Mpc-3 .
-   */
+    *    Wrapper for the linear power spectrum
+    *    at redshift z from the NICAEA library.
+    *    Input k must be in Mpc and outputs P(k) in Mpc-3 .
+    */
 
    static int firstcall = 1;
    static gsl_interp_accel *acc;
@@ -1111,7 +1110,7 @@ double P_m_lin(const Model *model, double k, double z)
 }
 
 double E2(const Model *model, double z,  int wOmegar){
-   /* wrapper for E^2 */
+   /*    wrapper for E^2 */
    double result;
 
    cosmo *cosmo = initCosmo(model);
@@ -1126,10 +1125,10 @@ double E2(const Model *model, double z,  int wOmegar){
 
 }
 
-/* Per05 (6) */
+/*    Per05 (6) */
 double Omega_m_z(const Model *model, double z, double E2pre)
 {
-   /* returns Omega_m is z has changed */
+   /*    returns Omega_m is z has changed */
 
    static double Om = 0.0, z_tmp = -1.0;
 
@@ -1152,8 +1151,8 @@ double Omega_m_z(const Model *model, double z, double E2pre)
 
 
 double rho_crit(const Model *model, double z){
-   /* returns rho_crit at redshift z in [M_sol h^2 / Mpc^3]*/
-   /* present critical density is  rho_c0 = 2.7754e11 */
+   /*    returns rho_crit at redshift z in [M_sol h^2 / Mpc^3] */
+   /*    present critical density is  rho_c0 = 2.7754e11 */
 
    static double H, H2, G, rc = 0.0, z_tmp = -1.0;
 
@@ -1204,12 +1203,12 @@ double dr_dz(const Model *model, double z)
 /*
  * From NICAEA doc:
  *
- * If wOmegar=1, Omega_radiation>0 is included (photons +
- * neutrinos), needed for high-z quantities such as the sound
- * horizon at the drag epoch. Note: For low redshift, wOmega=0
- * should be used, otherwise the nonlinear power-spectrum
- * fitting formulae might not work.
-*/
+ *    If wOmegar=1, Omega_radiation>0 is included (photons +
+ *    neutrinos), needed for high-z quantities such as the sound
+ *    horizon at the drag epoch. Note: For low redshift, wOmega=0
+ *    should be used, otherwise the nonlinear power-spectrum
+ *    fitting formulae might not work.
+ */
 
 double DC(const Model *model, double z, int wOmegar)
 {
@@ -1275,146 +1274,4 @@ double DL(const Model *model, double z, int wOmegar)
 
    return DM(model, z, wOmegar)*(1.0+z);
 
-}
-
-
-/* ---------------------------------------------------------------- *
- * ---------------------------------------------------------------- *
- * ---------------------------------------------------------------- *
- * DEPRECATED
- * ---------------------------------------------------------------- *
- * ---------------------------------------------------------------- *
- * ---------------------------------------------------------------- */
-
-
-
-double uHalo_DEPRECATED(const Model *model, double k, double Mh, double c, double z)
-{
-   /*
-   Fourier transform of the halio profile.
-   To assume c(Mh) relation, set c = -1.0;
-   uHalo is interpolated in Mh k space if c(Mh) relation
-   is assumed.
-   */
-
-   static int firstcall = 1;
-
-   static gsl_spline2d *spline   = NULL; // gsl_spline2d_alloc(T, nx, ny);
-   static gsl_interp_accel *xacc = NULL; // = gsl_interp_accel_alloc();
-   static gsl_interp_accel *yacc = NULL; //gsl_interp_accel_alloc();
-
-   static double inter_xmin, inter_xmax, inter_ymin, inter_ymax;
-
-   static double c_tmp = NAN;
-
-   if(firstcall || (!isnan(c) && fabs(c_tmp - c) > 1.e-5)){
-
-      c_tmp = c;
-      firstcall = 0;
-
-      int i, j, Nx = 64, Ny = 1024;
-
-      /* x axis = logMh */
-      double *x    = (double *)malloc(Nx*sizeof(double));
-      double *logx = (double *)malloc(Nx*sizeof(double));
-      double dlogx = (LNMH_MAX - LNMH_MIN)/(double)Nx;
-      for(i=0;i<Nx;i++){
-         logx[i] = LNMH_MIN + dlogx*(double)i;
-         x[i]    = exp(logx[i]);
-      }
-
-      /* y axis = logk */
-      /* FFT parameters */
-      double q = 0.0, mu = 0.5;
-      FFTLog_config *fc = FFTLog_init(Ny, 1.e-10, 1.e+3, q, mu);
-      // FFTLog_config *fc = FFTLog_init(Ny, 1.e-6, 1.e+6, q, mu);
-      double *ar   = (double *)malloc(Ny*sizeof(double));
-      double *y    = (double *)malloc(Ny*sizeof(double));
-      double *logy = (double *)malloc(Ny*sizeof(double));
-
-      params p;
-      p.model  = model;
-      p.c      = c;
-      p.z      = z;
-
-      gsl_function Pk;
-      Pk.function = &intForUHalo;
-      Pk.params   = &p;
-
-      /* z axis = uHalo */
-      double *za = (double *)malloc(Nx*Ny*sizeof(double));
-
-      /* initialize interpolation */
-      const gsl_interp2d_type *T = gsl_interp2d_bilinear;
-      spline = gsl_spline2d_alloc(T, Nx, Ny);
-      xacc   = gsl_interp_accel_alloc();
-      yacc   = gsl_interp_accel_alloc();
-
-      /* loop over halo mass */
-      for(i=0;i<Nx;i++){
-
-         p.Mh = x[i];
-
-         /* fourier transform at mass Mh... */
-         FFTLog(fc, &Pk, y, ar, -1);
-
-         /* loop over k */
-         for(j=0;j<Ny;j++){
-            //gsl_spline2d_set(spline, za, i, j, log(ar[j]*pow(y[j], -1.5) / x[i]));
-            gsl_spline2d_set(spline, za, i, j, ar[j]*pow(y[j], -1.5) / x[i]);
-            //gsl_spline2d_set(spline, za, i, j, uHaloClosedFormula(model, y[j], x[i], c, z));
-
-         }
-      }
-
-      for(j=0;j<Ny;j++){
-         logy[j] = log(y[j]);
-      }
-
-      inter_xmin = x[0];
-      inter_xmax = x[Nx-1];
-
-      inter_ymin = y[0];
-      inter_ymax = y[Ny-1];
-
-      /* initialize interpolation */
-      gsl_spline2d_init(spline, logx, logy, za, Nx, Ny);
-
-      /* free memory */
-      free(ar);
-      FFTLog_free(fc);
-
-      free(x);
-      free(logx);
-      free(y);
-      free(logy);
-      free(za);
-
-   }
-
-
-   if (inter_xmin < Mh && Mh < inter_xmax && inter_ymin < k && k < inter_ymax){
-      //return exp(gsl_spline2d_eval(spline, log(Mh), log(k), xacc, yacc));
-      return gsl_spline2d_eval(spline, log(Mh), log(k), xacc, yacc);
-   }else{
-      return 0.0;
-   }
-
-}
-
-
-
-
-double intForUHalo_DEPRECATED(double r, void *p)
-{
-   /*
-   Integrand for uHalo().
-   */
-
-   const Model *model = ((params *)p)->model;
-   const double Mh = ((params *)p)->Mh;
-   const double c  = ((params *)p)->c;
-   const double z  = ((params *)p)->z;
-
-   return pow(2.0*M_PI*r, 1.5) * rhoHalo(model, r, Mh, c, z);
 }

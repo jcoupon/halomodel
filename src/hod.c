@@ -78,7 +78,6 @@ double eta_cen(const Model *model, double Mh){
    return result;
 }
 
-
 double sigma_log_M(const Model *model, double log10Mstar){
    /* varying sigma_log_M */
 

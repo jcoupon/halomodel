@@ -311,14 +311,16 @@ int changeModelHOD(const Model *before, const Model *after){
    result += assert_float(before->fcen1, after->fcen1);
    result += assert_float(before->fcen2, after->fcen2);
 
-   result += assert_int(before->HOD_cen_N, after->HOD_cen_N);
-   result += assert_float_table(before->HOD_cen_log10Mh, before->HOD_cen_N, after->HOD_cen_log10Mh, after->HOD_cen_N);
-   result += assert_float_table(before->HOD_cen_Ngal, before->HOD_cen_N, after->HOD_cen_Ngal, after->HOD_cen_N);
-
-   result += assert_int(before->HOD_sat_N, after->HOD_sat_N);
-   result += assert_float_table(before->HOD_sat_log10Mh, before->HOD_sat_N, after->HOD_sat_log10Mh, after->HOD_sat_N);
-   result += assert_float_table(before->HOD_sat_Ngal, before->HOD_sat_N, before->HOD_sat_Ngal, after->HOD_sat_N);
-
+   if (before->HOD_cen_N > 0 || after->HOD_cen_N > 0){
+      result += assert_int(before->HOD_cen_N, after->HOD_cen_N);
+      result += assert_float_table(before->HOD_cen_log10Mh, before->HOD_cen_N, after->HOD_cen_log10Mh, after->HOD_cen_N);
+      result += assert_float_table(before->HOD_cen_Ngal, before->HOD_cen_N, after->HOD_cen_Ngal, after->HOD_cen_N);
+   }
+   if (before->HOD_sat_N > 0 || after->HOD_sat_N > 0){
+      result += assert_int(before->HOD_sat_N, after->HOD_sat_N);
+      result += assert_float_table(before->HOD_sat_log10Mh, before->HOD_sat_N, after->HOD_sat_log10Mh, after->HOD_sat_N);
+      result += assert_float_table(before->HOD_sat_Ngal, before->HOD_sat_N, before->HOD_sat_Ngal, after->HOD_sat_N);
+   }
    return result;
 
 }

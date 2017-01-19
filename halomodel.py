@@ -181,18 +181,28 @@ class Model(ctypes.Structure):
         self.gas_log10rc = -1.0
 
         # X-ray, if hod = 1
-        self.gas_log10n0_1 = -2.11726021929 # log10n0 = gas_log10n0_1  + gas_log10n0_2 * (log10Mh-14.0)
-        self.gas_log10n0_2 = -0.29693164    # n0 in [h^3 Mpc^-3], Mpc in comoving coordinate.
+        self.gas_log10n0_1 = -2.5
+        self.gas_log10n0_2 = 1.0
+        # self.gas_log10n0_1 = -2.11726021929 # log10n0 = gas_log10n0_1  + gas_log10n0_2 * (log10Mh-14.0)
+        # self.gas_log10n0_2 = -0.29693164    # n0 in [h^3 Mpc^-3], Mpc in comoving coordinate.
         self.gas_log10n0_3 = np.nan         # not used
         self.gas_log10n0_4 = np.nan         # not used
-        self.gas_log10beta_1 = -0.32104805  # log10beta = gas_log10beta_1  + gas_log10beta_2 * (log10Mh-14.0)
-        self.gas_log10beta_2 = +0.26463453  # unitless
-        self.gas_log10beta_3 = np.nan       # not used
-        self.gas_log10beta_4 = np.nan       # not used
-        self.gas_log10rc_1 = -1.12356845357 # log10beta = gas_log10rc_1  + gas_log10rc_2 * (log10Mh-14.0)
-        self.gas_log10rc_2 = +0.73917722    # rc in [h^-1 Mpc], Mpc in comoving coordinate.
-        self.gas_log10rc_3 = np.nan         # not used
-        self.gas_log10rc_4 = np.nan         # not used
+        self.gas_log10beta_1 = np.log10(2.0)
+        self.gas_log10beta_2 = np.log10(0.35)
+        self.gas_log10beta_3 = np.log10(0.5)
+        self.gas_log10beta_4 = np.log10(0.5)
+        # self.gas_log10beta_1 = -0.32104805  # log10beta = gas_log10beta_1  + gas_log10beta_2 * (log10Mh-14.0)
+        # self.gas_log10beta_2 = +0.26463453  # unitless
+        # self.gas_log10beta_3 = np.nan       # not used
+        # self.gas_log10beta_4 = np.nan       # not used
+        self.gas_log10rc_1 = np.log10(0.3)
+        self.gas_log10rc_2 = np.log10(0.04)
+        self.gas_log10rc_3 = np.log10(0.08)
+        self.gas_log10rc_4 = np.log10(0.08)
+        # self.gas_log10rc_1 = -1.12356845357 # log10beta = gas_log10rc_1  + gas_log10rc_2 * (log10Mh-14.0)
+        # self.gas_log10rc_2 = +0.73917722    # rc in [h^-1 Mpc], Mpc in comoving coordinate.
+        # self.gas_log10rc_3 = np.nan         # not used
+        # self.gas_log10rc_4 = np.nan         # not used
 
         # for gg lensing
         self.ggl_pi_max = 60.0
@@ -337,11 +347,13 @@ def test():
 
     compute_ref = False
     printModelChanges = False
-    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "Ngal"]
-    actions = ["wtheta_HOD"]
+    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "Ngal"]
+    # actions = ["change_HOD"]
 
     # this model matches Coupon et al. (2015)
-    model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
+    # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
+
+    model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
     z = 0.308898
     # z = 0.1
     m1 =  dumpModel(model)
@@ -374,7 +386,7 @@ def test():
             try:
                 c_halomodel.changeModelHOD.argtypes = [ctypes.POINTER(Model), ctypes.POINTER(Model)]
                 c_halomodel.changeModelHOD.restype = ctypes.c_int
-                model2 = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
+                model2 = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
                 np.testing.assert_equal(c_halomodel.changeModelHOD(model, model2), 0, err_msg="in change_HOD")
                 model2.hod = 0
                 np.testing.assert_equal(c_halomodel.changeModelHOD(model, model2), 1, err_msg="in change_HOD")
@@ -445,11 +457,11 @@ def test():
     if "mass_conv" in actions:
 
         if compute_ref:
-            print log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0]
+            print log10M1_to_log10M2(model, 13.0, None, "M200m", "M500c", z)[0]
         else:
             sys.stderr.write("mass_conv:")
             try:
-                np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "MvirC15", "M500c", z)[0], 12.86819824083611, err_msg="in mass_conv")
+                np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "M200m", "M500c", z)[0], 12.6551753819, err_msg="in mass_conv")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()

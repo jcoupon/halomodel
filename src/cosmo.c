@@ -1,8 +1,8 @@
-/* ------------------------------------------------------------ *
- * cosmo.c                                                      *
- * halomodel library                                            *
- * Jean Coupon 2016                                             *
- * ------------------------------------------------------------ */
+/*
+ *    cosmo.c
+ *    halomodel library
+ *    Jean Coupon 2016 - 2017
+ */
 
 #include "cosmo.h"
 
@@ -92,10 +92,9 @@ cosmo *initCosmo(const Model *model){
 void xi_m(const Model *model, double *r, int N, double z, double *result){
 
    /*
-   Returns the dark matter correlation function.
-   i.e. the fourier transform P_m_nonlin.
-   */
-
+    *    Returns the dark matter correlation function.
+    *    i.e. the fourier transform P_m_nonlin.
+    */
 
    static int firstcall = 1;
    static gsl_interp_accel *acc;
@@ -108,7 +107,7 @@ void xi_m(const Model *model, double *r, int N, double z, double *result){
 
       firstcall = 0;
 
-      /* FFTLog config */
+      /*    FFTLog config */
       double q = 0.0, mu = 0.5;
       int j, FFT_N = 64;
       FFTLog_config *fc = FFTLog_init(FFT_N, KMIN, KMAX, q, mu);
@@ -116,31 +115,31 @@ void xi_m(const Model *model, double *r, int N, double z, double *result){
       double *ar        = (double *)malloc(FFT_N*sizeof(double));
       double *logr_FFT  = (double *)malloc(FFT_N*sizeof(double));
 
-      /* parameters to pass to the function */
+      /*    parameters to pass to the function */
       params p;
       p.model = model;
       p.z = z;
 
-      /* fonction with parameters to fourier transform */
+      /*    fonction with parameters to fourier transform */
       gsl_function Pk;
       Pk.function = &intForxi_m;
       Pk.params   = &p;
 
-      /* fourier transform... */
+      /*    fourier transform... */
       FFTLog(fc, &Pk, r_FFT, ar, -1);
 
-      /* return values through interpolation */
+      /*    return values through interpolation */
       acc    = gsl_interp_accel_alloc ();
       spline = gsl_spline_alloc (gsl_interp_cspline, FFT_N);
 
-      /* attention: N and FFT_N are different */
+      /*    attention: N and FFT_N are different */
       for(j=0;j<FFT_N;j++) logr_FFT[j] = log(r_FFT[j]);
       gsl_spline_init (spline, logr_FFT, ar, FFT_N);
 
       inter_min = logr_FFT[0];
       inter_max = logr_FFT[FFT_N-1];
 
-      /* free memory */
+      /*    free memory */
       free(r_FFT);
       free(ar);
       free(logr_FFT);
@@ -233,15 +232,13 @@ double bias_h(const Model *model, double Mh, double z){
 
 double dndlnMh(const Model *model, double Mh, double z){
    /*
-   Mass function: halo number density per log unit mass.
-   dn / dlnM = dn / d ln sigma^{-1} * d ln sigma^{-1} / dlnM
-             = rho_0 / M * f(sigma) * dsigma^{-1} / dln M
-   Units: [dn/dlnM] = h^3 Mpc^-3  Msun^-1 h.
-
-   if unset, it will take input as Msol and
-   outputs dn/dlnM in Mpc^-3  Msun.
-
-   */
+    *    Mass function: halo number density per log unit mass.
+    *    dn / dlnM = dn / d ln sigma^{-1} * d ln sigma^{-1} / dlnM
+                   = rho_0 / M * f(sigma) * dsigma^{-1} / dln M
+    *    Units: [dn/dlnM] = h^3 Mpc^-3  Msun^-1 h.
+    *    if unset, it will take input as Msol and
+    *    outputs dn/dlnM in Mpc^-3  Msun.
+    */
 
    static int firstcall = 1;
    static gsl_interp_accel *acc;
@@ -404,9 +401,9 @@ double intForUHalo(double logr, void *p)
    /*    Integrand for uHalo(). */
    const Model *model = ((params *)p)->model;
    const double Mh = ((params *)p)->Mh;
-   const double c  = ((params *)p)->c;
-   const double z  = ((params *)p)->z;
-   const double k  = ((params *)p)->k;
+   const double c = ((params *)p)->c;
+   const double z = ((params *)p)->z;
+   const double k = ((params *)p)->k;
 
    double r = exp(logr);
 
@@ -429,7 +426,7 @@ double uHaloClosedFormula(const Model *model, double k, double Mh, double c, dou
    cieta1pc = gsl_sf_Ci (eta*(1+c));
    sieta1pc = gsl_sf_Si (eta*(1+c));
 
-   /* TJ03 (17) */
+   /*    TJ03 (17) */
    return f*(sin(eta)*(sieta1pc - sieta) + cos(eta)*(cieta1pc - cieta)
       - sin(eta*c)/(eta*(1.0+c)));
 }
@@ -445,12 +442,10 @@ double rhoHalo(const Model *model, double r, double Mh, double c, double z)
    static double r_s, rho_s, Mh_tmp, c_tmp;
    static int firstcall = 1;
 
-   /* If truncated halo. This matches Leauthaud et al. (2011) */
    /*
-   if(r > r_vir(model, Mh, c, z)){
-      return 0.0;
-   }
-   */
+    *    ATTENTION: the halo profile must be truncated otherwise the
+    *    normalisation is wrong.
+    */
    if(r > rh(model, Mh, NAN, z)){
       return 0.0;
    }
@@ -563,8 +558,7 @@ double Delta(const Model *model, double z, char *massDef)
 
    if( !strcmp(massDef, "M200m")){
 
-      result = 200.0 * Omega_m_z(model, z, -1.0); // z=0.0 <- comoving units ??
-
+       result = 200.0 * Omega_m_z(model, 0.0, -1.0); // z=0.0 <- comoving units
 
    }else if( !strcmp(massDef, "M200c")){
 
@@ -572,7 +566,7 @@ double Delta(const Model *model, double z, char *massDef)
 
    }else if( !strcmp(massDef, "M500m")){
 
-      result = 500.0 * Omega_m_z(model, z, -1.0); // z=0.0 <- comoving units ??
+      result = 500.0 * Omega_m_z(model, 0.0, -1.0); // z=0.0 <- comoving units
 
    } else if( !strcmp(massDef, "M500c")){
 
@@ -584,8 +578,7 @@ double Delta(const Model *model, double z, char *massDef)
 
    } else if( !strcmp(massDef, "MvirC15")){
 
-      // result = Delta_vir(model, z)* Omega_m_z(model, 0.8, -1.0); // matches Coupon et al. (2015)
-      result = Delta_vir(model, z)* Omega_m_z(model, 0.0, -1.0); // matches Coupon et al. (2015)
+      result = Delta_vir(model, z) * Omega_m_z(model, 0.0, -1.0); // matches Coupon et al. (2015)
 
    } else {
 
@@ -621,16 +614,8 @@ double r_vir(const Model *model, double Mh, double c, double z)
       double *y = (double *)malloc(Ninter*sizeof(double));
 
       for(i=0;i<Ninter;i++){
-         x[i]  = LNMH_MIN+dx*(double)i;
+         x[i] = LNMH_MIN+dx*(double)i;
          y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, 0.0)*Delta_vir(model, z)), 1.0/3.0);
-         /*
-         if( !strcmp(model->massDef, "MvirC15")){
-            y[i] = rh(model, exp(x[i]), NAN, z);  // DEBUGGING: matches Coupon et al. (2015) but is not exactly correct
-         }else{
-            // TODO: check this
-            y[i] = pow(3.0*M_vir(model, exp(x[i]), model->massDef, c, z)/(4.0*M_PI*rho_crit(model, 0.0)*Delta_vir(model, z)), 1.0/3.0);
-         }
-         */
       }
 
       inter_min = exp(x[0]);
@@ -704,29 +689,28 @@ void M1_to_M2(const Model *model, double M1, double c1, double Delta1, double De
 double Delta_vir(const Model *model, double z)
 {
 
-   /*
-      Virial overdensity
-   */
+   /*      Virial overdensity */
 
    double result = 0.0;
    double w_vir, theta, w, a, b;
 
-   // TODO: set as model parameter
-   int type = TYPE;
+   int type = TYPE; // TODO: set as a model parameter
 
    switch (type) {
 
-      case KS96: // Kitayama & Suto (1996)
+      case KS96:
+         /*    Kitayama & Suto (1996) */
 
          w_vir = 1.0/Omega_m_z(model, z, -1.0) - 1.0;
          result = 18.0*M_PI*M_PI*(1.0 + 0.4093*pow(w_vir, 0.9052));
          break;
 
-      case WK03: // Weinberg & Kamionkowsky (2003), used in Coupon et al. (2015)
+      case WK03:
+         /*    Weinberg & Kamionkowsky (2003), used in Coupon et al. (2015) */
 
          theta = 1.0/Omega_m_z(model, z, -1.0) - 1.0;
 
-         // dark energy equation of state
+         /*    dark energy equation of state */
          w = -1;
 
          a = 0.399 - 1.309*(pow(fabs(w), 0.426) - 1.0);
@@ -737,7 +721,6 @@ double Delta_vir(const Model *model, double z)
    }
 
    return result;
-
 }
 
 #undef TYPE
@@ -784,8 +767,10 @@ double f_sigma(const Model *model, double sigma, double z)
    } else if( !strcmp(model->hmfDef, "T08")){
       /*    Tinker et al. (2008) */
 
-      // TODO: check this -> comoving unit, z=0 ??
-      // log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) );
+      /*
+       * In Tinker et al., Delta is defined wrt to critical density
+       * hence the normalisation by Omega_m
+       */
       log10_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) );
 
       A = 0.1*log10_Delta - 0.05;
@@ -856,8 +841,6 @@ double b_sigma(const Model *model, double sigma, double z)
    }else if( !strcmp(model->biasDef, "T08")){
       /*    Tinker et al. (2008, 2010) */
 
-      // TODO: check this -> comoving unit, z=0 ??
-      // log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, z, -1.0) );
       log_Delta = log10(Delta(model, z, model->massDef) / Omega_m_z(model, 0.0, -1.0) );
 
       A = 1.0+0.24*log_Delta*exp(-pow(4.0/log_Delta,4.0));
@@ -879,10 +862,10 @@ double b_sigma(const Model *model, double sigma, double z)
 
 double dsigmaM_m1_dlnM(const Model *model, double Mh)
 {
-   /* Returns dsigma^-1/dlnM. M in M_sol/h */
+   /*    Returns dsigma^-1/dlnM. M in M_sol/h */
    double lnMh = log(Mh);
 
-   /* Numerical derivative */
+   /*    Numerical derivative */
    double h, a, b;
 
    h = lnMh / 20.0;
@@ -895,8 +878,8 @@ double dsigmaM_m1_dlnM(const Model *model, double Mh)
 
 double sigma2M(const Model *model, double Mh)
 {
-   double rhobar = rho_bar(model, 0.0); // comoving unit
-   double R      = pow(3.0*Mh/(4.0*M_PI*rhobar), 1.0/3.0);
+   double rhobar = rho_bar(model, 0.0);
+   double R = pow(3.0*Mh/(4.0*M_PI*rhobar), 1.0/3.0);
 
    return sigma2R(model, R);
 }
@@ -907,7 +890,7 @@ double sigma2R(const Model *model, double R)
 
    params p;
    p.model = model;
-   p.R     = R;
+   p.R = R;
 
    return 1.0/(2.0*M_PI*M_PI) * int_gsl(int_for_sigma2R, (void*)&p, log(KMIN), log(KMAX), 1.e-5);
 }
@@ -916,8 +899,8 @@ double sigma2R(const Model *model, double R)
 double int_for_sigma2R(double lnk, void *p)
 {
 
-   const Model *model    = ((params *)p)->model;
-   double R              = ((params *)p)->R;
+   const Model *model = ((params *)p)->model;
+   double R = ((params *)p)->R;
 
    double x, k, W;
 
@@ -937,25 +920,25 @@ double int_for_sigma2R(double lnk, void *p)
 }
 
 double rh(const Model *model, double Mh, double D, double z){
-/*
- *    Returns the radius rh enclosing Delta (D) times the CRITICAL
- *    density of the Universe at redshift z. If Delta = Delta_vir, this
- *    is the virial radius.
- */
+   /*
+    *    Returns the radius rh enclosing Delta (D) times the CRITICAL
+    *    density of the Universe at redshift z. If Delta = Delta_vir, this
+    *    is the virial radius.
+    */
 
    if (isnan(D)){
       D = Delta(model, z, model->massDef);
    }
 
-   // return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, z)*D), 1.0/3.0);
-   // DEBUGGING
    return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, 0.0)*D), 1.0/3.0);
 }
 
 double Mh_rh(const Model *model, double r, double z)
 {
-  /* Mass of a halo with radius rh. If Delta = Delta_vir, this
-  is virial mass. This is NOT the mass integrated within r, Mh(r). */
+  /*
+   *     Mass of a halo with radius rh. If Delta = Delta_vir, this
+   *     is virial mass. This is NOT the mass integrated within r, Mh(r).
+   */
 
   return (4.0/3.0)*M_PI*r*r*r*rho_crit(model, 0.0)*Delta(model, z, model->massDef);
 }
@@ -977,8 +960,7 @@ double delta_c(const Model *model, double z)
    /*    WK03 (18) */
    alpha = 0.131 + cosmo->w0_de*(0.555 + cosmo->w0_de*(1.128 + cosmo->w0_de*(1.044 + cosmo->w0_de*0.353)));
 
-   /*    KS96 (A.6). Note: typo (0.123) in astro-ph version. Correct in ApJ. */
-   // alpha = 0.0123;
+   /*    KS96 (A.6). Note: typo (0.123) in astro-ph version. Correct in ApJ. (alpha = 0.0123)*/
 
    return delta_EdS*(1. + alpha*log10(Omega_m_z(model, z, -1.0)));
 
@@ -988,7 +970,6 @@ double delta_c(const Model *model, double z)
 double Dplus(const Model *model, double z)
 {
    /*    wrapper for D+ function */
-
 
    static double Dp = 0.0, z_tmp = -1.0;
 

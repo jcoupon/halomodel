@@ -931,6 +931,7 @@ double rh(const Model *model, double Mh, double D, double z){
    }
 
    return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, 0.0)*D), 1.0/3.0);
+
 }
 
 double Mh_rh(const Model *model, double r, double z)

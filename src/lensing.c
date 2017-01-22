@@ -493,7 +493,6 @@ void xi_gm_twohalo(const Model *model, double *r, int N, double z, double *resul
             }else{
                result[i] = (p.ngp/p.ng)*pow(bias_fac, 2.0)*xi_from_Pkr(&Pk, r[i], fc);
             }
-
          }
       }
       FFTLog_free(fc);

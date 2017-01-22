@@ -1253,13 +1253,17 @@ def DL(model, z):
     return c_halomodel.DL(model, z, 0)
 
 
-def rh(model, Mh, z):
+def rh(model, Mh, z, D=None):
     """ Returns rh in h^-1 Mpc """
 
     # Mh = np.asarray(Mh, dtype=np.float64)
     result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
 
-    D = Delta(model, z, model.massDef)
+    if D is None:
+        D = Delta(model, z, model.massDef)
+    else:
+        D = Delta(model, z, D)
+
     for i, m in enumerate(Mh):
         result[i] = c_halomodel.rh(model, Mh[i], D, z)
 

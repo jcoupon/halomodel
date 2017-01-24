@@ -308,6 +308,10 @@ c_halomodel.Ngal_c.restype = ctypes.c_double
 c_halomodel.Ngal.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.Ngal.restype = ctypes.c_double
 
+c_halomodel.rho_crit.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
+c_halomodel.rho_crit.restype   = ctypes.c_double
+
+
 
 """
 
@@ -461,7 +465,7 @@ def test():
         else:
             sys.stderr.write("mass_conv:")
             try:
-                np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "M200m", "M500c", z)[0], 12.6551753819, err_msg="in mass_conv")
+                np.testing.assert_almost_equal(log10M1_to_log10M2(model, 13.0, None, "M200m", "M500c", z)[0], 12.754386184851789, err_msg="in mass_conv")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()

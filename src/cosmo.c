@@ -551,34 +551,37 @@ double Delta(const Model *model, double z, char *massDef)
 {
    /*
       Set delta wrt critical density depending on
-      adopted mass definition
+      adopted mass definition.
+      The correction applied is to
+      take into account the comoving
+      units
    */
 
    double result;
 
    if( !strcmp(massDef, "M200m")){
 
-       result = 200.0 * Omega_m_z(model, 0.0, -1.0); // z=0.0 <- comoving units
+       result = 200.0 * Omega_m_z(model, 0.0, -1.0);
 
    }else if( !strcmp(massDef, "M200c")){
 
-      result = 200.0;
+      result = 200.0 * E2(model, z, 0)/pow(1.0+z, 3.0);
 
    }else if( !strcmp(massDef, "M500m")){
 
-      result = 500.0 * Omega_m_z(model, 0.0, -1.0); // z=0.0 <- comoving units
+      result = 500.0 * Omega_m_z(model, 0.0, -1.0);
 
    } else if( !strcmp(massDef, "M500c")){
 
-      result = 500.0;
+      result = 500.0 * E2(model, z, 0)/pow(1.0+z, 3.0);
 
    } else if( !strcmp(massDef, "Mvir")){
 
-      result = Delta_vir(model, z);
+      result = Delta_vir(model, z) * E2(model, z, 0)/pow(1.0+z, 3.0);
 
    } else if( !strcmp(massDef, "MvirC15")){
 
-      result = Delta_vir(model, z) * Omega_m_z(model, 0.0, -1.0); // matches Coupon et al. (2015)
+      result = Delta_vir(model, z) * Omega_m_z(model, 0.0, -1.0); // matches Coupon et al. (2015), i.e. Delta_vir defined wrt mean density
 
    } else {
 
@@ -931,6 +934,8 @@ double rh(const Model *model, double Mh, double D, double z){
    }
 
    return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, 0.0)*D), 1.0/3.0);
+   // DEBUGGING
+   // return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, z)*D), 1.0/3.0);
 
 }
 

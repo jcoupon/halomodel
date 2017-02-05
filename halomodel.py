@@ -352,7 +352,7 @@ def test():
     compute_ref = True
     printModelChanges = False
     # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "Ngal"]
-    actions = ["SigmaIx_HOD"]
+    actions = ["SigmaIx_HOD_nonPara"]
 
     # this model matches Coupon et al. (2015)
     # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -803,6 +803,62 @@ def test():
                 np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx_HOD (XB)")
                 np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in SigmaIx_HOD (twohalo)")
                 np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD (total)")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                traceback.print_exc()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+
+
+    if "SigmaIx_HOD_nonPara" in actions:
+        """ X-ray projected profile, HOD model """
+
+        # model.log10Mstar_min = 10.60 - 0.1549 #- 0.142668
+        # model.log10Mstar_max = 10.80 - 0.1549 #- 0.142668
+
+        log10h = np.log10(model.H0/100.0)
+
+        cen = ascii.read(HALOMODEL_DIRNAME+"/data/HOD_0.20_0.35_cen_M200m_Mstar_11.30_11.45.ascii", format="no_header")
+        cen["col1"] += log10h
+        model.HOD_cen_N = len(cen)
+        model.HOD_cen_log10Mh = np.ctypeslib.as_ctypes(cen["col1"])
+        model.HOD_cen_Ngal = np.ctypeslib.as_ctypes(cen["col2"])
+
+        sat = ascii.read(HALOMODEL_DIRNAME+"/data/HOD_0.20_0.35_sat_M200m_Mstar_11.30_11.45.ascii", format="no_header")
+        sat["col1"] += log10h
+        model.HOD_sat_N = len(sat)
+        model.HOD_sat_log10Mh = np.ctypeslib.as_ctypes(sat["col1"])
+        model.HOD_sat_Ngal = np.ctypeslib.as_ctypes(sat["col2"])
+
+
+        model.IxXB_Re = 0.01196
+        model.IxXB_CR = 6.56997872802e-05
+
+        theta = pow(10.0, np.linspace(np.log10(1.e-4), np.log10(5.e0), 100))
+
+        Mh = np.nan
+        c = np.nan
+
+        cen = SigmaIx(model, theta, Mh, c, z, obs_type="cen", PSF=None)
+        sat = SigmaIx(model, theta, Mh, c, z, obs_type="sat", PSF=None)
+        XB = SigmaIx(model, theta, Mh, c, z, obs_type="XB", PSF=None)
+        twohalo = SigmaIx(model, theta, Mh, c, z, obs_type="twohalo", PSF=None)
+        total = SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None)
+
+        fileOutName = HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_nonPara_ref.ascii"
+        if compute_ref:
+            out = Table([theta, total, cen, sat, XB, twohalo], names=['theta', 'total', 'cen', 'sat', 'XB', 'twohalo'])
+            ascii.write(out, fileOutName, format="commented_header")
+            dumpModel(model, fileOutName=fileOutName)
+        else:
+            sys.stderr.write("SigmaIx_HOD_nonPara:")
+            ref = ascii.read(fileOutName, header_start=-1)
+            try:
+                np.testing.assert_array_almost_equal(cen, ref['cen'], err_msg="in SigmaIx_HOD_nonPara (cen)")
+                np.testing.assert_array_almost_equal(sat, ref['sat'], err_msg="in SigmaIx_HOD_nonPara (sat)")
+                np.testing.assert_array_almost_equal(XB, ref['XB'], err_msg="in SigmaIx_HOD_nonPara (XB)")
+                np.testing.assert_array_almost_equal(twohalo, ref['twohalo'], err_msg="in SigmaIx_HOD_nonPara (twohalo)")
+                np.testing.assert_array_almost_equal(total, ref['total'], err_msg="in SigmaIx_HOD_nonPara (total)")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()

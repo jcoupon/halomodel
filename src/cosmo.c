@@ -550,12 +550,12 @@ double concentration(const Model *model, double Mh, double z, char *concenDef)
 double Delta(const Model *model, double z, char *massDef)
 {
    /*
-      Set delta wrt critical density depending on
-      adopted mass definition.
-      The correction applied is to
-      take into account the comoving
-      units
-   */
+    *    Set delta wrt critical density depending on
+    *    adopted mass definition.
+    *    The correction applied is to
+    *    take into account the comoving
+    *    units
+    */
 
    double result;
 
@@ -595,7 +595,7 @@ double Delta(const Model *model, double z, char *massDef)
 
 double r_vir(const Model *model, double Mh, double c, double z)
 {
-   /* Virial radius for a given mass */
+   /*    Virial radius for a given mass */
 
    static int firstcall = 1;
    static gsl_interp_accel *acc;
@@ -949,9 +949,30 @@ double Mh_rh(const Model *model, double r, double z)
   return (4.0/3.0)*M_PI*r*r*r*rho_crit(model, 0.0)*Delta(model, z, model->massDef);
 }
 
-/* ---------------------------------------------------------------- *
+/*
  * cosmology functions
- * ---------------------------------------------------------------- */
+ */
+
+
+
+double cm3toMpc3_como(const Model *model, double z)
+{
+   /*    cm3 to Mpc3 conversion function. Returns
+    *    result in h^-3 comoving Mpc. */
+
+   static double result = 0.0, z_tmp = -1, H0_tmp = -1;
+
+   if(assert_float(z_tmp, z) || assert_float(H0_tmp, model->H0)){
+      z_tmp = z;
+      H0_tmp = model->H0;
+      result = pow(model->H0/100.0, 3.0) * pow(1.0+z, 3.0) * CM3TOMPC3;
+   }
+
+   return result;
+}
+
+
+
 
 double delta_c(const Model *model, double z)
 {

@@ -190,7 +190,7 @@ typedef struct gsl_int_params
 #define LNMH_MIN 6.90  // (3.0*log(10.0))
 #define LNMH_MAX 37.99 // (16.5*log(10.0))
 
-#define CM3TOMPC3  (3.40366918775e-74)
+#define CM3TOMPC3  (3.40366918775e-74) // in physical Mpc^3
 
 /*
  *    Limits for power spectra. Note: these are

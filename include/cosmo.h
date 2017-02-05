@@ -79,6 +79,8 @@ double int_for_sigma2R(double lnk, void *p);
  *    cosmology functions
  */
 
+
+double cm3toMpc3_como(const Model *model, double z);
 double delta_c(const Model *model, double z);
 double Dplus(const Model *model, double z);
 double P_m_nonlin(const Model *model, double z, double k);

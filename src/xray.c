@@ -438,6 +438,13 @@ double intForPIx1hs(double logMh, void *p)
    double Norm = NormIx(model, Mh, c, z);
 
    if (fac*Norm > 0.0){
+
+
+      // DEBUGGING
+      //return  1.0
+      //   * pow(uIx(model, k, Mh, c, z), 2.0) * Norm
+      //   * dndlnMh(model, Mh, z) / fac * SCALE;
+
       return  Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
          * pow(uIx(model, k, Mh, c, z), 2.0) * Norm
          * dndlnMh(model, Mh, z) / fac * SCALE;
@@ -451,7 +458,7 @@ double intForPIx1hs(double logMh, void *p)
 double uIx(const Model *model, double k, double Mh, double c, double z)
 {
    /*
-    *    Returns the normalised (out to r_vir radius)
+    *    Returns the normalised (out to rh radius)
     *    fourier transform of the brightness profile.
     *    The constants are set by the wrapper and depend on
     *    halo properties, redshift, etc., so that all the
@@ -645,7 +652,10 @@ double NormIx(const Model *model, double Mh, double c, double z)
 
       for(i=0;i<Ninter;i++){
          p.Mh = exp(x[i]);
-         y[i] = int_gsl_QNG(intForNormIx, (void*)&p, log(RMIN), log(r_vir(model, p.Mh, c, z)), 1.0e-3);
+         // y[i] = int_gsl_QNG(intForNormIx, (void*)&p, log(RMIN), log(r_vir(model, p.Mh, c, z)), 1.0e-3);
+
+         // DEBUGGING
+         y[i] = int_gsl_QNG(intForNormIx, (void*)&p, log(RMIN), log(rh(model, p.Mh, c, z)), 1.0e-3);
       }
 
       inter_min = exp(x[0]);
@@ -798,6 +808,10 @@ double P_Ix_twohalo(double k, void *p)
 
       if (fac*Norm > 0.0){
          return  uIx(model, k, Mh, c, z) * Norm * bias_h(model, Mh, z) / fac * SCALE;
+         // DEBUGGING
+         // return  uIx(model, k, Mh, c, z) * Norm * 1.0 / fac * SCALE;
+
+
       }else{
          return 0.0;
       }
@@ -836,7 +850,7 @@ double intForP_twohalo_Ix(double logMh, void *p){
 double ix(const Model *model, double r, double Mh, double c, double z){
    /*
     *    Returns the 3D gas brightness
-    *    in erg s^-1 Mpc-3 / 1e.44 assuming
+    *    in erg s^-1 h^3 Mpc-3 / 1e.44 assuming
     *    a 3D gas profile
     *    ix \propto nGas^2
     *    = Ix if non HOD
@@ -847,7 +861,7 @@ double ix(const Model *model, double r, double Mh, double c, double z){
    Tx = MhToTx(model, Mh, z);
    ZGas = MhToZGas(model, Mh, z);
 
-   return Lambda(Tx, ZGas)*pow(1.21*nGas(model, r, Mh, c, z), 2.0) / CM3TOMPC3;
+   return Lambda(Tx, ZGas)*pow(1.21*nGas(model, r, Mh, c, z), 2.0) / cm3toMpc3_como(model, z);
 
 }
 
@@ -1143,9 +1157,11 @@ double nGas(const Model *model, double r, double Mh, double c, double z){
       rc = pow(10.0, model->gas_log10rc);
    }
 
+
    /* truncation radius */
    if (!isnan(Mh)){
-      rtrunc = r_vir(model, Mh, c, z);
+      // rtrunc = r_vir(model, Mh, c, z);
+      rtrunc = rh(model, Mh, c, z);
    }else{
       rtrunc = RMAX;
    }

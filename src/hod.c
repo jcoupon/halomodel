@@ -54,7 +54,7 @@ double Ngal_c(const Model *model, double Mh, double log10Mstar_min, double log10
       result -= eta_cen(model, Mh)*0.5*(1.0-gsl_sf_erf(arg));
    }
 
-   return result;
+   return MAX(0.0, result);
 }
 
 double eta_cen(const Model *model, double Mh){
@@ -119,8 +119,6 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
          return gsl_spline_eval(spline, log10Mh, acc);
       }
    }
-
-
 
 
    log10Msat = log10(model->B_sat) + model->beta_sat*msmh_log10Mh(model, log10Mstar_min) + 12.0*(1.0-model->beta_sat);

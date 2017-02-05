@@ -848,7 +848,6 @@ def test():
         model.gas_log10rc_3 = np.log10(0.08)
         model.gas_log10rc_4 = np.log10(0.08)
 
-
         log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 10)
         print Ngal(model, log10Mh, 10.0, 12.0, obs_type="cen")
         print Ngal(model, log10Mh, 10.0, 12.0, obs_type="sat")

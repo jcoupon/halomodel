@@ -356,6 +356,12 @@ def test():
 
     # this model matches Coupon et al. (2015)
     # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
+
+
+    # DEBUGGING
+    # model = Model(Omega_m=0.2793, Omega_de=0.7207, H0=70.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+    # z = 0.29
+
     model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
     z = 0.308898
 
@@ -831,8 +837,33 @@ def test():
         model.HOD_sat_Ngal = np.ctypeslib.as_ctypes(sat["col2"])
 
 
-        model.IxXB_Re = 0.01196
-        model.IxXB_CR = 6.56997872802e-05
+
+
+        log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
+        N = Ngal(model, log10Mh, 10.0, 11.0)
+
+
+        print N
+
+
+        return
+
+
+        model.gas_log10n0_1 = -2.5
+        model.gas_log10n0_2 = 1.0
+        model.gas_log10beta_1 = np.log10(1.5)
+        model.gas_log10beta_2 = np.log10(0.35)
+        model.gas_log10beta_3 = np.log10(0.5)
+        model.gas_log10beta_4 = np.log10(0.5)
+        model.gas_log10rc_1 = np.log10(0.35)
+        model.gas_log10rc_2 = np.log10(0.04)
+        model.gas_log10rc_3 = np.log10(0.08)
+        model.gas_log10rc_4 = np.log10(0.08)
+
+
+
+        model.IxXB_Re = -1.0
+        model.IxXB_CR = -1.0
 
         theta = pow(10.0, np.linspace(np.log10(1.e-4), np.log10(5.e0), 100))
 

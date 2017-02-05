@@ -349,21 +349,15 @@ def test():
     OK_MESSAGE = "OK\n"
     FAIL_MESSAGE = "FAILED\n"
 
-    compute_ref = True
+    compute_ref = False
     printModelChanges = False
-    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "Ngal"]
-    actions = ["SigmaIx_HOD_nonPara"]
+    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
+    # actions = ["SigmaIx_HOD_nonPara"]
 
     # this model matches Coupon et al. (2015)
     # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
-
-
-    # DEBUGGING
-    model = Model(Omega_m=0.2793, Omega_de=0.7207, H0=70.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
-    z = 0.29
-
-    # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
-    # z = 0.308898
+    model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+    z = 0.308898
 
     m1 =  dumpModel(model)
 

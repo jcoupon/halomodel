@@ -44,14 +44,14 @@
 # ggl_log10Mh = 14.0
 # ggl_log10Mstar = nan
 # wtheta_nz_N = 0
-# wtheta_nz_z = <__main__.LP_c_double object at 0x10a2f5f80>
-# wtheta_nz = <__main__.LP_c_double object at 0x10a2f5f80>
+# wtheta_nz_z = <__main__.LP_c_double object at 0x10a1f5f80>
+# wtheta_nz = <__main__.LP_c_double object at 0x10a1f5f80>
 # HOD_cen_N = 0
-# HOD_cen_log10Mh = <__main__.LP_c_double object at 0x10a2f5f80>
-# HOD_cen_Ngal = <__main__.LP_c_double object at 0x10a2f5f80>
+# HOD_cen_log10Mh = <__main__.LP_c_double object at 0x10a1f5f80>
+# HOD_cen_Ngal = <__main__.LP_c_double object at 0x10a1f5f80>
 # HOD_sat_N = 0
-# HOD_sat_log10Mh = <__main__.LP_c_double object at 0x10a2f5f80>
-# HOD_sat_Ngal = <__main__.LP_c_double object at 0x10a2f5f80>
+# HOD_sat_log10Mh = <__main__.LP_c_double object at 0x10a1f5f80>
+# HOD_sat_Ngal = <__main__.LP_c_double object at 0x10a1f5f80>
 # XMM_PSF_rc_deg = nan
 # XMM_PSF_alpha = nan
 # k numerical analytic

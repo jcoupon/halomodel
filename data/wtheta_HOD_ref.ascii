@@ -44,14 +44,14 @@
 # ggl_log10Mh = 13.257332
 # ggl_log10Mstar = 11.0
 # wtheta_nz_N = 40
-# wtheta_nz_z = <__main__.LP_c_double object at 0x10aa193b0>
-# wtheta_nz = <__main__.LP_c_double object at 0x10aa193b0>
+# wtheta_nz_z = <__main__.LP_c_double object at 0x10aa1b3b0>
+# wtheta_nz = <__main__.LP_c_double object at 0x10aa1b3b0>
 # HOD_cen_N = 0
-# HOD_cen_log10Mh = <__main__.LP_c_double object at 0x10aa193b0>
-# HOD_cen_Ngal = <__main__.LP_c_double object at 0x10aa193b0>
+# HOD_cen_log10Mh = <__main__.LP_c_double object at 0x10aa1b3b0>
+# HOD_cen_Ngal = <__main__.LP_c_double object at 0x10aa1b3b0>
 # HOD_sat_N = 0
-# HOD_sat_log10Mh = <__main__.LP_c_double object at 0x10aa193b0>
-# HOD_sat_Ngal = <__main__.LP_c_double object at 0x10aa193b0>
+# HOD_sat_log10Mh = <__main__.LP_c_double object at 0x10aa1b3b0>
+# HOD_sat_Ngal = <__main__.LP_c_double object at 0x10aa1b3b0>
 # XMM_PSF_rc_deg = nan
 # XMM_PSF_alpha = nan
 # theta total censat satsat twohalo

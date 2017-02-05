@@ -653,8 +653,6 @@ double NormIx(const Model *model, double Mh, double c, double z)
       for(i=0;i<Ninter;i++){
          p.Mh = exp(x[i]);
          // y[i] = int_gsl_QNG(intForNormIx, (void*)&p, log(RMIN), log(r_vir(model, p.Mh, c, z)), 1.0e-3);
-
-         // DEBUGGING
          y[i] = int_gsl_QNG(intForNormIx, (void*)&p, log(RMIN), log(rh(model, p.Mh, c, z)), 1.0e-3);
       }
 
@@ -735,6 +733,7 @@ void IxTwohalo(const Model *model, double *r, int N, double Mh, double c, double
    /*    parameters to pass to the function */
    params p;
    p.model = model;
+   p.c = c;
    p.z = z;
    p.Mh = Mh;
 
@@ -769,7 +768,6 @@ void IxTwohalo(const Model *model, double *r, int N, double Mh, double c, double
    free(xidm);
 
    return;
-
 }
 
 
@@ -806,12 +804,11 @@ double P_Ix_twohalo(double k, void *p)
       double fac = CRToLx(model, z, Tx, ZGas);
       double Norm = NormIx(model, Mh, c, z);
 
+      // DEBUGGING
+      //printf("%e %e %e\n", Mh , c, z);
+
       if (fac*Norm > 0.0){
          return  uIx(model, k, Mh, c, z) * Norm * bias_h(model, Mh, z) / fac * SCALE;
-         // DEBUGGING
-         // return  uIx(model, k, Mh, c, z) * Norm * 1.0 / fac * SCALE;
-
-
       }else{
          return 0.0;
       }

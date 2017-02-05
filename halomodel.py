@@ -359,11 +359,11 @@ def test():
 
 
     # DEBUGGING
-    # model = Model(Omega_m=0.2793, Omega_de=0.7207, H0=70.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
-    # z = 0.29
+    model = Model(Omega_m=0.2793, Omega_de=0.7207, H0=70.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+    z = 0.29
 
-    model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
-    z = 0.308898
+    # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+    # z = 0.308898
 
     m1 =  dumpModel(model)
 
@@ -837,18 +837,6 @@ def test():
         model.HOD_sat_Ngal = np.ctypeslib.as_ctypes(sat["col2"])
 
 
-
-
-        log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
-        N = Ngal(model, log10Mh, 10.0, 11.0)
-
-
-        print N
-
-
-        return
-
-
         model.gas_log10n0_1 = -2.5
         model.gas_log10n0_2 = 1.0
         model.gas_log10beta_1 = np.log10(1.5)
@@ -860,6 +848,10 @@ def test():
         model.gas_log10rc_3 = np.log10(0.08)
         model.gas_log10rc_4 = np.log10(0.08)
 
+
+        log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 10)
+        print Ngal(model, log10Mh, 10.0, 12.0, obs_type="cen")
+        print Ngal(model, log10Mh, 10.0, 12.0, obs_type="sat")
 
 
         model.IxXB_Re = -1.0
@@ -875,6 +867,12 @@ def test():
         XB = SigmaIx(model, theta, Mh, c, z, obs_type="XB", PSF=None)
         twohalo = SigmaIx(model, theta, Mh, c, z, obs_type="twohalo", PSF=None)
         total = SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None)
+
+        log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 10)
+        print Ngal(model, log10Mh, 10.0, 12.0, obs_type="cen")
+        print Ngal(model, log10Mh, 10.0, 12.0, obs_type="sat")
+
+
 
         fileOutName = HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_nonPara_ref.ascii"
         if compute_ref:

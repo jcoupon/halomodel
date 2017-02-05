@@ -837,22 +837,6 @@ def test():
         model.HOD_sat_Ngal = np.ctypeslib.as_ctypes(sat["col2"])
 
 
-        model.gas_log10n0_1 = -2.5
-        model.gas_log10n0_2 = 1.0
-        model.gas_log10beta_1 = np.log10(1.5)
-        model.gas_log10beta_2 = np.log10(0.35)
-        model.gas_log10beta_3 = np.log10(0.5)
-        model.gas_log10beta_4 = np.log10(0.5)
-        model.gas_log10rc_1 = np.log10(0.35)
-        model.gas_log10rc_2 = np.log10(0.04)
-        model.gas_log10rc_3 = np.log10(0.08)
-        model.gas_log10rc_4 = np.log10(0.08)
-
-        log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 10)
-        print Ngal(model, log10Mh, 10.0, 12.0, obs_type="cen")
-        print Ngal(model, log10Mh, 10.0, 12.0, obs_type="sat")
-
-
         model.IxXB_Re = -1.0
         model.IxXB_CR = -1.0
 
@@ -866,12 +850,6 @@ def test():
         XB = SigmaIx(model, theta, Mh, c, z, obs_type="XB", PSF=None)
         twohalo = SigmaIx(model, theta, Mh, c, z, obs_type="twohalo", PSF=None)
         total = SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None)
-
-        log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 10)
-        print Ngal(model, log10Mh, 10.0, 12.0, obs_type="cen")
-        print Ngal(model, log10Mh, 10.0, 12.0, obs_type="sat")
-
-
 
         fileOutName = HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_nonPara_ref.ascii"
         if compute_ref:

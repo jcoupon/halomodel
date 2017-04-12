@@ -1,14 +1,14 @@
 # halomodel
 
-Jean coupon - 2016
-script to run wrapped halomodel routines in c
+Jean coupon - 2017
+Library to run halomodel routines
 
 Required libraries:
 
 for c (set path in Makefile if necessary):
 - fftw3 3.3.4 (http://www.fftw.org/)
 - gsl 2.1 (https://www.gnu.org/software/gsl/)
-- nicaea 2.5 (http://www.cosmostat.org/software/nicaea/)
+- nicaea 2.7 (http://www.cosmostat.org/software/nicaea/)
 
 for python:
 - numpy 1.10.2 (http://www.numpy.org/)
@@ -17,15 +17,22 @@ for python:
 
 To install the library:
 
-First edit the Makefile to specify the path to FFTW, GSL and NICAEA, then run
+run
 ```
 $ git clone https://github.com/jcoupon/halomodel.git
 $ cd halomodel
 $ make
 ```
 
+Options:
+
+- `PREFIX_GSL=DIRECTORY` (default: /usr/local)
+- `PREFIX_FFTW=DIRECTORY` (default: /usr/local)
+- `PREFIX_NICAEA=DIRECTORY` (default: $(HOME)/local/source/build/nicaea_2.7)
+
+
 Then:
-- add the path to PYTHONPATH
+- add the halomodel path to PYTHONPATH
 - in python: "import halomodel"
 
 To test the installation:

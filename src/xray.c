@@ -867,7 +867,11 @@ double MhToTx(const Model *model, double Mh, double z)
 {
 
    double log10Mh = log10(Mh);
-   return pow(10.0, (log10Mh - 13.56) / 1.69);
+   // return pow(10.0, (log10Mh - 13.56) / 1.69);
+
+   return pow(10.0, (log10Mh - 13.56 - 0.24) / 1.69);
+
+
 }
 
 double TxToMh(const Model *model, double Tx, double z)
@@ -888,6 +892,8 @@ double MhToZGas(const Model *model, double Mh, double z)
 }
 
 
+
+// TODO: adapt to comoving unit
 # define CONST_MGAS (3.33054952367e+16) /* = mu * mp * 2.21 / (cm3ToMpc3 * Msun) */
 
 double MGas(const Model *model, double r, double Mh, double c, double z){

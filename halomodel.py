@@ -2,14 +2,14 @@
 
 """
 Jean coupon - 2016 - 2017
-script to run wrapped halomodel routines in c
+python wrapper for halomodel routines in c
 
 Required librairies:
 
 for c (if not in /usr/local/, set path in Makefile):
-- nicaea 2.5 (http://www.cosmostat.org/software/nicaea/)
 - fftw3 3.3.4 (http://www.fftw.org/)
 - gsl 2.1 (https://www.gnu.org/software/gsl/)
+- nicaea 2.7 (http://www.cosmostat.org/software/nicaea/)
 
 for python:
 - numpy 1.10.2 (http://www.numpy.org/)
@@ -30,7 +30,7 @@ import inspect
 """
 
 -------------------------------------------------------------
-path to c library (absolute path)
+path to c library
 -------------------------------------------------------------
 
 """
@@ -47,7 +47,7 @@ classes
 """
 
 class Model(ctypes.Structure):
-    """ Structure to serve at interface between
+    """ Structure to serve as the interface between
     python wrapper and c routines.
 
     IMPORTANT: when adding a new field,
@@ -61,6 +61,8 @@ class Model(ctypes.Structure):
         ("Omega_m", ctypes.c_double),
         ("Omega_de", ctypes.c_double),
         ("H0", ctypes.c_double),
+        ("h", ctypes.c_double),
+        ("log10h", ctypes.c_double),
         ("massDef", ctypes.c_char_p),
         ("concenDef", ctypes.c_char_p),
         ("hmfDef", ctypes.c_char_p),
@@ -145,6 +147,8 @@ class Model(ctypes.Structure):
         self.Omega_m = Omega_m
         self.Omega_de = Omega_de
         self.H0 = H0
+        self.h = self.H0/100.0
+        self.log10h = np.log10(self.h)
         self.massDef = massDef      # halo mass definition: M500c, M500m, M200c, M200m, Mvir, MvirC15
         self.concenDef = concenDef  # mass/concentration relation: D11, M11, TJ03, B12_F, B12_R, B01
         self.hmfDef = hmfDef        # halo mass defintion: PS74, ST99, ST02, J01, T08
@@ -278,10 +282,8 @@ c_halomodel.Delta_vir.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.Delta_vir.restype = ctypes.c_double
 c_halomodel.msmh_log10Mh.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.msmh_log10Mh.restype = ctypes.c_double
-
 c_halomodel.nGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.nGas.restype = ctypes.c_double
-
 c_halomodel.inter_gas_log10n0.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.inter_gas_log10n0.restype = ctypes.c_double
 c_halomodel.inter_gas_log10beta.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
@@ -300,18 +302,14 @@ c_halomodel.Lambda.argtypes = [ctypes.c_double, ctypes.c_double]
 c_halomodel.Lambda.restype = ctypes.c_double
 c_halomodel.CRToLx.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.CRToLx.restype = ctypes.c_double
-
 c_halomodel.Ngal_s.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.Ngal_s.restype = ctypes.c_double
 c_halomodel.Ngal_c.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.Ngal_c.restype = ctypes.c_double
 c_halomodel.Ngal.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.Ngal.restype = ctypes.c_double
-
 c_halomodel.rho_crit.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.rho_crit.restype   = ctypes.c_double
-
-
 
 """
 
@@ -324,7 +322,11 @@ main
 
 def main(args):
 
-    function = getattr(sys.modules[__name__], args.option)()
+    #function = getattr(sys.modules[__name__], args.option)()
+
+    if args.option == "test":
+        test()
+
     return
 
 """
@@ -351,8 +353,8 @@ def test():
 
     compute_ref = False
     printModelChanges = False
-    actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
-    # actions = ["SigmaIx_HOD_nonPara"]
+    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
+    actions = ["Ngal"]
 
     # this model matches Coupon et al. (2015)
     # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -1313,18 +1315,33 @@ def DL(model, z):
 
 
 def rh(model, Mh, z, D=None):
-    """ Returns rh in h^-1 Mpc """
+    """ Returns the radius rh enclosing Delta (D) times the CRITICAL
+    density of the Universe at redshift z. If Delta = Delta_vir,
+    and Mh virial mass, this is the virial radius.
 
-    # Mh = np.asarray(Mh, dtype=np.float64)
-    result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
+    INPUT
+    z: redshift
+    Mh: halo mass in h^-1 Msun
+    D: overdensity with respect to the critical density
+        ("M200c", "M200m", "M500c" or "M500m"),
+        default: mass definition in model
+
+    OUTPUT
+    rh in h^-1 Mpc and in comoving coordinates
+
+    """
 
     if D is None:
         D = Delta(model, z, model.massDef)
     else:
         D = Delta(model, z, D)
 
-    for i, m in enumerate(Mh):
-        result[i] = c_halomodel.rh(model, Mh[i], D, z)
+    if isinstance(Mh, (list, tuple, np.ndarray)):
+        result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
+        for i, m in enumerate(Mh):
+            result[i] = c_halomodel.rh(model, Mh[i], D, z)
+    else :
+        result = c_halomodel.rh(model, Mh, D, z)
 
     return result
 

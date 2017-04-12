@@ -1,7 +1,7 @@
 /*
  *    utils.h
  *    halomodel library
- *    Jean Coupon 2015
+ *    Jean Coupon 2017
  */
 
 #ifndef UTILS_H
@@ -28,10 +28,10 @@
 #include <gsl/gsl_spline2d.h>
 
 
-#include <Demo/errorlist.h>
-#include <Demo/cosmo.h>
-#include <Demo/io.h>
-#include <Demo/maths.h>
+#include <nicaea/errorlist.h>
+#include <nicaea/cosmo.h>
+#include <nicaea/io.h>
+#include <nicaea/maths.h>
 
 typedef struct Model
 {
@@ -40,6 +40,8 @@ typedef struct Model
    double Omega_m;
    double Omega_de;
    double H0;
+   double h;
+   double log10h;
    char   *massDef;
    char   *concenDef;
    char   *hmfDef;

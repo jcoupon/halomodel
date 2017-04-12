@@ -925,8 +925,10 @@ double int_for_sigma2R(double lnk, void *p)
 double rh(const Model *model, double Mh, double D, double z){
    /*
     *    Returns the radius rh enclosing Delta (D) times the CRITICAL
-    *    density of the Universe at redshift z. If Delta = Delta_vir, this
-    *    is the virial radius.
+    *    density of the Universe at redshift z. If Delta = Delta_vir,
+    *    and Mh virial mass, this is the virial radius.
+    *
+    *    Attention: rh in comoving coordinates
     */
 
    if (isnan(D)){
@@ -934,9 +936,6 @@ double rh(const Model *model, double Mh, double D, double z){
    }
 
    return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, 0.0)*D), 1.0/3.0);
-   // DEBUGGING
-   // return pow(3.0*Mh/(4.0*M_PI*rho_crit(model, z)*D), 1.0/3.0);
-
 }
 
 double Mh_rh(const Model *model, double r, double z)

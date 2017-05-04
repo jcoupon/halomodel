@@ -15,12 +15,12 @@ def CRToLx(fileInName, z, Zgas):
 
     data = ascii.read(fileInName)
 
-    z_ZGas_logTx = (data['z'], data['ZGas'], log(data['Tx']))
-    logTx  = linspace(log(min(data['Tx'])), log(max(data['Tx'])), N)
+    z_ZGas_logTGas = (data['z'], data['ZGas'], log(data['TGas']))
+    logTGas  = linspace(log(min(data['TGas'])), log(max(data['TGas'])), N)
 
-    z_ZGas_logTx_eval = ([z]*N, [Zgas]*N, logTx )
+    z_ZGas_logTGas_eval = ([z]*N, [Zgas]*N, logTGas )
 
-    logCR = interpolate.griddata(z_ZGas_logTx, log(data["CR_pn"]+2.0*data["CR_MOS"]), z_ZGas_logTx_eval, method='linear')
-    logLx = interpolate.griddata(z_ZGas_logTx, log(data["Lx_bolo"]), z_ZGas_logTx_eval, method='linear')
+    logCR = interpolate.griddata(z_ZGas_logTGas, log(data["CR_pn"]+2.0*data["CR_MOS"]), z_ZGas_logTGas_eval, method='linear')
+    logLx = interpolate.griddata(z_ZGas_logTGas, log(data["Lx_bolo"]), z_ZGas_logTGas_eval, method='linear')
 
-    return list(logTx), list(logLx-logCR)
+    return list(logTGas), list(logLx-logCR)

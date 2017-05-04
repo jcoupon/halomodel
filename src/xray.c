@@ -1,7 +1,7 @@
 /*
  *    xray.c
  *    halomodel library
- *    Jean Coupon 2015-2016
+ *    Jean Coupon 2015-2017
  */
 
 #include "xray.h"
@@ -11,7 +11,7 @@ int main()
 {
    /*
     *    THIS IS FOR TESTS ONLY
-    *    Needs to define PYTHONHOME
+    *    Needs to define PYTHONHOME as:
     *    $ setenv PYTHONHOME ~/anaconda/
     */
 
@@ -268,11 +268,11 @@ void Ix1hc(const Model *model, double *r, int N, double Mh, double c, double z, 
    }else{
       for(i=0;i<N;i++){
 
-         double Tx, ZGas;
-         Tx = MhToTx(model, Mh, z);
+         double TGas, ZGas;
+         TGas = MhToTGas(model, Mh, z);
          ZGas = MhToZGas(model, Mh, z);
 
-         double fac = CRToLx(model, z, Tx, ZGas);
+         double fac = CRToLx(model, z, TGas, ZGas);
 
          if (fac > 0.0){
             result[i] = ix(model, r[i], Mh, c, z)/fac;
@@ -297,11 +297,11 @@ double intForIx1hc(double logMh, void *p)
 
    double Mh = exp(logMh);
 
-   double Tx, ZGas;
-   Tx = MhToTx(model, Mh, z);
+   double TGas, ZGas;
+   TGas = MhToTGas(model, Mh, z);
    ZGas = MhToZGas(model, Mh, z);
 
-   double fac = CRToLx(model, z, Tx, ZGas);
+   double fac = CRToLx(model, z, TGas, ZGas);
 
    if (fac > 0.0){
       return Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
@@ -404,11 +404,11 @@ double PIx1hs(const Model *model, double k, const double Mh, const double c, con
 
    }else{
 
-      double Tx, ZGas;
-      Tx = MhToTx(model, Mh, z);
+      double TGas, ZGas;
+      TGas = MhToTGas(model, Mh, z);
       ZGas = MhToZGas(model, Mh, z);
 
-      double fac = CRToLx(model, z, Tx, ZGas);
+      double fac = CRToLx(model, z, TGas, ZGas);
       double Norm = NormIx(model, Mh, c, z);
 
       if (fac*Norm > 0.0){
@@ -430,21 +430,14 @@ double intForPIx1hs(double logMh, void *p)
 
    double Mh = exp(logMh);
 
-   double Tx, ZGas;
-   Tx = MhToTx(model, Mh, z);
+   double TGas, ZGas;
+   TGas = MhToTGas(model, Mh, z);
    ZGas = MhToZGas(model, Mh, z);
 
-   double fac = CRToLx(model, z, Tx, ZGas);
+   double fac = CRToLx(model, z, TGas, ZGas);
    double Norm = NormIx(model, Mh, c, z);
 
    if (fac*Norm > 0.0){
-
-
-      // DEBUGGING
-      //return  1.0
-      //   * pow(uIx(model, k, Mh, c, z), 2.0) * Norm
-      //   * dndlnMh(model, Mh, z) / fac * SCALE;
-
       return  Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
          * pow(uIx(model, k, Mh, c, z), 2.0) * Norm
          * dndlnMh(model, Mh, z) / fac * SCALE;
@@ -797,11 +790,11 @@ double P_Ix_twohalo(double k, void *p)
       const double z = ((params *)p)->z;
       const double c = ((params *)p)->c;
 
-      double Tx, ZGas;
-      Tx = MhToTx(model, Mh, z);
+      double TGas, ZGas;
+      TGas = MhToTGas(model, Mh, z);
       ZGas = MhToZGas(model, Mh, z);
 
-      double fac = CRToLx(model, z, Tx, ZGas);
+      double fac = CRToLx(model, z, TGas, ZGas);
       double Norm = NormIx(model, Mh, c, z);
 
       // DEBUGGING
@@ -812,7 +805,6 @@ double P_Ix_twohalo(double k, void *p)
       }else{
          return 0.0;
       }
-
    }
 }
 
@@ -823,13 +815,13 @@ double intForP_twohalo_Ix(double logMh, void *p){
    const double z = ((params *)p)->z;
    const double c = ((params *)p)->c;
 
-   double result, Mh = exp(logMh);
+   double Mh = exp(logMh);
 
-   double Tx, ZGas;
-   Tx = MhToTx(model, Mh, z);
+   double TGas, ZGas;
+   TGas = MhToTGas(model, Mh, z);
    ZGas = MhToZGas(model, Mh, z);
 
-   double fac = CRToLx(model, z, Tx, ZGas);
+   double fac = CRToLx(model, z, TGas, ZGas);
    double Norm = NormIx(model, Mh, c, z);
 
    if (fac*Norm > 0.0){
@@ -854,33 +846,54 @@ double ix(const Model *model, double r, double Mh, double c, double z){
     *    = ix if HOD (to be integrated over halo mass function)
     */
 
-   double Tx, ZGas;
-   Tx = MhToTx(model, Mh, z);
+   double TGas, ZGas;
+   TGas = MhToTGas(model, Mh, z);
    ZGas = MhToZGas(model, Mh, z);
 
-   return Lambda(Tx, ZGas)*pow(1.21*nGas(model, r, Mh, c, z), 2.0) / cm3toMpc3_como(model, z);
+   return LambdaBolo(TGas, ZGas)*pow(1.21*nGas(model, r, Mh, c, z), 2.0) / cm3toMpc3_como(model, z);
 
 }
 
 
-double MhToTx(const Model *model, double Mh, double z)
+double MhToTGas(const Model *model, double Mh, double z)
 {
-
-   double log10Mh = log10(Mh);
+   // double log10Mh = log10(Mh);
    // return pow(10.0, (log10Mh - 13.56) / 1.69);
 
-   return pow(10.0, (log10Mh - 13.56 - 0.24) / 1.69);
+   // return pow(10.0, (log10Mh - 13.56 - 0.24) / 1.69);
 
+   int i, Ninter;
 
+   static gsl_interp_accel *acc;
+   static gsl_spline *spline;
+   static double inter_min, inter_max;
+
+   Ninter = model->gas_TGasMh_N;
+   inter_min = model->gas_TGasMh_log10Mh[0];
+   inter_max = model->gas_TGasMh_log10Mh[Ninter-1];
+
+   acc = gsl_interp_accel_alloc();
+   spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+
+   gsl_spline_init(spline, model->gas_TGasMh_log10Mh, model->gas_TGasMh_log10TGas, Ninter);
+
+   if (log10(Mh) < inter_min){
+      return model->gas_TGasMh_log10TGas[0];
+   }else if (log10(Mh) > inter_max){
+      return model->gas_TGasMh_log10TGas[Ninter-1];
+   }else{
+      return gsl_spline_eval(spline, log10(Mh), acc);
+   }
 }
 
-double TxToMh(const Model *model, double Tx, double z)
+/*
+double TGasToMh(const Model *model, double TGas, double z)
 {
 
-   double log10Tx = log10(Tx);
-   return pow(10.0, 1.69*log10Tx + 13.56);
+   double log10TGas = log10(TGas);
+   return pow(10.0, 1.69*log10TGas + 13.56);
 }
-
+*/
 
 double MhToZGas(const Model *model, double Mh, double z)
 {
@@ -888,17 +901,58 @@ double MhToZGas(const Model *model, double Mh, double z)
     *    Metallicity
     *
     */
-   return 0.25;
+   //return 0.25;
+
+   int i, Ninter;
+
+   static gsl_interp_accel *acc;
+   static gsl_spline *spline;
+   static double inter_min, inter_max;
+
+   Ninter = model->gas_ZGasMh_N;
+   inter_min = model->gas_ZGasMh_log10Mh[0];
+   inter_max = model->gas_ZGasMh_log10Mh[Ninter-1];
+
+   acc = gsl_interp_accel_alloc();
+   spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+
+   gsl_spline_init(spline, model->gas_ZGasMh_log10Mh, model->gas_ZGasMh_ZGas, Ninter);
+
+   if (log10(Mh) < inter_min){
+      return model->gas_ZGasMh_ZGas[0];
+   }else if (log10(Mh) > inter_max){
+      return model->gas_ZGasMh_ZGas[Ninter-1];
+   }else{
+      return gsl_spline_eval(spline, log10(Mh), acc);
+   }
+
 }
 
-
-
-// TODO: adapt to comoving unit
 # define CONST_MGAS (3.33054952367e+16) /* = mu * mp * 2.21 / (cm3ToMpc3 * Msun) */
+
+double const_Mgas_como(const Model *model, double z)
+{
+   /*    constant for Mgas. Returns
+    *    result in h^-3 comoving Mpc. */
+
+   static double result = 0.0, z_tmp = -1, H0_tmp = -1;
+
+   if(assert_float(z_tmp, z) || assert_float(H0_tmp, model->H0)){
+      z_tmp = z;
+      H0_tmp = model->H0;
+      result = CONST_MGAS / (pow(model->H0/100.0, 3.0) * pow(1.0+z, 3.0));
+   }
+
+   return result;
+}
+
+# undef CONST_MGAS
+
 
 double MGas(const Model *model, double r, double Mh, double c, double z){
 /*
  *    Returns the total Mgas(<r) out to r
+ *    in h^-1 Msun
  */
 
    params p;
@@ -907,7 +961,7 @@ double MGas(const Model *model, double r, double Mh, double c, double z){
    p.c = c;
    p.z = z;
 
-   return CONST_MGAS*int_gsl(intForMGas, (void*)&p, log(RMIN), log(r), 1.e-4);
+   return const_Mgas_como(model, z)*int_gsl(intForMGas, (void*)&p, log(RMIN), log(r), 1.e-4);
 }
 
 double intForMGas(double logr, void *p){
@@ -921,16 +975,14 @@ double intForMGas(double logr, void *p){
    return r * r * 4.0 * M_PI * nGas(model, r, Mh, c, z) * r;
 }
 
-# undef CONST_MGAS
-
 
 # define EPS 1.e-8
-double Lambda(double Tx, double ZGas)
+double LambdaBolo(double TGas, double ZGas)
 {
    /*
-    *    Cooling function in erg s^-1 cm^3
+    *    Cooling function in erg s^-1 cm^3 for the bolometric luminosity
     *
-    *    Tx: gas temperature
+    *    TGas: gas temperature
     *    Zgas: gas metallicity
     */
 
@@ -947,36 +999,71 @@ double Lambda(double Tx, double ZGas)
       firstcall = 0;
 
       /* tabulated values from D. Eckert */
-      double logLambda_t[148] = {-53.56615510,-53.61945972,-53.61586553,-53.59627881,-53.56493050,-53.52508044,
-         -53.48320760,-53.43961778,-53.36267128,-53.29823042,-53.24167152,-53.18988214,-53.14465362,-53.10772864,
-         -53.07174493,-53.03484686,-52.99926298,-52.96619781,-52.93665900,-52.90792787,-52.85530435,-52.80876386,
-         -52.76511644,-52.70837163,-52.65604690,-52.62527323,-52.59539058,-52.55359877,-52.49484301,-52.44045503,
-         -52.39076269,-52.34412016,-52.30415722,-52.26570514,-52.22993946,-52.19805803,-52.16713906,-51.93329010,
-         -52.00849062,-52.12096796,-52.41129527,-52.64891828,-52.78071699,-52.85041441,-52.83618696,-52.79279929,
-         -52.74925294,-52.71332389,-52.68972012,-52.68080320,-52.69498740,-52.70914988,-52.72212670,-52.73527413,
-         -52.74262144,-52.73855610,-52.73450722,-52.71968462,-52.69527914,-52.67020380,-52.62571720,-52.58335905,
-         -52.55662215,-52.53055549,-52.49361214,-52.43968763,-52.38914448,-52.34208470,-52.29783159,-52.25983099,
-         -52.22322173,-52.18904804,-52.15853237,-52.12892039,-51.50383030,-51.58091273,-51.70412319,-52.03091773,
-         -52.31246909,-52.48061147,-52.57839402,-52.57225105,-52.53847964,-52.50112764,-52.47146012,-52.45674434,
-         -52.45972482,-52.49169978,-52.52451737,-52.55742458,-52.59145163,-52.61724427,-52.62540927,-52.63364148,
-         -52.63851197,-52.62616137,-52.61159996,-52.57416073,-52.53766603,-52.51333645,-52.48954726,-52.45553529,
-         -52.40453234,-52.35631673,-52.31092037,-52.26811158,-52.23131933,-52.19585149,-52.16269797,-52.13302547,
-         -52.10421237,-51.08269344,-51.16099684,-51.29117124,-51.64252357,-51.95584075,-52.15212896,-52.27295197,
-         -52.27365184,-52.24816557,-52.21623015,-52.19214449,-52.18537073,-52.19926365,-52.24799864,-52.29909145,
-         -52.35222739,-52.40834598,-52.45446651,-52.47656813,-52.49913775,-52.52792151,-52.53074436,-52.52968974,
-         -52.50149446,-52.47283610,-52.45173633,-52.43104310,-52.40103063,-52.35399429,-52.30905046,-52.26589504,
-         -52.22513922,-52.19006677,-52.15616043,-52.12444154,-52.09594712,-52.06826270};
-      double logTx_t[37] = {-2.30258509,-2.12026354,-1.89711998,-1.60943791,-1.38629436,-1.20397280,-1.04982212,
-         -0.91629073,-0.69314718,-0.51082562,-0.35667494,-0.22314355,-0.10536052,0.00000000,0.09531018,0.18232156
-         ,0.26236426,0.33647224,0.40546511,0.47000363,0.58778666,0.69314718,0.78845736,0.91629073,1.02961942,1.09861229,
-         1.16315081,1.25276297,1.38629436,1.50407740,1.60943791,1.70474809,1.79175947,1.87180218,1.94591015,2.01490302,2.07944154};
-      double ZGas_t[4] = { 0.00,0.15,0.25,0.40 };
+      // awk '!(/^#/) {printf("%f, ", log($3))}' info/cooling_function_Eckert.ascii
+      double logLambda_t[328] = {-51.071595, -50.251454, -49.934409, -49.592541, -49.266065,
+         -49.020393, -48.823258, -48.658719, -52.450425, -50.408139, -49.950616, -49.511885,
+         -49.124261, -48.845570, -48.627860, -48.449176, -53.165734, -51.616334, -51.194254,
+         -50.777915, -50.403549, -50.131753, -49.918288, -49.742475, -53.316281, -51.816177,
+         -51.398802, -50.985547, -50.612999, -50.342229, -50.129343, -49.953938, -53.565854,
+         -51.930066, -51.500365, -51.079047, -50.701704, -50.428383, -50.213957, -50.037490,
+         -53.618955, -52.005416, -51.577620, -51.157551, -50.780944, -50.508012, -50.293786,
+         -50.117488, -53.615012, -52.118231, -51.701215, -51.288144, -50.915746, -50.645023,
+         -50.432186, -50.256801, -53.595092, -52.409297, -52.028794, -51.640339, -51.283204,
+         -51.020598, -50.812807, -50.640900, -53.563609, -52.647534, -52.311119, -51.954471,
+         -51.618019, -51.366708, -51.166054, -50.999010, -53.523701, -52.779505, -52.479478,
+         -52.151010, -51.833791, -51.593343, -51.399659, -51.237457, -53.481720, -52.849043,
+         -52.577070, -52.271659, -51.970879, -51.739958, -51.552495, -51.394709, -53.438127,
+         -52.834676, -52.570745, -52.272137, -51.976334, -51.748362, -51.562824, -51.406363,
+         -53.361067, -52.791065, -52.536696, -52.246365, -51.956684, -51.732340, -51.549222,
+         -51.394519, -53.296558, -52.747480, -52.499314, -52.214410, -51.928803, -51.706908,
+         -51.525421, -51.371893, -53.239919, -52.711613, -52.469743, -52.190424, -51.909055,
+         -51.689719, -51.509944, -51.357606, -53.188084, -52.688004, -52.455022, -52.183648,
+         -51.908387, -51.692772, -51.515500, -51.364954, -53.142889, -52.679041, -52.457961,
+         -52.197521, -51.930749, -51.720364, -51.546652, -51.398705, -53.105937, -52.693170,
+         -52.489841, -52.246145, -51.992778, -51.790793, -51.622828, -51.479060, -53.069896,
+         -52.707260, -52.522629, -52.297182, -52.058841, -51.866528, -51.705301, -51.566483,
+         -53.033005, -52.720259, -52.555560, -52.350322, -52.129278, -51.948373, -51.795219,
+         -51.662437, -52.997474, -52.733430, -52.589571, -52.406475, -52.205074, -52.037498,
+         -51.894029, -51.768585, -52.964439, -52.740772, -52.615378, -52.452585, -52.270017,
+         -52.115690, -51.982026, -51.864140, -52.934852, -52.736698, -52.623492, -52.474626,
+         -52.305389, -52.160667, -52.034270, -51.922072, -52.906115, -52.732600, -52.631701,
+         -52.497164, -52.342036, -52.207768, -52.089395, -51.983581, -52.853450, -52.717798,
+         -52.636591, -52.525949, -52.395229, -52.279633, -52.176026, -52.082157, -52.806925,
+         -52.693453, -52.624336, -52.528896, -52.414369, -52.311595, -52.218425, -52.133183,
+         -52.763290, -52.668461, -52.609857, -52.527954, -52.428258, -52.337586, -52.254480,
+         -52.177731, -52.706592, -52.623943, -52.572434, -52.499801, -52.410504, -52.328531,
+         -52.252777, -52.182332, -52.654306, -52.581637, -52.535982, -52.471166, -52.390791,
+         -52.316430, -52.247189, -52.182438, -52.623585, -52.554952, -52.511654, -52.450095,
+         -52.373455, -52.302279, -52.235849, -52.173539, -52.593752, -52.528929, -52.487942,
+         -52.429435, -52.356415, -52.288346, -52.224636, -52.164724, -52.552014, -52.492057,
+         -52.453978, -52.399447, -52.331099, -52.267100, -52.206976, -52.150244, -52.493399,
+         -52.438214, -52.403029, -52.352500, -52.288857, -52.229000, -52.172546, -52.119111,
+         -52.439135, -52.387738, -52.354901, -52.307564, -52.247748, -52.191286, -52.137864,
+         -52.087156, -52.389506, -52.340737, -52.309505, -52.264422, -52.207277, -52.153240,
+         -52.101974, -52.053209, -52.342916, -52.296527, -52.266740, -52.223677, -52.168979,
+         -52.117136, -52.067849, -52.020877, -52.302984, -52.258550, -52.229988, -52.188618,
+         -52.135992, -52.085995, -52.038382, -51.992952, -52.264561, -52.221958, -52.194538,
+         -52.154742, -52.104055, -52.055818, -52.009782, -51.965787, -52.228802, -52.187818,
+         -52.161405, -52.123041, -52.074083, -52.027415, -51.982828, -51.940126, -52.196887,
+         -52.157285, -52.131735, -52.094586, -52.047098, -52.001767, -51.958399, -51.916855,
+         -52.165953, -52.127653, -52.102899, -52.066898, -52.020822, -51.976776, -51.934570,
+         -51.894091};
 
-      int Nx = sizeof(logTx_t)/sizeof(logTx_t[0]);
-      int Ny = sizeof(ZGas_t)/sizeof(ZGas_t[0]);
+      // awk '!(/^#/) {print $1}' info/cooling_function_Eckert.ascii | sort -n | uniq | awk '{printf("%f, ", log($1))}
+      double logTGas_t[41] = {-4.605170, -3.912023, -2.995732, -2.659260, -2.302585, -2.120264, -1.897120,
+         -1.609438, -1.386294, -1.203973, -1.049822, -0.916291, -0.693147, -0.510826, -0.356675, -0.223144,
+         -0.105361, 0.000000, 0.095310, 0.182322, 0.262364, 0.336472, 0.405465, 0.470004, 0.587787, 0.693147,
+         0.788457, 0.916291, 1.029619, 1.098612, 1.163151, 1.252763, 1.386294, 1.504077, 1.609438, 1.704748,
+         1.791759, 1.871802, 1.945910, 2.014903, 2.079442};
+
+      // awk '!(/^#/) {print $2}' info/cooling_function_Eckert.ascii | sort -n | uniq | awk '{printf("%f, ", $1)}'
+      double ZGas_t[8] = {0.00,0.15,0.25,0.40,0.60,0.80,1.00,1.20};
+
+      int Ny = sizeof(logTGas_t)/sizeof(logTGas_t[0]);
+      int Nx = sizeof(ZGas_t)/sizeof(ZGas_t[0]);
 
       ZGas_t[0] = ZGas_t[0];
-      ZGas_t[Ny-1] = ZGas_t[Ny-1];
+      ZGas_t[Nx-1] = ZGas_t[Nx-1];
 
       /* initialize interpolation */
       const gsl_interp2d_type *T = gsl_interp2d_bilinear;
@@ -984,30 +1071,157 @@ double Lambda(double Tx, double ZGas)
       xacc   = gsl_interp_accel_alloc();
       yacc   = gsl_interp_accel_alloc();
 
-      inter_xmin = exp(logTx_t[0]);
-      inter_xmax = exp(logTx_t[Nx-1]);
+      inter_ymin = exp(logTGas_t[0]);
+      inter_ymax = exp(logTGas_t[Ny-1]);
 
       /* EPS is to allow to get values at Z=0.0 and Z=0.40*/
-      inter_ymin = ZGas_t[0]-EPS;
-      inter_ymax = ZGas_t[Ny-1]+EPS;
+      inter_xmin = ZGas_t[0]-EPS;
+      inter_xmax = ZGas_t[Nx-1]+EPS;
 
       /* set interpolation */
-      gsl_spline2d_init(spline, logTx_t, ZGas_t, logLambda_t, Nx, Ny);
+      gsl_spline2d_init(spline, ZGas_t, logTGas_t, logLambda_t, Nx, Ny);
 
    }
 
-   if (inter_xmin < Tx && Tx < inter_xmax && inter_ymin < ZGas && ZGas < inter_ymax){
-      return exp(gsl_spline2d_eval(spline, log(Tx), ZGas, xacc, yacc));
+   if (inter_ymin < TGas && TGas < inter_ymax && inter_xmin < ZGas && ZGas < inter_xmax){
+      return exp(gsl_spline2d_eval(spline, ZGas, log(TGas), xacc, yacc));
    }else{
       return 0.0;
    }
 
    /* Ettori (2015) */
-   // return 1.1995 * 0.85e-23 * pow(Tx, 0.5);
+   // return 1.1995 * 0.85e-23 * pow(TGas, 0.5);
 }
+
+
+double Lambda0p5_2p0(double TGas, double ZGas)
+{
+   /*
+    *    Cooling function in erg s^-1 cm^3 in the soft band
+    *
+    *    TGas: gas temperature
+    *    Zgas: gas metallicity
+    */
+
+   static int firstcall = 1;
+
+   static gsl_spline2d *spline   = NULL;
+   static gsl_interp_accel *xacc = NULL;
+   static gsl_interp_accel *yacc = NULL;
+
+   static double inter_xmin, inter_xmax, inter_ymin, inter_ymax;
+
+   if(firstcall){
+
+      firstcall = 0;
+
+      /* tabulated values from D. Eckert */
+      // awk '!(/^#/) {printf("%f, ", log($5))}' info/cooling_function_Eckert.ascii
+      double logLambda_t[328] = {-96.173538, -95.838914, -95.665298, -95.450937, -95.222016,
+         -95.035810, -94.878958, -94.743407, -75.874814, -75.202498, -74.920101, -74.605983,
+         -74.298911, -74.064313, -73.874426, -73.714954, -63.427108, -61.203205, -60.736615,
+         -60.292371, -59.901509, -59.621243, -59.402548, -59.223203, -61.013501, -58.603487,
+         -58.129270, -57.680456, -57.286927, -57.005292, -56.785793, -56.605890, -58.990062,
+         -56.462877, -55.984517, -55.533289, -55.138383, -54.856024, -54.636082, -54.455906,
+         -58.191893, -55.704510, -55.227515, -54.777045, -54.382590, -54.100474, -53.880672,
+         -53.700623, -57.376324, -55.039067, -54.567646, -54.120501, -53.727962, -53.446814,
+         -53.227611, -53.047926, -56.511305, -54.503782, -54.048178, -53.610647, -53.223640,
+         -52.945367, -52.727901, -52.549363, -55.953756, -54.247377, -53.811931, -53.386981,
+         -53.007430, -52.732959, -52.517859, -52.340910, -55.560152, -54.074614, -53.658727,
+         -53.246372, -52.874418, -52.603918, -52.391233, -52.215940, -55.265747, -53.930220,
+         -53.530590, -53.128965, -52.763660, -52.496648, -52.286145, -52.112336, -55.034715,
+         -53.788749, -53.400160, -53.006096, -52.645472, -52.380992, -52.172009, -51.999261,
+         -54.710027, -53.576824, -53.203906, -52.820739, -52.466965, -52.206184, -51.999540,
+         -51.828352, -54.493157, -53.452523, -53.093968, -52.721118, -52.373962, -52.116783,
+         -51.912398, -51.742766, -54.332184, -53.380180, -53.037070, -52.675414, -52.335639,
+         -52.082494, -51.880663, -51.712819, -54.211973, -53.356463, -53.032028, -52.684442,
+         -52.354109, -52.106200, -51.907706, -51.742159, -54.115424, -53.357477, -53.054246,
+         -52.723232, -52.404257, -52.162775, -51.968430, -51.805767, -54.043457, -53.398750,
+         -53.123493, -52.815383, -52.512645, -52.280576, -52.092331, -51.933986, -53.978318,
+         -53.440182, -53.195302, -52.913289, -52.629873, -52.409297, -52.228696, -52.075772,
+         -53.927731, -53.474246, -53.256650, -52.999457, -52.735282, -52.526507, -52.353863,
+         -52.206698, -53.879578, -53.509590, -53.322073, -53.093813, -52.853126, -52.659308,
+         -52.496994, -52.357384, -53.838965, -53.536558, -53.376176, -53.175436, -52.958298,
+         -52.779998, -52.628766, -52.497397, -53.809815, -53.545657, -53.401713, -53.218567,
+         -53.017100, -52.849491, -52.705986, -52.580521, -53.781479, -53.554839, -53.427991,
+         -53.263643, -53.079578, -52.924187, -52.789681, -52.671185, -53.735434, -53.565854,
+         -53.466902, -53.334749, -53.181940, -53.049465, -52.932465, -52.827762, -53.703201,
+         -53.565687, -53.483483, -53.371640, -53.239618, -53.123011, -53.018593, -52.924100,
+         -53.674384, -53.564606, -53.497539, -53.404685, -53.293002, -53.192489, -53.101215,
+         -53.017533, -53.648545, -53.556240, -53.499096, -53.419035, -53.321485, -53.232551,
+         -53.150885, -53.075388, -53.626447, -53.549090, -53.500733, -53.432209, -53.347654,
+         -53.269693, -53.197374, -53.129880, -53.618077, -53.546800, -53.501983, -53.438274,
+         -53.359236, -53.285990, -53.217685, -53.153804, -53.609777, -53.544514, -53.503233,
+         -53.444378, -53.370955, -53.302556, -53.238477, -53.178315, -53.599560, -53.542235,
+         -53.505739, -53.453416, -53.387677, -53.325930, -53.267776, -53.212876, -53.594664,
+         -53.545085, -53.513375, -53.467656, -53.409730, -53.354910, -53.303003, -53.253659,
+         -53.591240, -53.548190, -53.520433, -53.480190, -53.428936, -53.380180, -53.333691,
+         -53.289268, -53.590642, -53.551551, -53.526259, -53.489561, -53.442535, -53.397692,
+         -53.354775, -53.313624, -53.590642, -53.555251, -53.532442, -53.499096, -53.456248,
+         -53.415231, -53.375832, -53.337859, -53.594577, -53.561782, -53.540448, -53.509353,
+         -53.469318, -53.430825, -53.393759, -53.358017, -53.598527, -53.568272, -53.548518,
+         -53.519716, -53.482487, -53.446666, -53.412014, -53.378521, -53.603098, -53.574973,
+         -53.556653, -53.529707, -53.494975, -53.461336, -53.428863, -53.397341, -53.609168,
+         -53.582228, -53.564689, -53.538906, -53.505504, -53.473259, -53.441946, -53.411657,
+         -53.615187, -53.589534, -53.572707, -53.548107, -53.516224, -53.485248, -53.455278,
+         -53.426106};
+
+      // awk '!(/^#/) {print $1}' info/cooling_function_Eckert.ascii | sort -n | uniq | awk '{printf("%f, ", log($1))}
+      double logTGas_t[41] = {-4.605170, -3.912023, -2.995732, -2.659260, -2.302585, -2.120264, -1.897120,
+         -1.609438, -1.386294, -1.203973, -1.049822, -0.916291, -0.693147, -0.510826, -0.356675, -0.223144,
+         -0.105361, 0.000000, 0.095310, 0.182322, 0.262364, 0.336472, 0.405465, 0.470004, 0.587787, 0.693147,
+         0.788457, 0.916291, 1.029619, 1.098612, 1.163151, 1.252763, 1.386294, 1.504077, 1.609438, 1.704748,
+         1.791759, 1.871802, 1.945910, 2.014903, 2.079442};
+
+      // awk '!(/^#/) {print $2}' info/cooling_function_Eckert.ascii | sort -n | uniq | awk '{printf("%f, ", $1)}'
+      double ZGas_t[8] = {0.00,0.15,0.25,0.40,0.60,0.80,1.00,1.20};
+
+      int Ny = sizeof(logTGas_t)/sizeof(logTGas_t[0]);
+      int Nx = sizeof(ZGas_t)/sizeof(ZGas_t[0]);
+
+      ZGas_t[0] = ZGas_t[0];
+      ZGas_t[Nx-1] = ZGas_t[Nx-1];
+
+      /* initialize interpolation */
+      const gsl_interp2d_type *T = gsl_interp2d_bilinear;
+      spline = gsl_spline2d_alloc(T, Nx, Ny);
+      xacc   = gsl_interp_accel_alloc();
+      yacc   = gsl_interp_accel_alloc();
+
+      inter_ymin = exp(logTGas_t[0]);
+      inter_ymax = exp(logTGas_t[Ny-1]);
+
+      /* EPS is to allow to get values at Z=0.0 and Z=0.40*/
+      inter_xmin = ZGas_t[0]-EPS;
+      inter_xmax = ZGas_t[Nx-1]+EPS;
+
+      /* set interpolation */
+      gsl_spline2d_init(spline, ZGas_t, logTGas_t, logLambda_t, Nx, Ny);
+
+   }
+
+   if (inter_ymin < TGas && TGas < inter_ymax && inter_xmin < ZGas && ZGas < inter_xmax){
+      return exp(gsl_spline2d_eval(spline, ZGas, log(TGas), xacc, yacc));
+   }else{
+      return 0.0;
+   }
+
+   /* Ettori (2015) */
+   // return 1.1995 * 0.85e-23 * pow(TGas, 0.5);
+}
+
+
+
+
+
+
+
+
+
+
 # undef EPS
 
-double CRToLx(const Model *model, double z, double Tx, double ZGas)
+double CRToLx(const Model *model, double z, double TGas, double ZGas)
 {
    /*    call python function to ease the 3D interpolation
     *    see http://www.linuxjournal.com/article/8497?page=0,0
@@ -1093,15 +1307,15 @@ double CRToLx(const Model *model, double z, double Tx, double ZGas)
       }
 
       /*    see https://docs.python.org/2/c-api/concrete.html for Tuple functions */
-      PyObject *logTx = PyTuple_GetItem(pResTuple, 0);
+      PyObject *logTGas = PyTuple_GetItem(pResTuple, 0);
       PyObject *logConv = PyTuple_GetItem(pResTuple, 1);
 
-      int i, Ninter = PyList_Size(logTx);
+      int i, Ninter = PyList_Size(logTGas);
       double *x = (double *)malloc(Ninter*sizeof(double));
       double *y = (double *)malloc(Ninter*sizeof(double));
       for (i=0;i<Ninter;i++){
-         //printf("%.8f %.8f\n", PyFloat_AsDouble(PyList_GetItem(logTx, i)),  PyFloat_AsDouble(PyList_GetItem(conv, i)));
-         x[i] = PyFloat_AsDouble(PyList_GetItem(logTx, i));
+         //printf("%.8f %.8f\n", PyFloat_AsDouble(PyList_GetItem(logTGas, i)),  PyFloat_AsDouble(PyList_GetItem(conv, i)));
+         x[i] = PyFloat_AsDouble(PyList_GetItem(logTGas, i));
          y[i] = PyFloat_AsDouble(PyList_GetItem(logConv, i));
       }
 
@@ -1125,10 +1339,10 @@ double CRToLx(const Model *model, double z, double Tx, double ZGas)
    }
 
 
-   if (Tx < inter_min || Tx > inter_max){
+   if (TGas < inter_min || TGas > inter_max){
       return 0.0;
    }else{
-      return exp(gsl_spline_eval(spline, log(Tx), acc));
+      return exp(gsl_spline_eval(spline, log(TGas), acc));
    }
 }
 

@@ -19,13 +19,15 @@ for python:
 """
 
 # see http://stackoverflow.com/questions/458550/standard-way-to-embed-version-into-python-package
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 import os
 import numpy as np
 import ctypes
 import sys
 import inspect
+from astropy.io import ascii
+
 
 """
 
@@ -62,6 +64,9 @@ class Model(ctypes.Structure):
         ("Omega_de", ctypes.c_double),
         ("H0", ctypes.c_double),
         ("h", ctypes.c_double),
+        ("Omega_b", ctypes.c_double),
+        ("sigma_8", ctypes.c_double),
+        ("n_s", ctypes.c_double),
         ("log10h", ctypes.c_double),
         ("massDef", ctypes.c_char_p),
         ("concenDef", ctypes.c_char_p),
@@ -112,6 +117,18 @@ class Model(ctypes.Structure):
         ("gas_log10rc_3", ctypes.c_double),
         ("gas_log10rc_4", ctypes.c_double),
 
+
+        # for tx(Mh) - Temperature-Mass relationship
+        ("gas_TGasMh_N", ctypes.c_int),
+        ("gas_TGasMh_log10Mh", ctypes.POINTER(ctypes.c_double)),
+        ("gas_TGasMh_log10TGas", ctypes.POINTER(ctypes.c_double)),
+
+        # for ZGas(Mh) - Metallicity-Mass relationship
+        ("gas_ZGasMh_N", ctypes.c_int),
+        ("gas_ZGasMh_log10Mh", ctypes.POINTER(ctypes.c_double)),
+        ("gas_ZGasMh_ZGas", ctypes.POINTER(ctypes.c_double)),
+
+
         # for gg lensing, if hod = 0
         ("ggl_pi_max", ctypes.c_double),
         ("ggl_log10c", ctypes.c_double),
@@ -141,14 +158,17 @@ class Model(ctypes.Structure):
         ]
 
     # default parameters
-    def __init__(self, Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=0, massDef="M500c", concenDef="TJ03", hmfDef="T08", biasDef="T08"):
+    def __init__(self, Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963,  hod=0, massDef="M500c", concenDef="TJ03", hmfDef="T08", biasDef="T08"):
 
-        # cosmology
+        # cosmology (default: matched to Coupon et al. 2015)
         self.Omega_m = Omega_m
         self.Omega_de = Omega_de
         self.H0 = H0
         self.h = self.H0/100.0
         self.log10h = np.log10(self.h)
+        self.Omega_b = Omega_b
+        self.sigma_8 = sigma_8
+        self.n_s = n_s
         self.massDef = massDef      # halo mass definition: M500c, M500m, M200c, M200m, Mvir, MvirC15
         self.concenDef = concenDef  # mass/concentration relation: D11, M11, TJ03, B12_F, B12_R, B01
         self.hmfDef = hmfDef        # halo mass defintion: PS74, ST99, ST02, J01, T08
@@ -208,6 +228,16 @@ class Model(ctypes.Structure):
         # self.gas_log10rc_3 = np.nan         # not used
         # self.gas_log10rc_4 = np.nan         # not used
 
+        # for tx(Mh) - Temperature-Mass relationship
+        self.gas_TGasMh_N = 0
+        self.gas_TGasMh_log10Mh = None
+        self.gas_TGasMh_log10TGas = None
+
+        # for ZGas(Mh) - Metallicity-Mass relationship
+        self.gas_ZGasMh_N = 0
+        self.gas_ZGasMh_log10Mh = None
+        self.gas_ZGasMh_ZGas = None
+
         # for gg lensing
         self.ggl_pi_max = 60.0
         self.ggl_log10c = np.nan
@@ -235,6 +265,12 @@ class Model(ctypes.Structure):
         self.XMM_PSF_rc_deg = np.nan
         self.XMM_PSF_alpha = np.nan
 
+
+        # TODO
+        # for each redshift:
+        # add toLxBolo: Zgas log10TGas fac
+        # add TGasMh: log10Mh TGas
+        # add ZGasMh: log10Mh log10Zgas
 
 class bcolors:
     HEADER = '\033[95m'
@@ -298,8 +334,10 @@ c_halomodel.DL.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
 c_halomodel.DL.restype = ctypes.c_double
 c_halomodel.msmh_log10Mstar.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.msmh_log10Mstar.restype = ctypes.c_double
-c_halomodel.Lambda.argtypes = [ctypes.c_double, ctypes.c_double]
-c_halomodel.Lambda.restype = ctypes.c_double
+c_halomodel.LambdaBolo.argtypes = [ctypes.c_double, ctypes.c_double]
+c_halomodel.LambdaBolo.restype = ctypes.c_double
+c_halomodel.Lambda0p5_2p0.argtypes = [ctypes.c_double, ctypes.c_double]
+c_halomodel.Lambda0p5_2p0.restype = ctypes.c_double
 c_halomodel.CRToLx.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.CRToLx.restype = ctypes.c_double
 c_halomodel.Ngal_s.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
@@ -310,6 +348,13 @@ c_halomodel.Ngal.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_do
 c_halomodel.Ngal.restype = ctypes.c_double
 c_halomodel.rho_crit.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.rho_crit.restype   = ctypes.c_double
+
+c_halomodel.MhToTGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+c_halomodel.MhToTGas.restype = ctypes.c_double
+
+c_halomodel.MhToZGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+c_halomodel.MhToZGas.restype = ctypes.c_double
+
 
 """
 
@@ -339,12 +384,8 @@ test
 
 def test():
     """ Performs basic tests
-
-    ** DO NOT CHANGE ANYTHING HERE UNLESS YOU KNOW WHAT YOU ARE DOING!!!! **
-
     """
 
-    from astropy.io import ascii
     from astropy.table import Table, Column
     import traceback
 
@@ -354,11 +395,11 @@ def test():
     compute_ref = False
     printModelChanges = False
     # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
-    actions = ["Ngal"]
+    actions = ["Lambda"]
 
     # this model matches Coupon et al. (2015)
-    # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
-    model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+    # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
+    model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
     z = 0.308898
 
     m1 =  dumpModel(model)
@@ -407,7 +448,7 @@ def test():
         log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
         N = Ngal(model, log10Mh, 10.0, 11.0)
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/Ngal_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/Ngal_ref.ascii"
         if compute_ref:
             out = Table([log10Mh, N], names=['log10Mh', 'N'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -423,14 +464,12 @@ def test():
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
-
-
     if "MsMh" in actions:
 
         log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
         log10Mstar = msmh_log10Mstar(model, log10Mh)
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/MsMh_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/MsMh_ref.ascii"
         if compute_ref:
             out = Table([log10Mh, log10Mstar], names=['log10Mh', 'log10Mstar'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -478,7 +517,7 @@ def test():
         r = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(200.0), 100.00))
         xi = xi_dm(model, r, z)
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/xi_dm_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/xi_dm_ref.ascii"
         if compute_ref:
             out = Table([r, xi], names=['r', 'xi'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -515,7 +554,7 @@ def test():
             numerical[i] = c_halomodel.uHalo(model, k[i], Mh, c, z)
             analytic[i]  = c_halomodel.uHaloClosedFormula(model, k[i], Mh, c, z)
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/uHalo_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/uHalo_ref.ascii"
         if compute_ref:
             out = Table([k, numerical, analytic], names=['k', 'numerical', 'analytic'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -538,7 +577,7 @@ def test():
         log10Mstar = np.linspace(np.log10(1.e9), np.log10(1.e12), 100.00)
         n = dndlog10Mstar(model, log10Mstar, z, obs_type="all")
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/smf_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/smf_ref.ascii"
         if compute_ref:
             out = Table([log10Mstar, n], names=['log10Mstar', 'n'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -568,7 +607,7 @@ def test():
         sat = DeltaSigma(model, R, z, obs_type="sat")
         twohalo = DeltaSigma(model, R, z, obs_type="twohalo")
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/ggl_HOD_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/ggl_HOD_ref.ascii"
         if compute_ref:
             out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -588,7 +627,6 @@ def test():
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
-
     if "ggl" in actions:
         """ Galaxy-galaxy lensing """
 
@@ -607,7 +645,7 @@ def test():
 
         model.hod = 1
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/ggl_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/ggl_ref.ascii"
         if compute_ref:
             out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -630,12 +668,7 @@ def test():
     if "wtheta_HOD" in actions:
         """ W(theta) HOD model """
 
-        nz = ascii.read(HALOMODEL_DIRNAME+"/data/wtheta_nz.ascii", format="no_header")
-
-        # load n(z) in model object
-        model.wtheta_nz_N = len(nz)
-        model.wtheta_nz_z = np.ctypeslib.as_ctypes(nz["col1"])
-        model.wtheta_nz = np.ctypeslib.as_ctypes(nz["col2"])
+        loadWtheta_nz(model, HALOMODEL_DIRNAME+"/test/wtheta_nz.ascii")
 
         model.log10Mstar_min = 11.10 - 0.1549 #- 0.142668
         model.log10Mstar_max = 11.30 - 0.1549 #- 0.142668
@@ -647,7 +680,7 @@ def test():
         twohalo = wOfTheta(model, theta, z, obs_type="twohalo")
         total = wOfTheta(model, theta, z, obs_type="all")
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/wtheta_HOD_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/wtheta_HOD_ref.ascii"
         if compute_ref:
             out = Table([theta, total, censat, satsat, twohalo], names=['theta', 'total', 'censat', 'satsat', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -669,23 +702,23 @@ def test():
     if "Lambda" in actions:
         """ X-ray cooling function """
 
-        Tx = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
-        Lambda_0_00 = Lambda(Tx, 0.00)
-        Lambda_0_15 = Lambda(Tx, 0.15)
-        Lambda_0_40 = Lambda(Tx, 0.40)
+        TGas = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(0.8e1), 100))
+        Lambda_0_00 = LambdaBolo(TGas, 0.00)
+        Lambda_0_15 = LambdaBolo(TGas, 0.15)
+        Lambda_0_40 = LambdaBolo(TGas, 0.40)
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/Lambda_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/Lambda_ref.ascii"
         if compute_ref:
-            out = Table([Tx, Lambda_0_00, Lambda_0_15, Lambda_0_40], names=['Tx', 'Lambda_0_00', 'Lambda_0_15', 'Lambda_0_40'])
+            out = Table([TGas, Lambda_0_00, Lambda_0_15, Lambda_0_40], names=['TGas', 'Lambda_0_00', 'Lambda_0_15', 'Lambda_0_40'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
         else:
             sys.stderr.write("Lambda:")
             ref = ascii.read(fileOutName, header_start=-1)
             try:
-                np.testing.assert_array_almost_equal(Lambda_0_00, ref['Lambda_0_00'], err_msg="Lambda ZGAS 0.00")
-                np.testing.assert_array_almost_equal(Lambda_0_15, ref['Lambda_0_15'], err_msg="Lambda ZGAS 0.15")
-                np.testing.assert_array_almost_equal(Lambda_0_40, ref['Lambda_0_40'], err_msg="Lambda ZGAS 0.40")
+                np.testing.assert_array_almost_equal(np.log(Lambda_0_00), np.log(ref['Lambda_0_00']), err_msg="Lambda ZGAS 0.00")
+                np.testing.assert_array_almost_equal(np.log(Lambda_0_15), np.log(ref['Lambda_0_15']), err_msg="Lambda ZGAS 0.15")
+                np.testing.assert_array_almost_equal(np.log(Lambda_0_40), np.log(ref['Lambda_0_40']), err_msg="Lambda ZGAS 0.40")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()
@@ -695,16 +728,16 @@ def test():
     if "CRToLx" in actions:
         """ CR to Lx conversion """
 
-        Tx = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
-        CRToLx_0_00 = CRToLx(model, z, Tx, 0.00)
-        CRToLx_0_15 = CRToLx(model, z, Tx, 0.15)
-        CRToLx_0_40 = CRToLx(model, z, Tx, 0.40)
+        TGas = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
+        CRToLx_0_00 = CRToLx(model, z, TGas, 0.00)
+        CRToLx_0_15 = CRToLx(model, z, TGas, 0.15)
+        CRToLx_0_40 = CRToLx(model, z, TGas, 0.40)
 
         # formats={'CRToLx_0_00':'%.8g', 'CRToLx_0_15':'%.8g', 'CRToLx_0_40':'%.8g'}
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/CRToLx_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/CRToLx_ref.ascii"
         if compute_ref:
-            out = Table([Tx, CRToLx_0_00, CRToLx_0_15, CRToLx_0_40], names=['Tx', 'CRToLx_0_00', 'CRToLx_0_15', 'CRToLx_0_40'])
+            out = Table([TGas, CRToLx_0_00, CRToLx_0_15, CRToLx_0_40], names=['TGas', 'CRToLx_0_00', 'CRToLx_0_15', 'CRToLx_0_40'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
         else:
@@ -754,7 +787,7 @@ def test():
 
         # print numerical[0]
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/uIx_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/uIx_ref.ascii"
         if compute_ref:
             out = Table([k, numerical], names=['k', 'numerical'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -791,7 +824,7 @@ def test():
         twohalo = SigmaIx(model, theta, Mh, c, z, obs_type="twohalo", PSF=None)
         total = SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None)
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/SigmaIx_HOD_ref.ascii"
         if compute_ref:
             out = Table([theta, total, cen, sat, XB, twohalo], names=['theta', 'total', 'cen', 'sat', 'XB', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -820,13 +853,13 @@ def test():
 
         log10h = np.log10(model.H0/100.0)
 
-        cen = ascii.read(HALOMODEL_DIRNAME+"/data/HOD_0.20_0.35_cen_M200m_Mstar_11.30_11.45.ascii", format="no_header")
+        cen = ascii.read(HALOMODEL_DIRNAME+"/test/HOD_0.20_0.35_cen_M200m_Mstar_11.30_11.45.ascii", format="no_header")
         cen["col1"] += log10h
         model.HOD_cen_N = len(cen)
         model.HOD_cen_log10Mh = np.ctypeslib.as_ctypes(cen["col1"])
         model.HOD_cen_Ngal = np.ctypeslib.as_ctypes(cen["col2"])
 
-        sat = ascii.read(HALOMODEL_DIRNAME+"/data/HOD_0.20_0.35_sat_M200m_Mstar_11.30_11.45.ascii", format="no_header")
+        sat = ascii.read(HALOMODEL_DIRNAME+"/test/HOD_0.20_0.35_sat_M200m_Mstar_11.30_11.45.ascii", format="no_header")
         sat["col1"] += log10h
         model.HOD_sat_N = len(sat)
         model.HOD_sat_log10Mh = np.ctypeslib.as_ctypes(sat["col1"])
@@ -847,7 +880,7 @@ def test():
         twohalo = SigmaIx(model, theta, Mh, c, z, obs_type="twohalo", PSF=None)
         total = SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None)
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/SigmaIx_HOD_nonPara_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/SigmaIx_HOD_nonPara_ref.ascii"
         if compute_ref:
             out = Table([theta, total, cen, sat, XB, twohalo], names=['theta', 'total', 'cen', 'sat', 'XB', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -892,13 +925,13 @@ def test():
         cen = SigmaIx(model, theta, Mh, c, z, obs_type="cen", PSF=PSF)
         # DEBUGGING
         # out = Table([theta, cen], names=['theta', 'cen'])
-        # ascii.write(out, HALOMODEL_DIRNAME+"/data/SigmaIx_deg_ref.ascii", format="commented_header")
+        # ascii.write(out, HALOMODEL_DIRNAME+"/test/SigmaIx_deg_ref.ascii", format="commented_header")
         # return
         sat = SigmaIx(model, theta, Mh, c, z, obs_type="sat", PSF=None)
         XB = SigmaIx(model, theta, Mh, c, z, obs_type="XB", PSF=None)
         twohalo = SigmaIx(model, theta, Mh, c, z, obs_type="twohalo", PSF=None)
 
-        fileOutName = HALOMODEL_DIRNAME+"/data/SigmaIx_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/SigmaIx_ref.ascii"
         if compute_ref:
             out = Table([theta, total, cen, sat, XB, twohalo], names=['theta', 'total', 'cen', 'sat', 'XB', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
@@ -932,43 +965,43 @@ def test():
     return
 
 
-def fitBetaPara(args):
-
-
-    from astropy.io import ascii
-    from scipy.optimize import curve_fit
-
-    c_halomodel.MhToTx.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-    c_halomodel.MhToTx.restype = ctypes.c_double
-
-    c_halomodel.TxToMh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-    c_halomodel.TxToMh.restype = ctypes.c_double
-
-    if False:
-        data = ascii.read("/Users/coupon/projects/Stacked_X_ray/info/betaProfilesEckert2015.ascii", header_start=-1)
-
-        x = [ np.log10(c_halomodel.TxToMh(model, Tx, z)) for Tx in data['Tx'] ]
-
-        print x
-
-        R500 = [c_halomodel.rh(model, pow(10.0, log10Mh), np.nan, z) for log10Mh in x]
-
-        data["rc"] = data["RcOverR500"]*R500
-        data["rc_err"] = data["RcOverR500_err"]*R500
-
-        para = 'rc'
-        y    = [ np.log10(p) for p in data[para] ]
-        yerr = [ p_err/p / np.log(10.0) for (p, p_err) in zip(data[para],data[para+'_err']) ]
-
-        p, pCov = curve_fit(powerLaw,x, y, sigma=yerr )
-        print p
-
-        return
-
-
-def powerLaw(x, a, b):
-        return a + b*(x-14.0)
-
+# def fitBetaPara(args):
+#
+#
+#     from astropy.io import ascii
+#     from scipy.optimize import curve_fit
+#
+#     c_halomodel.MhToTGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+#     c_halomodel.MhToTGas.restype = ctypes.c_double
+#
+#     c_halomodel.TGasToMh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+#     c_halomodel.TGasToMh.restype = ctypes.c_double
+#
+#     if False:
+#         data = ascii.read("/Users/coupon/projects/Stacked_X_ray/info/betaProfilesEckert2015.ascii", header_start=-1)
+#
+#         x = [ np.log10(c_halomodel.TGasToMh(model, TGas, z)) for TGas in data['TGas'] ]
+#
+#         print x
+#
+#         R500 = [c_halomodel.rh(model, pow(10.0, log10Mh), np.nan, z) for log10Mh in x]
+#
+#         data["rc"] = data["RcOverR500"]*R500
+#         data["rc_err"] = data["RcOverR500_err"]*R500
+#
+#         para = 'rc'
+#         y    = [ np.log10(p) for p in data[para] ]
+#         yerr = [ p_err/p / np.log(10.0) for (p, p_err) in zip(data[para],data[para+'_err']) ]
+#
+#         p, pCov = curve_fit(powerLaw,x, y, sigma=yerr )
+#         print p
+#
+#         return
+#
+#
+# def powerLaw(x, a, b):
+#         return a + b*(x-14.0)
+#
 
 """
 
@@ -1130,8 +1163,7 @@ def DeltaSigma(model, R, zl, obs_type="all"):
     return result
 
 def xi_gg(model, r, z, obs_type="all"):
-    """
-    Returns xi_gg(r) for NFW halo mass profile -
+    """ Returns xi_gg(r) for NFW halo mass profile -
 
     INPUT PARAMETERS:
     r: (array or single value) in Mpc/h
@@ -1163,8 +1195,7 @@ def xi_gg(model, r, z, obs_type="all"):
 
 
 def wOfTheta(model, theta, z, obs_type="all"):
-    """
-    Returns w(theta) for NFW halo mass profile -
+    """ Returns w(theta) for NFW halo mass profile -
 
     INPUT PARAMETERS:
     theta: (array or single value) in degree
@@ -1193,6 +1224,7 @@ def wOfTheta(model, theta, z, obs_type="all"):
     c_halomodel.wOfTheta(model, theta, len(theta), z, obs_type, result)
 
     return result
+
 
 def SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None):
     """ Wrapper for c-function SigmaIx()
@@ -1279,17 +1311,130 @@ Utils
 
 """
 
-def getCRtoLx_bremss(fileNameIn, redshift):
-    from scipy import interpolate
-    from   astropy.io import ascii
+def loadWtheta_nz(model, fileInName):
+    """ load n(z) into model
 
-    # CR to Lx_bolo conversion file:
-    data = ascii.read(fileNameIn, format="commented_header", header_start=-1)
-    x    = data['z']
-    y    = np.log10(data['Lx_bolo']/data['CR'])
+    INPUT PARAMETERS:
+    model: halomodel structre
+    fileInName: n(z) input file, format: z nz
+    """
+    data = ascii.read(fileInName, format="no_header")
 
-    return pow(10.0, interpolate.griddata(x, y, redshift, method='linear'))
+    """ load n(z) in model object """
+    model.wtheta_nz_N = len(data)
+    model.wtheta_nz_z = np.ctypeslib.as_ctypes(data["col1"])
+    model.wtheta_nz = np.ctypeslib.as_ctypes(data["col2"])
 
+    return
+
+
+
+def MhToTGas(model, Mh):
+    """  Wrapper for c-function MhToTGas
+
+    Returns TGas = f(Mh) for a given TGas-Mh relation.
+
+    INPUT
+    log10Mh: log10(Mh) array or single value) in log10 Msun/h units
+    z: NOT USED
+
+    OUPUT
+    TGas
+
+    """
+
+    if isinstance(Mh, (list, tuple, np.ndarray)):
+        result = np.zeros(len(Mh))
+        for i, m in enumerate(Mh):
+            result[i] = c_halomodel.MhToTGas(model, m, np.nan)
+
+    else:
+        result = c_halomodel.MhToTGas(model, Mh, np.nan)
+
+    return pow(10.0, result)
+
+
+
+def loadGas_TGasMh(model, fileInName):
+    """ load temparature-mass relationship into model
+
+    INPUT PARAMETERS:
+    model: halomodel structre
+    fileInName: txMh input file, format: log10Mh log10TGas
+
+    WARNING: mass defintion must match the adopted definition (massDef)
+
+    """
+    data = ascii.read(fileInName, format="no_header")
+    log10Mh = np.log10(data["col1"]*model.h)
+    log10TGas = np.log10(data["col2"])
+
+    """ load n(z) in model object """
+    model.gas_TGasMh_N = len(data)
+    model.gas_TGasMh_log10Mh = np.ctypeslib.as_ctypes(log10Mh)
+    model.gas_TGasMh_log10TGas = np.ctypeslib.as_ctypes(log10TGas)
+
+    return
+
+
+
+def MhToZGas(model, Mh):
+    """  Wrapper for c-function MhToZGas
+
+    Returns ZGas = f(Mh) for a given ZGas-Mh relation.
+
+    INPUT
+    log10Mh: log10(Mh) array or single value) in log10 Msun/h units
+    z: NOT USED
+
+    OUPUT
+    ZGas
+
+    """
+
+    if isinstance(Mh, (list, tuple, np.ndarray)):
+        result = np.zeros(len(Mh))
+        for i, m in enumerate(Mh):
+            result[i] = c_halomodel.MhToZGas(model, m, np.nan)
+
+    else:
+        result = c_halomodel.MhToZGas(model, Mh, np.nan)
+
+    return result
+
+
+def loadGas_ZGasMh(model, fileInName):
+    """ load temparature-mass relationship into model
+
+    INPUT PARAMETERS:
+    model: halomodel structre
+    fileInName: ZGasMh input file, format: log10Mh ZGas
+
+    WARNING: mass defintion must match the adopted definition (massDef)
+    """
+
+    data = ascii.read(fileInName, format="no_header")
+    log10Mh = np.log10(data["col1"]*model.h)
+    ZGas = data["col2"]
+
+    """ load n(z) in model object """
+    model.gas_ZGasMh_N = len(data)
+    model.gas_ZGasMh_log10Mh = np.ctypeslib.as_ctypes(log10Mh)
+    model.gas_ZGasMh_ZGas = np.ctypeslib.as_ctypes(ZGas)
+
+    return
+
+# def getCRtoLx_bremss(fileNameIn, redshift):
+#     from scipy import interpolate
+#     from   astropy.io import ascii
+#
+#     # CR to Lx_bolo conversion file:
+#     data = ascii.read(fileNameIn, format="commented_header", header_start=-1)
+#     x    = data['z']
+#     y    = np.log10(data['Lx_bolo']/data['CR'])
+#
+#     return pow(10.0, interpolate.griddata(x, y, redshift, method='linear'))
+#
 
 def DA(model, z):
     """ Returns the angular diameter distance
@@ -1421,14 +1566,14 @@ def msmh_log10Mh(model, log10Mstar):
     return result
 
 
-def Lambda(Tx, ZGas):
+def LambdaBolo(TGas, ZGas):
     """  Wrapper for c-function Lambda()
 
-    Returns  = f(Tx, ZGas) the cooling function
+    Returns  = f(TGas, ZGas) the cooling function
     for a given temperature and metallicity
 
     INPUT
-    Tx: temperature (float or array)
+    TGas: temperature (float or array)
     ZGas: metallicity
 
     OUPUT
@@ -1436,24 +1581,50 @@ def Lambda(Tx, ZGas):
 
     """
 
-    if isinstance(Tx, (list, tuple, np.ndarray)):
-        result = np.zeros(len(Tx))
-        for i, t in enumerate(Tx):
-            result[i] = c_halomodel.Lambda(t, ZGas)
+    if isinstance(TGas, (list, tuple, np.ndarray)):
+        result = np.zeros(len(TGas))
+        for i, t in enumerate(TGas):
+            result[i] = c_halomodel.LambdaBolo(t, ZGas)
     else:
-        result = c_halomodel.Lambda(Tx, ZGas)
+        result = c_halomodel.LambdaBolo(TGas, ZGas)
 
     return result
 
 
-def CRToLx(model, z, Tx, ZGas):
+def Lambda0p5_2p0(TGas, ZGas):
+    """  Wrapper for c-function Lambda()
+
+    Returns  = f(TGas, ZGas) the cooling function
+    for a given temperature and metallicity
+
+    INPUT
+    TGas: temperature (float or array)
+    ZGas: metallicity
+
+    OUPUT
+    Lambda
+
+    """
+
+    if isinstance(TGas, (list, tuple, np.ndarray)):
+        result = np.zeros(len(TGas))
+        for i, t in enumerate(TGas):
+            result[i] = c_halomodel.Lambda0p5_2p0(t, ZGas)
+    else:
+        result = c_halomodel.Lambda0p5_2p0(TGas, ZGas)
+
+    return result
+
+
+
+def CRToLx(model, z, TGas, ZGas):
     """  Wrapper for c-function CRToLx()
 
-    Returns  = CRToLx(Tx, z, ZGas) the coefficient to
+    Returns  = CRToLx(TGas, z, ZGas) the coefficient to
     transform CR into luminosity
 
     INPUT
-    Tx: temperature (float or array)
+    TGas: temperature (float or array)
     z: redshift
     ZGas: metallicity
 
@@ -1461,15 +1632,14 @@ def CRToLx(model, z, Tx, ZGas):
     CRToLx
     """
 
-    if isinstance(Tx, (list, tuple, np.ndarray)):
-        result = np.zeros(len(Tx))
-        for i, t in enumerate(Tx):
+    if isinstance(TGas, (list, tuple, np.ndarray)):
+        result = np.zeros(len(TGas))
+        for i, t in enumerate(TGas):
             result[i] = c_halomodel.CRToLx(model, z, t, ZGas)
     else:
-        result = c_halomodel.CRToLx(model, z, Tx, ZGas)
+        result = c_halomodel.CRToLx(model, z, TGas, ZGas)
 
     return result
-
 
 
 def M1_to_M2(model, M1, c1, Delta1, Delta2, z):
@@ -1500,8 +1670,7 @@ def log10M1_to_log10M2(model, log10M1, log10c1, Delta1, Delta2, z):
 
 
 def getInterParaGas(model, log10Mh):
-    """
-    get log10n0, log10beta and log10rc in model
+    """ get log10n0, log10beta and log10rc in model
     from interpolated values, and returns
     the values
     """
@@ -1530,8 +1699,7 @@ def getInterParaGas(model, log10Mh):
 
 
 def setInterParaGas(model, log10Mh):
-    """
-    Set log10n0, log10beta and log10rc in model
+    """ Set log10n0, log10beta and log10rc in model
     from interpolated values, and returns
     the values
     """
@@ -1575,9 +1743,7 @@ def dumpModel(model, fileOutName=None):
         fileOut = open(fileOutName, 'w')
         fileOut.write(new)
 
-
     return string
-
 
 # ----------------------------------------------------- #
 # main

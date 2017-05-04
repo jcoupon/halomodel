@@ -6,12 +6,12 @@
 
 #include "cosmo.h"
 
-/* ---------------------------------------------------------------- *
- * cosmological parameters
- * ---------------------------------------------------------------- */
+/*
+ *    cosmological parameters
+ */
 
 cosmo *initCosmo(const Model *model){
-/* nicaea library */
+/*    nicaea library */
 
    static int firstcall = 1;
    static cosmo *result=NULL;
@@ -31,11 +31,11 @@ cosmo *initCosmo(const Model *model){
          NULL,                   // W_POLY_DE
          0,                      // N_POLY_DE
          model->H0/100.0,        // h_100		0.70		   # Dimensionless Hubble parameter
-         0.0441,                 // Omega_b		0.045		# Baryon density
+         model->Omega_b,         // Omega_b		0.045		# Baryon density
          0.0,                    // Omega_nu_mass	0.0	# Massive neutrino density (so far only for CMB)
          0.0,                    // Neff_nu_mass	0.0	# Effective number of massive neutrinos (only CMB)
-         0.796,                  // normalization	0.8	# This is sigma_8 if normmode=0 below
-         0.963,                  // n_spec		0.96 		# Scalar power-spectrum index
+         model->sigma_8,                  // normalization	0.8	# This is sigma_8 if normmode=0 below
+         model->n_s,                  // n_spec		0.96 		# Scalar power-spectrum index
 
          /*
          Power spectrum prescription
@@ -85,9 +85,9 @@ cosmo *initCosmo(const Model *model){
 }
 
 
-/* ---------------------------------------------------------------- *
- * Angular correlation function of dark matter
- * ---------------------------------------------------------------- */
+/*
+ *    Angular correlation function of dark matter
+ */
 
 void xi_m(const Model *model, double *r, int N, double z, double *result){
 
@@ -171,9 +171,9 @@ double intForxi_m(double k, void *p)
 
 }
 
-/* ---------------------------------------------------------------- *
- * halo bias
- * ---------------------------------------------------------------- */
+/*
+ *    halo bias
+ */
 
 double bias_h(const Model *model, double Mh, double z){
   /*
@@ -226,9 +226,9 @@ double bias_h(const Model *model, double Mh, double z){
 
 }
 
-/* ---------------------------------------------------------------- *
- * halo mass function
- * ---------------------------------------------------------------- */
+/*
+ *    halo mass function
+ */
 
 double dndlnMh(const Model *model, double Mh, double z){
    /*
@@ -285,9 +285,9 @@ double dndlnMh(const Model *model, double Mh, double z){
 }
 
 
-/* ---------------------------------------------------------------- *
- * halo profile functions
- * ---------------------------------------------------------------- */
+/*
+ *    halo profile functions
+ */
 
 
 double uHalo(const Model *model, double k, double Mh, double c, double z)
@@ -543,9 +543,9 @@ double concentration(const Model *model, double Mh, double z, char *concenDef)
 }
 
 
-/* ---------------------------------------------------------------- *
- * mass definition
- * ---------------------------------------------------------------- */
+/*
+ *    mass definition
+ */
 
 double Delta(const Model *model, double z, char *massDef)
 {
@@ -732,9 +732,9 @@ double Delta_vir(const Model *model, double z)
 #undef WK03
 
 
-/* ---------------------------------------------------------------- *
- * halo model functions
- * ---------------------------------------------------------------- */
+/*
+ *    halo model functions
+ */
 
 double f_sigma(const Model *model, double sigma, double z)
 {
@@ -949,9 +949,8 @@ double Mh_rh(const Model *model, double r, double z)
 }
 
 /*
- * cosmology functions
+ *    cosmology functions
  */
-
 
 
 double cm3toMpc3_como(const Model *model, double z)
@@ -1216,7 +1215,7 @@ double dr_dz(const Model *model, double z)
 }
 
 /*
- * From NICAEA doc:
+ *    From NICAEA doc:
  *
  *    If wOmegar=1, Omega_radiation>0 is included (photons +
  *    neutrinos), needed for high-z quantities such as the sound

@@ -1,7 +1,7 @@
 /*
  *    xray.h
  *    halomodel library
- *    Jean Coupon 2015-2016
+ *    Jean Coupon 2015-2017
  */
 
 #ifndef XRAY_H
@@ -38,14 +38,19 @@ double P_Ix_twohalo(double k, void *p);
 double intForP_twohalo_Ix(double logMh, void *p);
 
 double ix(const Model *model, double r, double Mh, double c, double z);
-double MhToTx(const Model *model, double Mh, double z);
+double MhToTGas(const Model *model, double Mh, double z);
 double MhToZGas(const Model *model, double Mh, double z);
-double TxToMh(const Model *model, double Tx, double z);
+
+//double TGasToMh(const Model *model, double TGas, double z);
+
+double const_Mgas_como(const Model *model, double z);
+
 
 double MGas(const Model *model, double r, double Mh, double c, double z);
 double intForMGas(double logr, void *p);
-double Lambda(double Tx, double ZGas);
-double CRToLx(const Model *model, double z, double Tx, double ZGas);
+double LambdaBolo(double TGas, double ZGas);
+double Lambda0p5_2p0(double TGas, double ZGas);
+double CRToLx(const Model *model, double z, double TGas, double ZGas);
 
 double nGas(const Model *model, double r, double Mh, double c, double z);
 double betaModel(double r, double n0, double beta, double rc);

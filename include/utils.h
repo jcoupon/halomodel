@@ -41,6 +41,10 @@ typedef struct Model
    double Omega_de;
    double H0;
    double h;
+   double Omega_b;
+   double sigma_8;
+   double n_s;
+
    double log10h;
    char   *massDef;
    char   *concenDef;
@@ -88,6 +92,14 @@ typedef struct Model
    double gas_log10rc_2;
    double gas_log10rc_3;
    double gas_log10rc_4;
+
+   int gas_TGasMh_N;
+   double *gas_TGasMh_log10Mh;
+   double *gas_TGasMh_log10TGas;
+
+   int gas_ZGasMh_N;
+   double *gas_ZGasMh_log10Mh;
+   double *gas_ZGasMh_ZGas;
 
    /* for gg lensing */
    double ggl_pi_max;

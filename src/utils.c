@@ -1,20 +1,21 @@
-/* ------------------------------------------------------------ *
- * utils.c                                                      *
- * halomodel library                                            *
- * Jean Coupon 2016                                             *
- * ------------------------------------------------------------ */
+/*
+ *    utils.c
+ *    halomodel library
+ *    Jean Coupon 2016 - 2016
+ */
 
 #include "utils.h"
 
 double xi_from_Pkr(gsl_function *ak, double r_prime, FFTLog_config *fc){
 
-   /* The fast FFT algorithm is no longer correct if P(k) = P(k,r), that's
-   why the algorithm above is only valid at the point r = r' and requires
-   an interpolation. It means that you have to run this routine as many times
-   as you need to evaluate xi(r'). The number of point fc->N below is the
-   parameter to play with in order to get accurate and fast evaluation of
-   xi(r').
-   */
+   /*
+    *    The fast FFT algorithm is no longer correct if P(k) = P(k,r), that's
+    *    why the algorithm above is only valid at the point r = r' and requires
+    *    an interpolation. It means that you have to run this routine as many times
+    *    as you need to evaluate xi(r'). The number of point fc->N below is the
+    *    parameter to play with in order to get accurate and fast evaluation of
+    *    xi(r').
+    */
 
    int i;
 
@@ -201,31 +202,31 @@ void FFTLog_free(FFTLog_config *fc){
 }
 
 FFTLog_complex FFTLog_U_mu(double mu, FFTLog_complex z){
-  /*Computes 2^z Gamma[(mu + 1 - z)/2]/Gamma[(mu + 1 - z)/2]
+  /*  Computes 2^z Gamma[(mu + 1 - z)/2]/Gamma[(mu + 1 - z)/2]
               1                2                 3
-  */
+   */
   double amp1,arg1;
   gsl_sf_result lnamp2,arg2,lnamp3,arg3;
 
   FFTLog_complex result;
 
-  /* 2^z */
+  /*  2^z */
   amp1 = exp(z.re*log(2.0));
   arg1 = z.im*log(2.0);
 
-  /* Gamma 1 */
+  /*     Gamma 1 */
   FFTLog_complex zplus;
   zplus.re = (mu + 1.0 + z.re)/2.0;
   zplus.im = z.im/2.0;
   gsl_sf_lngamma_complex_e(zplus.re,zplus.im,&lnamp2,&arg2);
 
-  /* Gamma 2 */
+  /*     Gamma 2 */
   FFTLog_complex zminus;
   zminus.re = (mu + 1.0 - z.re)/2.0;
   zminus.im = - z.im/2.0;
   gsl_sf_lngamma_complex_e(zminus.re,zminus.im,&lnamp3,&arg3);
 
-  /* Result */
+  /*     Result */
   result.amp = amp1*exp(lnamp2.val)*exp(-lnamp3.val);
   result.arg = arg1 + arg2.val - arg3.val;
   result.re = result.amp*cos(result.arg);

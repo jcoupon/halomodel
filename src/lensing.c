@@ -1,7 +1,7 @@
 /*
  *    lensing.c
  *    halomodel library
- *    Jean Coupon 2016
+ *    Jean Coupon 2016 - 2017
  */
 
 #include "lensing.h"

@@ -45,12 +45,13 @@ double MhToZGas(const Model *model, double Mh, double z);
 
 double const_Mgas_como(const Model *model, double z);
 
-
 double MGas(const Model *model, double r, double Mh, double c, double z);
 double intForMGas(double logr, void *p);
 double LambdaBolo(double TGas, double ZGas);
 double Lambda0p5_2p0(double TGas, double ZGas);
-double CRToLx(const Model *model, double z, double TGas, double ZGas);
+
+double LxToCR(const Model *model, double z, double TGas, double ZGas);
+//double CRToLx(const Model *model, double z, double TGas, double ZGas);
 
 double nGas(const Model *model, double r, double Mh, double c, double z);
 double betaModel(double r, double n0, double beta, double rc);

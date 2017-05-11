@@ -128,6 +128,12 @@ class Model(ctypes.Structure):
         ("gas_ZGasMh_log10Mh", ctypes.POINTER(ctypes.c_double)),
         ("gas_ZGasMh_ZGas", ctypes.POINTER(ctypes.c_double)),
 
+        # for Lx to CR conversion flux [CR] = Lx * fac
+        ("gas_LxToCR_NZGas", ctypes.c_int),
+        ("gas_LxToCR_NTGas", ctypes.c_int),
+        ("gas_LxToCR_ZGas", ctypes.POINTER(ctypes.c_double)),
+        ("gas_LxToCR_log10TGas", ctypes.POINTER(ctypes.c_double)),
+        ("gas_LxToCR_log10fac", ctypes.POINTER(ctypes.c_double)),
 
         # for gg lensing, if hod = 0
         ("ggl_pi_max", ctypes.c_double),
@@ -238,6 +244,13 @@ class Model(ctypes.Structure):
         self.gas_ZGasMh_log10Mh = None
         self.gas_ZGasMh_ZGas = None
 
+        # for Lx to CR conversion flux [CR] = Lx * fac
+        self.gas_LxToCR_NZGas = 0
+        self.gas_LxToCR_NTGas = 0
+        self.gas_LxToCR_ZGas = None
+        self.gas_LxToCR_log10TGas = None
+        self.gas_LxToCR_log10fac = None
+
         # for gg lensing
         self.ggl_pi_max = 60.0
         self.ggl_log10c = np.nan
@@ -338,8 +351,8 @@ c_halomodel.LambdaBolo.argtypes = [ctypes.c_double, ctypes.c_double]
 c_halomodel.LambdaBolo.restype = ctypes.c_double
 c_halomodel.Lambda0p5_2p0.argtypes = [ctypes.c_double, ctypes.c_double]
 c_halomodel.Lambda0p5_2p0.restype = ctypes.c_double
-c_halomodel.CRToLx.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
-c_halomodel.CRToLx.restype = ctypes.c_double
+c_halomodel.LxToCR.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
+c_halomodel.LxToCR.restype = ctypes.c_double
 c_halomodel.Ngal_s.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.Ngal_s.restype = ctypes.c_double
 c_halomodel.Ngal_c.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
@@ -394,7 +407,7 @@ def test():
 
     compute_ref = False
     printModelChanges = False
-    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "CRToLx", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
+    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "LxToCR", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
     actions = ["Lambda"]
 
     # this model matches Coupon et al. (2015)
@@ -725,28 +738,28 @@ def test():
             else:
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
-    if "CRToLx" in actions:
+    if "LxToCR" in actions:
         """ CR to Lx conversion """
 
         TGas = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
-        CRToLx_0_00 = CRToLx(model, z, TGas, 0.00)
-        CRToLx_0_15 = CRToLx(model, z, TGas, 0.15)
-        CRToLx_0_40 = CRToLx(model, z, TGas, 0.40)
+        LxToCR_0_00 = LxToCR(model, z, TGas, 0.00)
+        LxToCR_0_15 = LxToCR(model, z, TGas, 0.15)
+        LxToCR_0_40 = LxToCR(model, z, TGas, 0.40)
 
-        # formats={'CRToLx_0_00':'%.8g', 'CRToLx_0_15':'%.8g', 'CRToLx_0_40':'%.8g'}
+        # formats={'LxToCR_0_00':'%.8g', 'LxToCR_0_15':'%.8g', 'LxToCR_0_40':'%.8g'}
 
-        fileOutName = HALOMODEL_DIRNAME+"/test/CRToLx_ref.ascii"
+        fileOutName = HALOMODEL_DIRNAME+"/test/LxToCR_ref.ascii"
         if compute_ref:
-            out = Table([TGas, CRToLx_0_00, CRToLx_0_15, CRToLx_0_40], names=['TGas', 'CRToLx_0_00', 'CRToLx_0_15', 'CRToLx_0_40'])
+            out = Table([TGas, LxToCR_0_00, LxToCR_0_15, LxToCR_0_40], names=['TGas', 'LxToCR_0_00', 'LxToCR_0_15', 'LxToCR_0_40'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
         else:
-            sys.stderr.write("CRToLx:")
+            sys.stderr.write("LxToCR:")
             ref = ascii.read(fileOutName, header_start=-1)
             try:
-                np.testing.assert_array_almost_equal(CRToLx_0_00, ref['CRToLx_0_00'], decimal=5, err_msg="CRToLx ZGAS 0.00")
-                np.testing.assert_array_almost_equal(CRToLx_0_15, ref['CRToLx_0_15'], decimal=5, err_msg="CRToLx ZGAS 0.15")
-                np.testing.assert_array_almost_equal(CRToLx_0_40, ref['CRToLx_0_40'], decimal=5, err_msg="CRToLx ZGAS 0.40")
+                np.testing.assert_array_almost_equal(LxToCR_0_00, ref['LxToCR_0_00'], decimal=5, err_msg="LxToCR ZGAS 0.00")
+                np.testing.assert_array_almost_equal(LxToCR_0_15, ref['LxToCR_0_15'], decimal=5, err_msg="LxToCR ZGAS 0.15")
+                np.testing.assert_array_almost_equal(LxToCR_0_40, ref['LxToCR_0_40'], decimal=5, err_msg="LxToCR ZGAS 0.40")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()
@@ -1369,13 +1382,13 @@ def loadGas_TGasMh(model, fileInName):
     log10Mh = np.log10(data["col1"]*model.h)
     log10TGas = np.log10(data["col2"])
 
-    """ load n(z) in model object """
+    """ load TGas in model object """
     model.gas_TGasMh_N = len(data)
     model.gas_TGasMh_log10Mh = np.ctypeslib.as_ctypes(log10Mh)
     model.gas_TGasMh_log10TGas = np.ctypeslib.as_ctypes(log10TGas)
 
-    return
 
+    return
 
 
 def MhToZGas(model, Mh):
@@ -1417,12 +1430,63 @@ def loadGas_ZGasMh(model, fileInName):
     log10Mh = np.log10(data["col1"]*model.h)
     ZGas = data["col2"]
 
-    """ load n(z) in model object """
+    """ load ZGas in model object """
     model.gas_ZGasMh_N = len(data)
     model.gas_ZGasMh_log10Mh = np.ctypeslib.as_ctypes(log10Mh)
     model.gas_ZGasMh_ZGas = np.ctypeslib.as_ctypes(ZGas)
 
     return
+
+
+def LxToCR(model, TGas, ZGas):
+    """  Wrapper for c-function LxToCR()
+
+    Returns  = LxToCR(z, TGas, ZGas) the coefficient to
+    transform CR into luminosity
+
+    INPUT
+    z: redshift (not used)
+    TGas: temperature (float or array)
+    ZGas: metallicity
+
+    OUPUT
+    LxToCR
+    """
+
+    if isinstance(TGas, (list, tuple, np.ndarray)):
+        result = np.zeros(len(TGas))
+        for i, t in enumerate(TGas):
+            result[i] = c_halomodel.LxToCR(model, np.nan, t, ZGas)
+    else:
+        result = c_halomodel.LxToCR(model, np.nan, TGas, ZGas)
+
+    return result
+
+
+
+def loadGas_LxToCR(model, fileInName):
+    """ load Lx to CR conversion factor at a given
+    redhsift. It depends on ZGas and TGas.
+
+    INPUT PARAMETERS:
+    model: halomodel structre
+    fileInName: LXToCR input file, format: ZGas TGas fac
+    """
+
+    data = ascii.read(fileInName, format="no_header")
+    ZGas = np.unique(data["col1"])
+    log10TGas = np.log10(np.unique(data["col2"]))
+    log10fac = np.log10(data["col3"])
+
+    """ load LxToCR in model object """
+    model.gas_LxToCR_NZGas = len(ZGas)
+    model.gas_LxToCR_NTGas = len(log10TGas)
+    model.gas_LxToCR_ZGas = np.ctypeslib.as_ctypes(ZGas)
+    model.gas_LxToCR_log10TGas = np.ctypeslib.as_ctypes(log10TGas)
+    model.gas_LxToCR_log10fac = np.ctypeslib.as_ctypes(log10fac)
+
+    return
+
 
 # def getCRtoLx_bremss(fileNameIn, redshift):
 #     from scipy import interpolate
@@ -1616,30 +1680,6 @@ def Lambda0p5_2p0(TGas, ZGas):
     return result
 
 
-
-def CRToLx(model, z, TGas, ZGas):
-    """  Wrapper for c-function CRToLx()
-
-    Returns  = CRToLx(TGas, z, ZGas) the coefficient to
-    transform CR into luminosity
-
-    INPUT
-    TGas: temperature (float or array)
-    z: redshift
-    ZGas: metallicity
-
-    OUPUT
-    CRToLx
-    """
-
-    if isinstance(TGas, (list, tuple, np.ndarray)):
-        result = np.zeros(len(TGas))
-        for i, t in enumerate(TGas):
-            result[i] = c_halomodel.CRToLx(model, z, t, ZGas)
-    else:
-        result = c_halomodel.CRToLx(model, z, TGas, ZGas)
-
-    return result
 
 
 def M1_to_M2(model, M1, c1, Delta1, Delta2, z):

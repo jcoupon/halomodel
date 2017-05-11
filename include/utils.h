@@ -101,6 +101,12 @@ typedef struct Model
    double *gas_ZGasMh_log10Mh;
    double *gas_ZGasMh_ZGas;
 
+   int gas_LxToCR_NZGas;
+   int gas_LxToCR_NTGas;
+   double *gas_LxToCR_ZGas;
+   double *gas_LxToCR_log10TGas;
+   double *gas_LxToCR_log10fac;
+
    /* for gg lensing */
    double ggl_pi_max;
    double ggl_log10c;

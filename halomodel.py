@@ -359,6 +359,12 @@ c_halomodel.Ngal_c.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_
 c_halomodel.Ngal_c.restype = ctypes.c_double
 c_halomodel.Ngal.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.Ngal.restype = ctypes.c_double
+c_halomodel.shmr_s.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
+c_halomodel.shmr_s.restype = ctypes.c_double
+c_halomodel.shmr_c.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
+c_halomodel.shmr_c.restype = ctypes.c_double
+c_halomodel.shmr.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
+c_halomodel.shmr.restype = ctypes.c_double
 c_halomodel.rho_crit.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.rho_crit.restype   = ctypes.c_double
 
@@ -1290,7 +1296,7 @@ def Ngal(model, log10Mh, log10Mstar_min, log10Mstar_max, obs_type="all"):
     Returns the HOD Ngal(Mh)
 
     INPUT
-    Mh: mass of the host halo
+    log10Mh: log10(mass) of the host halo
     log10Mstar_min: lower stellar mass bin
     log10Mstar_max: upper stellar mass bin
     obs_type: [cen, sat, all]
@@ -1315,6 +1321,41 @@ def Ngal(model, log10Mh, log10Mstar_min, log10Mstar_max, obs_type="all"):
         raise ValueError("Ngal: obs_type \"{0:s}\" is not recognised".format(obs_type))
 
     return result
+
+
+def shmr(model, log10Mh, log10Mstar_min, log10Mstar_max, obs_type="all"):
+    """ Wrapper for shmr c-function
+
+    Returns the stellar-to-halo mass ratio
+
+    INPUT
+    log10Mh: log10(mass) of the host halo
+    log10Mstar_min: lower stellar mass bin
+    log10Mstar_max: upper stellar mass bin
+    obs_type: [cen, sat, all]
+
+    OUTPUT
+    ratio(Mh)
+    """
+
+    Mh = np.asarray(pow(10.0, log10Mh), dtype=np.float64)
+    result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
+
+    if obs_type == "cen":
+        for i, m in enumerate(Mh):
+            result[i] = c_halomodel.shmr_c(model, m,  log10Mstar_min, log10Mstar_max)
+    elif obs_type == "sat":
+        for i, m in enumerate(Mh):
+            result[i] = c_halomodel.shmr_s(model, m,  log10Mstar_min, log10Mstar_max)
+    elif obs_type == "all":
+        for i, m in enumerate(Mh):
+            result[i] = c_halomodel.shmr(model, m,  log10Mstar_min, log10Mstar_max)
+    else:
+        raise ValueError("shmr: obs_type \"{0:s}\" is not recognised".format(obs_type))
+
+    return result
+
+
 
 """
 

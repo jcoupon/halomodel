@@ -156,6 +156,72 @@ double Ngal(const Model *model, double Mh, double log10Mstar_min, double log10Ms
 }
 
 
+double shmr_c(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max){
+  /*     returns the total stellar mass from central galaxies as
+   *     a function of halo mass and stellar bin.
+   */
+
+   params p;
+   p.model = model;
+   p.Mh = Mh;
+
+   double result;
+
+   result  = int_gsl(intForShmr_c, (void*)&p, log10Mstar_min, log10Mstar_max, 1.e-3);
+   result -= Ngal_c(model, Mh, log10Mstar_max, -1)*pow(10.0, log10Mstar_max) - Ngal_c(model, Mh, log10Mstar_min, -1)*pow(10.0, log10Mstar_min);
+
+   return result/Mh;
+}
+
+double intForShmr_c(double log10Mstar, void *p){
+
+   const Model *model = ((params *)p)->model;
+   double Mh = ((params *)p)->Mh;
+
+  return Ngal_c(model, Mh, log10Mstar, -1) * pow(10.0, log10Mstar)*log(10);
+}
+
+
+
+double shmr_s(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max){
+  /*     returns the total stellar mass from satellite galaxies as
+   *     a function of halo mass and stellar bin.
+   */
+
+   params p;
+   p.model = model;
+   p.Mh = Mh;
+
+   double result;
+
+   result  = int_gsl(intForShmr_s, (void*)&p, log10Mstar_min, log10Mstar_max, 1.e-3);
+   result -= Ngal_s(model, Mh, log10Mstar_max, -1)*pow(10.0, log10Mstar_max) - Ngal_s(model, Mh, log10Mstar_min, -1)*pow(10.0, log10Mstar_min);
+
+   return result/Mh;
+}
+
+double intForShmr_s(double log10Mstar, void *p){
+
+   const Model *model = ((params *)p)->model;
+   double Mh = ((params *)p)->Mh;
+
+  return Ngal_s(model, Mh, log10Mstar, -1) * pow(10.0, log10Mstar)*log(10);
+}
+
+double shmr(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max){
+   /*
+    *    Total number of galaxies per halo.
+    */
+   double shmrc, shmrs;
+
+   shmrc = shmr_c(model, Mh, log10Mstar_min, log10Mstar_max);
+   shmrs = shmr_s(model, Mh, log10Mstar_min, log10Mstar_max);
+
+   return shmrc + shmrs;
+}
+
+
+
 double msmh_log10Mstar(const Model *model, double log10Mh){
    /*
     *    Returns Mstar = f(Mh) for a given Mstar-Mh relation.

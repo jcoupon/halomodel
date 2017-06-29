@@ -18,6 +18,12 @@ double sigma_log_M(const Model *model, double log10Mstar);
 double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max);
 double Ngal(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max);
 
+double shmr_c(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max);
+double intForShmr_c(double log10Mstar, void *p);
+double shmr_s(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max);
+double intForShmr_s(double log10Mstar, void *p);
+double shmr(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max);
+
 double msmh_log10Mstar(const Model *model, double Mh);
 double msmh_log10Mh(const Model *model, double log10Mstar);
 

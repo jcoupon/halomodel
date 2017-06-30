@@ -1337,21 +1337,33 @@ def shmr(model, log10Mh, log10Mstar_min, log10Mstar_max, obs_type="all"):
     OUTPUT
     ratio(Mh)
     """
+    if isinstance(log10Mh, (list, tuple, np.ndarray)):
 
-    Mh = np.asarray(pow(10.0, log10Mh), dtype=np.float64)
-    result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
+        Mh = np.asarray(pow(10.0, log10Mh), dtype=np.float64)
+        result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
 
-    if obs_type == "cen":
-        for i, m in enumerate(Mh):
-            result[i] = c_halomodel.shmr_c(model, m,  log10Mstar_min, log10Mstar_max)
-    elif obs_type == "sat":
-        for i, m in enumerate(Mh):
-            result[i] = c_halomodel.shmr_s(model, m,  log10Mstar_min, log10Mstar_max)
-    elif obs_type == "all":
-        for i, m in enumerate(Mh):
-            result[i] = c_halomodel.shmr(model, m,  log10Mstar_min, log10Mstar_max)
+        if obs_type == "cen":
+            for i, m in enumerate(Mh):
+                result[i] = c_halomodel.shmr_c(model, m,  log10Mstar_min, log10Mstar_max)
+        elif obs_type == "sat":
+            for i, m in enumerate(Mh):
+                result[i] = c_halomodel.shmr_s(model, m,  log10Mstar_min, log10Mstar_max)
+        elif obs_type == "all":
+            for i, m in enumerate(Mh):
+                result[i] = c_halomodel.shmr(model, m,  log10Mstar_min, log10Mstar_max)
+        else:
+            raise ValueError("shmr: obs_type \"{0:s}\" is not recognised".format(obs_type))
+
     else:
-        raise ValueError("shmr: obs_type \"{0:s}\" is not recognised".format(obs_type))
+
+        if obs_type == "cen":
+            result = c_halomodel.shmr_c(model, pow(10.0, log10Mh),  log10Mstar_min, log10Mstar_max)
+        elif obs_type == "sat":
+            result = c_halomodel.shmr_s(model, pow(10.0, log10Mh),  log10Mstar_min, log10Mstar_max)
+        elif obs_type == "all":
+            result = c_halomodel.shmr(model, pow(10.0, log10Mh),  log10Mstar_min, log10Mstar_max)
+        else:
+            raise ValueError("shmr: obs_type \"{0:s}\" is not recognised".format(obs_type))
 
     return result
 

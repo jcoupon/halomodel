@@ -4,6 +4,10 @@
 Jean coupon - 2016 - 2017
 python wrapper for halomodel routines in c
 
+IMPORTANT: halomodel.py is exclusively in
+hubble units ([h^-1 Msun for halos, h^-2 Msun for galaxies,
+h^-1 Mpc for distances, etc] and comoving units.
+
 Required librairies:
 
 for c (if not in /usr/local/, set path in Makefile):
@@ -182,7 +186,7 @@ class Model(ctypes.Structure):
 
         # halo model / HOD parameters
         self.log10M1 = 12.529 # in Msun h^-1
-        self.log10Mstar0 = 10.748 # in Msun h^-1
+        self.log10Mstar0 = 10.605 # in Msun h^-2 (10.748 if Msun h^-1)
         self.beta = 0.356
         self.delta = 0.749
         self.gamma = 0.807
@@ -1084,7 +1088,7 @@ def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
     """ Wrapper for c-function dndlog10Mstar()
 
     Returns the stellar mass function in units of (Mpc/h)^-3 dex^-1
-    Mstar in [h^-1 Msun]
+    Mstar in [h^-2 Msun]
 
     ** volume in comoving units **
 
@@ -1558,7 +1562,14 @@ def DA(model, z):
     Assumes OmegaR = 0.0
     """
 
-    return c_halomodel.DA(model, z, 0)
+    if isinstance(z, (list, tuple, np.ndarray)):
+        result = np.zeros(len(z))
+        for i, zz in enumerate(z):
+            result[i] =  c_halomodel.DA(model, zz, 0)
+    else:
+            result = c_halomodel.DA(model, z, 0)
+
+    return result
 
 
 def DM(model, z):
@@ -1566,14 +1577,28 @@ def DM(model, z):
     Assumes OmegaR = 0.0
     """
 
-    return c_halomodel.DM(model, z, 0)
+    if isinstance(z, (list, tuple, np.ndarray)):
+        result = np.zeros(len(z))
+        for i, zz in enumerate(z):
+            result[i] =  c_halomodel.DM(model, zz, 0)
+    else:
+            result =  c_halomodel.DM(model, z, 0)
+
+    return result
 
 def DL(model, z):
     """ Returns the luminosity distance
     Assumes OmegaR = 0.0
     """
 
-    return c_halomodel.DL(model, z, 0)
+    if isinstance(z, (list, tuple, np.ndarray)):
+        result = np.zeros(len(z))
+        for i, zz in enumerate(z):
+            result[i] =  c_halomodel.DL(model, zz, 0)
+    else:
+            result =  c_halomodel.DL(model, z, 0)
+
+    return result
 
 
 def rh(model, Mh, z, D=None):

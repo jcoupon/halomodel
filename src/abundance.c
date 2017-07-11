@@ -16,8 +16,7 @@ void dndlog10Mstar(const Model *model, double *log10Mstar, int N, double z, int 
    See Leauthaud et al. (2011) eq. 17
    and Coupon et al. (2012) Eq. A. 21.
 
-   if hubble_unit is set, takes Mstar in (Msun/h^2), returns result in (Mpc/h)^-3 dex^-1
-   else                   takes Mstar in Msun        returns result in Mpc^-3 dex^-1
+   takes Mstar in (Msun/h^2), returns result in (Mpc/h)^-3 dex^-1
    */
 
    int i;

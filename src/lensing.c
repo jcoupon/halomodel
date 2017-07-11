@@ -259,7 +259,8 @@ void DeltaSigmaStar(const Model *model, double *R, int N, double z, double *resu
       if (isnan(model->ggl_log10Mstar)){
          Mstar = 0.0;
       }else{
-         Mstar = pow(10.0, model->ggl_log10Mstar);
+          // need to divide by h to convert to h^-1 Mpc (Mstar is in h^-2 Mpc)
+         Mstar = pow(10.0, model->ggl_log10Mstar) / model->h;
       }
       for(i=0;i<N;i++){
          result[i] = 1.e-12 * Mstar/(M_PI*R[i]*R[i]);

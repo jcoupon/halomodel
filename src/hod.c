@@ -274,9 +274,13 @@ double msmh_log10Mstar(const Model *model, double log10Mh){
       /*    update log10Mh = f(log10Mstar) */
       for(i=0;i<N;i++){
          t_log10Mh[i] = msmh_log10Mh(model, t_log10Mstar[i]);
+         // printf("%f %f\n", t_log10Mstar[i], t_log10Mh[i]);
       }
       gsl_spline_init(spline, t_log10Mh, t_log10Mstar, N);
+      // printf("\n\n");
    }
+
+
 
    if (t_log10Mh[0] < log10Mh && log10Mh < t_log10Mh[N-1]){
       return gsl_spline_eval(spline, log10Mh, acc);

@@ -1214,6 +1214,28 @@ double dr_dz(const Model *model, double z)
 
 }
 
+double lookBackTime(const Model *model, double z)
+{
+   /*
+    *    lookback time in Gyr
+    */
+
+   double result;
+
+   params p;
+   p.model = model;
+
+   result = 9784619482.496195 / model->h  * int_gsl(intForLookBackTime, (void*)&p, 0.0, z, 1.e-3) / 1.e9;
+
+   return result;
+}
+
+double intForLookBackTime(double zp, void *p)
+{
+   const Model *model = ((params *)p)->model;
+   return 1.0/((1.0+zp)*sqrt(E2(model, zp,  0)));
+}
+
 /*
  *    From NICAEA doc:
  *

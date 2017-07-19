@@ -343,6 +343,8 @@ c_halomodel.inter_gas_log10beta.argtypes = [ctypes.POINTER(Model), ctypes.c_doub
 c_halomodel.inter_gas_log10beta.restype = ctypes.c_double
 c_halomodel.inter_gas_log10rc.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.inter_gas_log10rc.restype = ctypes.c_double
+c_halomodel.lookBackTime.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
+c_halomodel.lookBackTime.restype = ctypes.c_double
 c_halomodel.DA.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
 c_halomodel.DA.restype = ctypes.c_double
 c_halomodel.DM.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
@@ -418,7 +420,7 @@ def test():
     compute_ref = False
     printModelChanges = False
     # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "LxToCR", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
-    actions = ["Lambda"]
+    actions = ["lookBackTime"]
 
     # this model matches Coupon et al. (2015)
     # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -427,16 +429,33 @@ def test():
 
     m1 =  dumpModel(model)
 
+    if "lookBackTime" in actions:
+        """ look back time """
+
+        # compare with astropy.cosmology
+        if compute_ref:
+            from astropy.cosmology import FlatLambdaCDM
+            cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
+            print c_halomodel.lookBackTime(model, z), cosmo.lookback_time([z])
+        else:
+            sys.stderr.write("dist:")
+            try:
+                np.testing.assert_almost_equal(c_halomodel.lookBackTime(model, z), 3.43610037484, err_msg="lookBackTime")
+            except:
+                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+                traceback.print_exc()
+            else:
+                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+
+
     if "dist" in actions:
         """ angular diameter distance """
 
         # compare with astropy.cosmology
         if compute_ref:
-            print c_halomodel.DA(model, z, 0)
             from astropy.cosmology import FlatLambdaCDM
             cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
-            h = model.H0/100.0
-            print c_halomodel.DA(model, z, 0)/h, cosmo.angular_diameter_distance([z])
+            print c_halomodel.DA(model, z, 0)/model.h, cosmo.angular_diameter_distance([z])
         else:
             sys.stderr.write("dist:")
             try:
@@ -1556,6 +1575,21 @@ def loadGas_LxToCR(model, fileInName):
 #
 #     return pow(10.0, interpolate.griddata(x, y, redshift, method='linear'))
 #
+
+def lookBackTime(model, z):
+    """ Returns the look back time.
+    Assumes OmegaR = 0.0
+    """
+
+    if isinstance(z, (list, tuple, np.ndarray)):
+        result = np.zeros(len(z))
+        for i, zz in enumerate(z):
+            result[i] =  c_halomodel.lookBackTime(model, zz)
+    else:
+            result = c_halomodel.lookBackTime(model, z)
+
+    return result
+
 
 def DA(model, z):
     """ Returns the angular diameter distance

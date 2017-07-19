@@ -1214,6 +1214,7 @@ double dr_dz(const Model *model, double z)
 
 }
 
+#define EPS 1.e-8
 
 double lookbackTimeInv(const Model *model, double tL){
    /*
@@ -1252,7 +1253,7 @@ double lookbackTimeInv(const Model *model, double tL){
 
    }
 
-   if (t_tL[0]-EPS < tL && tL < t_tL[N-1]){
+   if (t_tL[0] - EPS < tL && tL < t_tL[N-1]){
       return pow(10.0, gsl_spline_eval(spline, tL, acc))-1.0;
    }else{
       return 0.0;
@@ -1267,6 +1268,7 @@ double lookbackTimeInv(const Model *model, double tL){
 
 }
 
+# undef EPS
 
 double lookbackTime(const Model *model, double z)
 {

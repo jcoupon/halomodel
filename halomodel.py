@@ -343,8 +343,10 @@ c_halomodel.inter_gas_log10beta.argtypes = [ctypes.POINTER(Model), ctypes.c_doub
 c_halomodel.inter_gas_log10beta.restype = ctypes.c_double
 c_halomodel.inter_gas_log10rc.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.inter_gas_log10rc.restype = ctypes.c_double
-c_halomodel.lookBackTime.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
-c_halomodel.lookBackTime.restype = ctypes.c_double
+c_halomodel.lookbackTimeInv.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
+c_halomodel.lookbackTimeInv.restype = ctypes.c_double
+c_halomodel.lookbackTime.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
+c_halomodel.lookbackTime.restype = ctypes.c_double
 c_halomodel.DA.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
 c_halomodel.DA.restype = ctypes.c_double
 c_halomodel.DM.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_int]
@@ -420,7 +422,7 @@ def test():
     compute_ref = False
     printModelChanges = False
     # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "LxToCR", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
-    actions = ["lookBackTime"]
+    actions = ["lookbackTime"]
 
     # this model matches Coupon et al. (2015)
     # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -429,18 +431,18 @@ def test():
 
     m1 =  dumpModel(model)
 
-    if "lookBackTime" in actions:
+    if "lookbackTime" in actions:
         """ look back time """
 
         # compare with astropy.cosmology
         if compute_ref:
             from astropy.cosmology import FlatLambdaCDM
             cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
-            print c_halomodel.lookBackTime(model, z), cosmo.lookback_time([z])
+            print c_halomodel.lookbackTime(model, z), cosmo.lookback_time([z]), c_halomodel.lookbackTimeInv(model, c_halomodel.lookbackTime(model, z))
         else:
             sys.stderr.write("dist:")
             try:
-                np.testing.assert_almost_equal(c_halomodel.lookBackTime(model, z), 3.43610037484, err_msg="lookBackTime")
+                np.testing.assert_almost_equal(c_halomodel.lookbackTime(model, z), 3.43610037484, err_msg="lookbackTime")
             except:
                 sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
                 traceback.print_exc()
@@ -1576,7 +1578,23 @@ def loadGas_LxToCR(model, fileInName):
 #     return pow(10.0, interpolate.griddata(x, y, redshift, method='linear'))
 #
 
-def lookBackTime(model, z):
+def lookbackTimeInv(model, tL):
+    """ Returns the redshift for a given
+    lookback time
+    Assumes OmegaR = 0.0
+    """
+
+    if isinstance(tL, (list, tuple, np.ndarray)):
+        result = np.zeros(len(tL))
+        for i, tt in enumerate(tL):
+            result[i] =  c_halomodel.lookbackTimeInv(model, tt)
+    else:
+            result = c_halomodel.lookbackTimeInv(model, tL)
+
+    return result
+
+
+def lookbackTime(model, z):
     """ Returns the look back time.
     Assumes OmegaR = 0.0
     """
@@ -1584,9 +1602,9 @@ def lookBackTime(model, z):
     if isinstance(z, (list, tuple, np.ndarray)):
         result = np.zeros(len(z))
         for i, zz in enumerate(z):
-            result[i] =  c_halomodel.lookBackTime(model, zz)
+            result[i] =  c_halomodel.lookbackTime(model, zz)
     else:
-            result = c_halomodel.lookBackTime(model, z)
+            result = c_halomodel.lookbackTime(model, z)
 
     return result
 

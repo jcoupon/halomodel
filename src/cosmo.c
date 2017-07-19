@@ -1214,7 +1214,61 @@ double dr_dz(const Model *model, double z)
 
 }
 
-double lookBackTime(const Model *model, double z)
+
+double lookbackTimeInv(const Model *model, double tL){
+   /*
+    *    Returns the redshift given a lookback time t
+    *    in Gyr (z in between 0 and 10000).
+    */
+
+   int i, N = 256;
+   double log10OnePlusZmin = 0.0, log10OnePlusZmax = 4.0; // x = log10(1+z))
+
+   static int firstcall = 1;
+   static gsl_interp_accel *acc;
+   static gsl_spline *spline;
+
+   static double *t_log10OnePlusZ;
+   static double *t_tL;
+   static double dlog10OnePlusZ;
+
+   if (firstcall) {
+      firstcall = 0;
+
+      /*    tabulate t = f(log10z) */
+      t_log10OnePlusZ = (double *)malloc(N*sizeof(double));
+      t_tL = (double *)malloc(N*sizeof(double));
+      dlog10OnePlusZ = (log10OnePlusZmax - log10OnePlusZmin)/(double)N;
+
+      for(i=0;i<N;i++){
+         t_log10OnePlusZ[i] = log10OnePlusZmin + dlog10OnePlusZ*(double)i;
+         t_tL[i] = lookbackTime(model, pow(10.0, t_log10OnePlusZ[i])-1.0);
+      }
+
+      acc = gsl_interp_accel_alloc();
+      spline = gsl_spline_alloc (gsl_interp_cspline, N);
+
+      gsl_spline_init(spline, t_tL, t_log10OnePlusZ, N);
+
+   }
+
+   if (t_tL[0] < tL && tL < t_tL[N-1]){
+      return pow(10.0, gsl_spline_eval(spline, tL, acc))-1.0;
+   }else{
+      return 1.0/0.0;
+   }
+
+#if 0
+   free(t_log10Mh);
+   free(t_log10Mstar);
+   gsl_spline_free (spline);
+   gsl_interp_accel_free (acc);
+#endif
+
+}
+
+
+double lookbackTime(const Model *model, double z)
 {
    /*
     *    lookback time in Gyr
@@ -1225,12 +1279,12 @@ double lookBackTime(const Model *model, double z)
    params p;
    p.model = model;
 
-   result = 9784619482.496195 / model->h  * int_gsl(intForLookBackTime, (void*)&p, 0.0, z, 1.e-3) / 1.e9;
+   result = 9784619482.496195 / model->h  * int_gsl(intForLookbackTime, (void*)&p, 0.0, z, 1.e-3) / 1.e9;
 
    return result;
 }
 
-double intForLookBackTime(double zp, void *p)
+double intForLookbackTime(double zp, void *p)
 {
    const Model *model = ((params *)p)->model;
    return 1.0/((1.0+zp)*sqrt(E2(model, zp,  0)));

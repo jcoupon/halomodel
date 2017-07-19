@@ -1255,7 +1255,7 @@ double lookbackTimeInv(const Model *model, double tL){
    if (t_tL[0] < tL && tL < t_tL[N-1]){
       return pow(10.0, gsl_spline_eval(spline, tL, acc))-1.0;
    }else{
-      return 1.0/0.0;
+      return 0.0;
    }
 
 #if 0

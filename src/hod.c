@@ -46,11 +46,11 @@ double Ngal_c(const Model *model, double Mh, double log10Mstar_min, double log10
       }
    }
 
-   arg    = (log10Mstar_min - msmh_log10Mstar(model, log10Mh))/(sqrt(2.0)*sigma_log_M(model, log10Mstar_min));
+   arg = (log10Mstar_min - msmh_log10Mstar(model, log10Mh))/(sqrt(2.0)*sigma_log_M(model, log10Mstar_min));
    result = eta_cen(model, Mh)*0.5*(1.0-gsl_sf_erf(arg));
 
    if(log10Mstar_max > 0){
-      arg     = (log10Mstar_max - msmh_log10Mstar(model, log10Mh))/(sqrt(2.0)*sigma_log_M(model, log10Mstar_max));
+      arg = (log10Mstar_max - msmh_log10Mstar(model, log10Mh))/(sqrt(2.0)*sigma_log_M(model, log10Mstar_max));
       result -= eta_cen(model, Mh)*0.5*(1.0-gsl_sf_erf(arg));
    }
 
@@ -120,9 +120,12 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
       }
    }
 
+   // log10Msat = log10(model->B_sat) + model->beta_sat*msmh_log10Mh(model, log10Mstar_min) + 12.0*(1.0-model->beta_sat);
+   // log10Mcut = msmh_log10Mh(model, log10Mstar_min) - 0.5;
+   log10Msat = log10M_sat(model, log10Mstar_min);
+   log10Mcut = log10M_cut(model, log10Mstar_min);
 
-   log10Msat = log10(model->B_sat) + model->beta_sat*msmh_log10Mh(model, log10Mstar_min) + 12.0*(1.0-model->beta_sat);
-   log10Mcut = msmh_log10Mh(model, log10Mstar_min) - 0.5;
+
    M0 = pow(10.0, log10Mcut);
    if(Mh - M0 > 0.0){
       result = pow((Mh - M0)/pow(10.0, log10Msat), model->alpha);
@@ -132,9 +135,11 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
 
    /* Stellar bin */
    if(log10Mstar_max > 0){
-      log10Msat = log10(model->B_sat) + model->beta_sat*msmh_log10Mh(model, log10Mstar_max) + 12.0*(1.0-model->beta_sat);
-      log10Mcut = msmh_log10Mh(model, log10Mstar_max) - 0.5;
-      M0        = pow(10.0, log10Mcut);
+      // log10Msat = log10(model->B_sat) + model->beta_sat*msmh_log10Mh(model, log10Mstar_max) + 12.0*(1.0-model->beta_sat);
+      // log10Mcut = msmh_log10Mh(model, log10Mstar_max) - 0.5;
+      log10Msat = log10M_sat(model, log10Mstar_max);
+      log10Mcut = log10M_cut(model, log10Mstar_max);
+      M0 = pow(10.0, log10Mcut);
       if(Mh - M0 > 0.0){
          result -= pow((Mh - M0)/pow(10.0, log10Msat), model->alpha);
       }
@@ -142,6 +147,27 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
 
    return MAX(0.0, result);
 }
+
+double log10M_sat(const Model *model, double log10Mstar){
+   double result;
+
+   result = log10(model->B_sat) + model->beta_sat*msmh_log10Mh(model, log10Mstar) + 12.0*(1.0-model->beta_sat);
+
+   return result;
+}
+
+double log10M_cut(const Model *model, double log10Mstar){
+   double result;
+
+   if (model->B_cut < 0.0 && model->beta_cut < 0.0){
+      result =  msmh_log10Mh(model, log10Mstar) - 0.5;
+   }else{
+      result = log10(model->B_cut) + model->beta_cut*msmh_log10Mh(model, log10Mstar) + 12.0*(1.0-model->beta_cut);
+   }
+
+   return result;
+}
+
 
 double Ngal(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max){
    /*

@@ -16,6 +16,9 @@ double eta_cen(const Model *model, double Mh);
 double sigma_log_M(const Model *model, double log10Mstar);
 
 double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max);
+double log10M_sat(const Model *model, double log10Mstar);
+double log10M_cut(const Model *model, double log10Mstar);
+
 double Ngal(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max);
 
 double shmr_c(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max);

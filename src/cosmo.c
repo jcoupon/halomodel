@@ -240,6 +240,13 @@ double dndlnMh(const Model *model, double Mh, double z){
     *    outputs dn/dlnM in Mpc^-3  Msun.
     */
 
+
+   /*
+   double rhobar = rho_bar(model, 0.0);
+   double sigma = sqrt(sigma2M(model, Mh));
+   return f_sigma(model, sigma, z) * rhobar / Mh * dsigmaM_m1_dlnM(model, Mh);
+   */
+
    static int firstcall = 1;
    static gsl_interp_accel *acc;
    static gsl_spline *spline;

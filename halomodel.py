@@ -335,6 +335,10 @@ c_halomodel.Delta_vir.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.Delta_vir.restype = ctypes.c_double
 c_halomodel.msmh_log10Mh.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.msmh_log10Mh.restype = ctypes.c_double
+c_halomodel.log10M_sat.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
+c_halomodel.log10M_sat.restype = ctypes.c_double
+c_halomodel.log10M_cut.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
+c_halomodel.log10M_cut.restype = ctypes.c_double
 c_halomodel.nGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
 c_halomodel.nGas.restype = ctypes.c_double
 c_halomodel.inter_gas_log10n0.argtypes = [ctypes.POINTER(Model), ctypes.c_double]
@@ -375,10 +379,8 @@ c_halomodel.shmr.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_do
 c_halomodel.shmr.restype = ctypes.c_double
 c_halomodel.rho_crit.argtypes  = [ctypes.POINTER(Model), ctypes.c_double]
 c_halomodel.rho_crit.restype   = ctypes.c_double
-
 c_halomodel.MhToTGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
 c_halomodel.MhToTGas.restype = ctypes.c_double
-
 c_halomodel.MhToZGas.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
 c_halomodel.MhToZGas.restype = ctypes.c_double
 
@@ -413,16 +415,18 @@ def test():
     """ Performs basic tests
     """
 
+    import collections
     from astropy.table import Table, Column
     import traceback
 
     OK_MESSAGE = "OK\n"
     FAIL_MESSAGE = "FAILED\n"
 
-    compute_ref = False
+    computeRef = True
     printModelChanges = False
-    # actions = ["dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "LxToCR", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
-    actions = ["lookbackTime"]
+
+    # actions = ["lookbackTime", "dist", "change_HOD", "MsMh", "concen", "mass_conv", "xi_dm", "uHalo", "smf", "ggl_HOD", "ggl", "wtheta_HOD", "Lambda", "LxToCR", "uIx", "SigmaIx_HOD", "SigmaIx", "SigmaIx_HOD_nonPara", "Ngal"]
+    actions = ['satContrib', 'Ngal']
 
     # this model matches Coupon et al. (2015)
     # model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=1, massDef="MvirC15", concenDef="TJ03", hmfDef="ST02", biasDef="T08")
@@ -431,16 +435,63 @@ def test():
 
     m1 =  dumpModel(model)
 
+    if "satContrib" in actions:
+        """ satellite HOD times the stellar mass  """
+
+
+        model = Model(Omega_m=0.309, Omega_de=0.691, H0=67.8, Omega_b = 0.0486, sigma_8 = 0.816, n_s = 0.9667, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+
+        result = collections.OrderedDict()
+
+        if True:
+            model.log10M1 = 12.5
+            model.log10Mstar0 = 10.434904095
+            model.beta = 0.460831077138
+            model.delta = 0.82372158341
+            model.gamma = 0.935799151344
+            model.log10Mstar_min = 9.86245938773
+            model.log10Mstar_max = 11.6624593877
+            model.sigma_log_M0 = 0.46222135451
+            model.sigma_lambda = 0.0
+            model.B_cut = 1.5
+            model.B_sat = 10.0
+            model.beta_cut = 1.0
+            model.beta_sat = 0.8
+            model.alpha = 1.0
+            model.fcen1 = -1.0
+            model.fcen2 = -1.0
+
+        if False:
+            model.log10M1 = 12.5 # in Msun h^-1
+            model.log10Mstar0 = 10.6 # in Msun h^-2
+            model.beta = 0.3
+            model.delta = 0.7
+            model.gamma = 1.0
+            model.sigma_log_M0 = 0.2
+            model.sigma_lambda = 0.0
+            model.B_cut = 1.50
+            model.B_sat = 10.0
+            model.beta_cut = 1.0
+            model.beta_sat = 0.8
+            model.alpha = 1.0
+            model.fcen1 = -1
+            model.fcen2 = -1
+
+        result['log10Mstar'] = np.linspace(7.0, 12.0, 500)
+        result['satContrib'] = pow(10.0, result['log10Mstar'])*dndlog10Mstar(model, result['log10Mstar'], 4.83, obs_type="sat")
+        # result['satContrib'] = dndlog10Mstar(model, result['log10Mstar'], 4.83, obs_type="sat")
+        writeOrCheck(model, 'satContrib', result, computeRef)
+
     if "lookbackTime" in actions:
         """ look back time """
 
         # compare with astropy.cosmology
-        if compute_ref:
+        if computeRef:
             from astropy.cosmology import FlatLambdaCDM
             cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
             print c_halomodel.lookbackTime(model, z), cosmo.lookback_time([z]), c_halomodel.lookbackTimeInv(model, c_halomodel.lookbackTime(model, z))
         else:
-            sys.stderr.write("dist:")
+            sys.stderr.write("lookbackTime:")
             try:
                 np.testing.assert_almost_equal(c_halomodel.lookbackTime(model, z), 3.43610037484, err_msg="lookbackTime")
             except:
@@ -454,7 +505,7 @@ def test():
         """ angular diameter distance """
 
         # compare with astropy.cosmology
-        if compute_ref:
+        if computeRef:
             from astropy.cosmology import FlatLambdaCDM
             cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
             print c_halomodel.DA(model, z, 0)/model.h, cosmo.angular_diameter_distance([z])
@@ -469,7 +520,7 @@ def test():
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "change_HOD" in actions:
-        if compute_ref:
+        if computeRef:
             pass
         else:
             sys.stderr.write("change_HOD:")
@@ -488,25 +539,10 @@ def test():
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "Ngal" in actions:
-
-        log10Mh = np.linspace(np.log10(1.e10), np.log10(1.e15), 100.00)
-        N = Ngal(model, log10Mh, 10.0, 11.0)
-
-        fileOutName = HALOMODEL_DIRNAME+"/test/Ngal_ref.ascii"
-        if compute_ref:
-            out = Table([log10Mh, N], names=['log10Mh', 'N'])
-            ascii.write(out, fileOutName, format="commented_header")
-            dumpModel(model, fileOutName=fileOutName)
-        else:
-            sys.stderr.write("Ngal:")
-            ref = ascii.read(fileOutName, header_start=-1)
-            try:
-                np.testing.assert_array_almost_equal(N, ref['N'], err_msg="in Ngal")
-            except:
-                sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
-                traceback.print_exc()
-            else:
-                sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+        result = collections.OrderedDict()
+        result['log10Mh'] = np.linspace(10.0, 15.0, 100)
+        result['N'] = Ngal(model, result['log10Mh'], 10.0, 11.0, obs_type='all')
+        writeOrCheck(model, 'Ngal', result, computeRef)
 
     if "MsMh" in actions:
 
@@ -514,7 +550,7 @@ def test():
         log10Mstar = msmh_log10Mstar(model, log10Mh)
 
         fileOutName = HALOMODEL_DIRNAME+"/test/MsMh_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([log10Mh, log10Mstar], names=['log10Mh', 'log10Mstar'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -530,7 +566,7 @@ def test():
                 sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
 
     if "concen" in actions:
-        if compute_ref:
+        if computeRef:
             print concentration(model, 1.e14, z, concenDef="TJ03")
         else:
             sys.stderr.write("concen:")
@@ -544,7 +580,7 @@ def test():
 
     if "mass_conv" in actions:
 
-        if compute_ref:
+        if computeRef:
             print log10M1_to_log10M2(model, 13.0, None, "M200m", "M500c", z)[0]
         else:
             sys.stderr.write("mass_conv:")
@@ -562,7 +598,7 @@ def test():
         xi = xi_dm(model, r, z)
 
         fileOutName = HALOMODEL_DIRNAME+"/test/xi_dm_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([r, xi], names=['r', 'xi'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -599,7 +635,7 @@ def test():
             analytic[i]  = c_halomodel.uHaloClosedFormula(model, k[i], Mh, c, z)
 
         fileOutName = HALOMODEL_DIRNAME+"/test/uHalo_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([k, numerical, analytic], names=['k', 'numerical', 'analytic'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -622,7 +658,7 @@ def test():
         n = dndlog10Mstar(model, log10Mstar, z, obs_type="all")
 
         fileOutName = HALOMODEL_DIRNAME+"/test/smf_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([log10Mstar, n], names=['log10Mstar', 'n'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -652,7 +688,7 @@ def test():
         twohalo = DeltaSigma(model, R, z, obs_type="twohalo")
 
         fileOutName = HALOMODEL_DIRNAME+"/test/ggl_HOD_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -690,7 +726,7 @@ def test():
         model.hod = 1
 
         fileOutName = HALOMODEL_DIRNAME+"/test/ggl_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([R, total, star, cen, sat, twohalo], names=['R', 'total', 'star', 'cen', 'sat', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -725,7 +761,7 @@ def test():
         total = wOfTheta(model, theta, z, obs_type="all")
 
         fileOutName = HALOMODEL_DIRNAME+"/test/wtheta_HOD_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([theta, total, censat, satsat, twohalo], names=['theta', 'total', 'censat', 'satsat', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -752,7 +788,7 @@ def test():
         Lambda_0_40 = LambdaBolo(TGas, 0.40)
 
         fileOutName = HALOMODEL_DIRNAME+"/test/Lambda_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([TGas, Lambda_0_00, Lambda_0_15, Lambda_0_40], names=['TGas', 'Lambda_0_00', 'Lambda_0_15', 'Lambda_0_40'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -780,7 +816,7 @@ def test():
         # formats={'LxToCR_0_00':'%.8g', 'LxToCR_0_15':'%.8g', 'LxToCR_0_40':'%.8g'}
 
         fileOutName = HALOMODEL_DIRNAME+"/test/LxToCR_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([TGas, LxToCR_0_00, LxToCR_0_15, LxToCR_0_40], names=['TGas', 'LxToCR_0_00', 'LxToCR_0_15', 'LxToCR_0_40'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -832,7 +868,7 @@ def test():
         # print numerical[0]
 
         fileOutName = HALOMODEL_DIRNAME+"/test/uIx_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([k, numerical], names=['k', 'numerical'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -869,7 +905,7 @@ def test():
         total = SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None)
 
         fileOutName = HALOMODEL_DIRNAME+"/test/SigmaIx_HOD_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([theta, total, cen, sat, XB, twohalo], names=['theta', 'total', 'cen', 'sat', 'XB', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -925,7 +961,7 @@ def test():
         total = SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None)
 
         fileOutName = HALOMODEL_DIRNAME+"/test/SigmaIx_HOD_nonPara_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([theta, total, cen, sat, XB, twohalo], names=['theta', 'total', 'cen', 'sat', 'XB', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -976,7 +1012,7 @@ def test():
         twohalo = SigmaIx(model, theta, Mh, c, z, obs_type="twohalo", PSF=None)
 
         fileOutName = HALOMODEL_DIRNAME+"/test/SigmaIx_ref.ascii"
-        if compute_ref:
+        if computeRef:
             out = Table([theta, total, cen, sat, XB, twohalo], names=['theta', 'total', 'cen', 'sat', 'XB', 'twohalo'])
             ascii.write(out, fileOutName, format="commented_header")
             dumpModel(model, fileOutName=fileOutName)
@@ -1007,6 +1043,33 @@ def test():
             sys.stderr.write(''.join(diff))
 
     return
+
+def writeOrCheck(model, action, result, computeRef):
+    """ Write or check a given action
+    """
+
+    OK_MESSAGE = "OK\n"
+    FAIL_MESSAGE = "FAILED\n"
+
+    fileOutName = HALOMODEL_DIRNAME+'/test/'+action+'_ref.ascii'
+    if computeRef:
+        ascii.write(result, fileOutName, format="commented_header", overwrite=True)
+        dumpModel(model, fileOutName=fileOutName)
+    else:
+        sys.stderr.write(action+':')
+        ref = ascii.read(fileOutName, header_start=-1)
+        try:
+            np.testing.assert_array_almost_equal(result[action], ref[action], err_msg='in '+action)
+        except:
+            sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
+            traceback.print_exc()
+        else:
+            sys.stderr.write(bcolors.OKGREEN+OK_MESSAGE+bcolors.ENDC)
+
+    return
+
+
+
 
 
 # def fitBetaPara(args):
@@ -1758,6 +1821,54 @@ def msmh_log10Mh(model, log10Mstar):
         result = c_halomodel.msmh_log10Mh(model, log10Mstar)
 
     return result
+
+def log10M_sat(model, log10Mstar):
+    """  Wrapper for c-function msmh_log10M_sat()
+
+    Returns Msat = f(Mstar) for a given Mstar-Mh relation.
+
+    INPUT
+    log10Mstar: log10(Mstar) array or single value) in log10 h^-2 Msun units
+
+    OUPUT
+    log10Mh evaluated at log10Mstar Mh in h^-1 Msun units
+
+    """
+
+    if isinstance(log10Mstar, (list, tuple, np.ndarray)):
+        result = np.zeros(len(log10Mstar))
+        for i, m in enumerate(log10Mstar):
+            result[i] = c_halomodel.log10M_sat(model, m)
+    else:
+        result = c_halomodel.log10M_sat(model, log10Mstar)
+
+    return result
+
+
+def log10M_cut(model, log10Mstar):
+    """  Wrapper for c-function log10M_cut()
+
+    Returns Mh = f(Mstar) for a given Mstar-Mh relation.
+
+    INPUT
+    log10Mstar: log10(Mstar) array or single value) in log10 Msun/h units
+
+    OUPUT
+    log10Mh evaluated at log10Mstar
+
+    """
+
+    if isinstance(log10Mstar, (list, tuple, np.ndarray)):
+        result = np.zeros(len(log10Mstar))
+        for i, m in enumerate(log10Mstar):
+            result[i] = c_halomodel.log10M_cut(model, m)
+    else:
+        result = c_halomodel.log10M_cut(model, log10Mstar)
+
+    return result
+
+
+
 
 
 def LambdaBolo(TGas, ZGas):

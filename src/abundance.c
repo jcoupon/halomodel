@@ -19,6 +19,7 @@ void dndlog10Mstar(const Model *model, double *log10Mstar, int N, double z, int 
    takes Mstar in (Msun/h^2), returns result in (Mpc/h)^-3 dex^-1
    */
 
+
    int i;
    double dlog10Mstar = 0.01;
 
@@ -28,11 +29,9 @@ void dndlog10Mstar(const Model *model, double *log10Mstar, int N, double z, int 
    }
 
    for(i=0; i<N; i++){
-
       result[i] = ngal_den(model, LNMH_MAX,
          log10Mstar[i] - dlog10Mstar/2.0,
          log10Mstar[i] + dlog10Mstar/2.0, z, obs_type)/dlog10Mstar;
-
    }
 
    return;
@@ -70,11 +69,11 @@ double ngal_triax(const Model *model, double r, double c, double z, double obs_t
 
 
    params p;
-   p.model          = model;
-   p.z              = z;
+   p.model = model;
+   p.z = z;
    p.log10Mstar_min = model->log10Mstar_min;
    p.log10Mstar_max = model->log10Mstar_max;
-   p.obs_type       = obs_type;
+   p.obs_type = obs_type;
 
    double dlogM = (LNMH_MAX - LNMH_MIN)/(double)N;
 
@@ -107,31 +106,31 @@ double ngal_triax(const Model *model, double r, double c, double z, double obs_t
 
 
 double ngal_den(const Model *model, double lnMh_max, double log10Mstar_min, double log10Mstar_max, double z, int obs_type)
-/* ---------------------------------------------------------------- *
- * galaxy number density per unit volume for a given HOD and halo mass function.
- * In Mpc^-3.
- * logMh_max is the maximum halo mass to integrate. Mstellar_min/max
- * are the stellar mass bin limit (set Mstellar_max = -1 for
- * threshold sample)
- * ---------------------------------------------------------------- */
+/*
+ *    galaxy number density per unit volume for a given HOD and halo mass function.
+ *    In Mpc^-3.
+ *    logMh_max is the maximum halo mass to integrate. Mstellar_min/max
+ *    are the stellar mass bin limit (set Mstellar_max = -1 for
+ *    threshold sample)
+ */
 {
    params p;
-   p.model           = model;
-   p.z               = z;
-   p.log10Mstar_min  = log10Mstar_min;
-   p.log10Mstar_max  = log10Mstar_max;
-   p.obs_type        = obs_type;
+   p.model = model;
+   p.z = z;
+   p.log10Mstar_min = log10Mstar_min;
+   p.log10Mstar_max = log10Mstar_max;
+   p.obs_type = obs_type;
 
-   return int_gsl(int_for_ngal_den, (void*)&p, LNMH_MIN, lnMh_max, 1.e-5);
+    return int_gsl(int_for_ngal_den, (void*)&p, LNMH_MIN, lnMh_max, 1.e-5);
 }
 
 double int_for_ngal_den(double lnMh, void *p) {
 
-   const Model *model    = ((params *)p)->model;
-   double z              = ((params *)p)->z;
+   const Model *model = ((params *)p)->model;
+   double z = ((params *)p)->z;
    double log10Mstar_min = ((params *)p)->log10Mstar_min;
    double log10Mstar_max = ((params *)p)->log10Mstar_max;
-   int obs_type          = ((params *)p)->obs_type;
+   int obs_type = ((params *)p)->obs_type;
 
    double Mh = exp(lnMh);
 

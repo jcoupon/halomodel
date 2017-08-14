@@ -15,7 +15,7 @@ distances: [h^-1 Mpc]
 2. halomodel is exclusively in
 comoving units (concerns the stellar
 mass function and the galaxy-galaxy
-lensing
+lensing).
 
 Required librairies:
 
@@ -39,7 +39,7 @@ import numpy as np
 import ctypes
 import sys
 import inspect
-from astropy.io import ascii
+from astropy.io import fits,ascii
 
 
 """
@@ -291,7 +291,6 @@ class Model(ctypes.Structure):
         self.XMM_PSF_rc_deg = np.nan
         self.XMM_PSF_alpha = np.nan
 
-
         # TODO
         # for each redshift:
         # add toLxBolo: Zgas log10TGas fac
@@ -374,6 +373,10 @@ C_HALOMODEL.Lambda0p5_2p0.argtypes = [ctypes.c_double, ctypes.c_double]
 C_HALOMODEL.Lambda0p5_2p0.restype = ctypes.c_double
 C_HALOMODEL.LxToCR.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 C_HALOMODEL.LxToCR.restype = ctypes.c_double
+C_HALOMODEL.phi_c.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+C_HALOMODEL.phi_c.restype = ctypes.c_double
+C_HALOMODEL.phi_s.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
+C_HALOMODEL.phi_s.restype = ctypes.c_double
 C_HALOMODEL.Ngal_s.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 C_HALOMODEL.Ngal_s.restype = ctypes.c_double
 C_HALOMODEL.Ngal_c.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
@@ -438,13 +441,13 @@ def test():
     computeRef = False will compare the current
     computation with the reference quantities
     """
-    computeRef = False
+    computeRef = True
     printModelChanges = False
 
     """ list of quantities to compute/check
     """
-    actions = ['satContrib', 'lookbackTime', 'dist', 'change_HOD', 'Ngal, ''MsMh', 'concen', 'mass_conv', 'xi_dm', 'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD']
-    # actions = ['change_HOD']
+    # actions = ['satContrib', 'lookbackTime', 'dist', 'change_HOD', 'Ngal, ''MsMh', 'concen', 'mass_conv', 'xi_dm', 'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD']
+    actions = ['populate']
 
     # TODO
     # actions = [ 'ggl', 'Lambda', 'LxToCR', 'uIx', 'SigmaIx_HOD', 'SigmaIx', 'SigmaIx_HOD_nonPara']
@@ -456,20 +459,37 @@ def test():
 
     """ HOD model
     """
-    model.log10M1 = 12.5 # in Msun h^-1
-    model.log10Mstar0 = 10.6 # in Msun h^-2
-    model.beta = 0.3
-    model.delta = 0.7
-    model.gamma = 1.0
-    model.sigma_log_M0 = 0.2
+    # model.log10M1 = 12.5 # in Msun h^-1
+    # model.log10Mstar0 = 10.6 # in Msun h^-2
+    # model.beta = 0.3
+    # model.delta = 0.7
+    # model.gamma = 1.0
+    # model.sigma_log_M0 = 0.2
+    # model.sigma_lambda = 0.0
+    # model.B_cut = 1.50
+    # model.B_sat = 10.0
+    # model.beta_cut = 1.0
+    # model.beta_sat = 0.8
+    # model.alpha = 1.0
+    # model.fcen1 = -1
+    # model.fcen2 = -1
+
+    model.log10M1 = 12.35 # in Msun h^-1
+    model.log10Mstar0 = 10.30 # in Msun h^-2
+    model.beta = 0.43
+    model.delta = 0.76
+    model.gamma = 0.0
+    model.sigma_log_M0 = 0.19
     model.sigma_lambda = 0.0
-    model.B_cut = 1.50
-    model.B_sat = 10.0
-    model.beta_cut = 1.0
-    model.beta_sat = 0.8
+    model.B_cut = 2.10
+    model.B_sat = 8.70
+    model.beta_cut = 0.47
+    model.beta_sat = 0.69
     model.alpha = 1.0
     model.fcen1 = -1
     model.fcen2 = -1
+
+
 
     """ Stellar mass bins in log10(Mstar/[h^-2 Msun])
     """
@@ -487,6 +507,45 @@ def test():
 
     """ start loop
     """
+
+    if 'populate' in actions:
+        """ populate halos with halo catalogue
+        """
+        log10Mstarmin = 10.0
+        haloFileName = 'data/halos_z_0.90.fits'
+
+        np.random.seed(seed = 2009182)
+
+        """ first open the halo catalogue
+        file and read the data
+        """
+        fileIn = fits.open(haloFileName)
+        # halos = fileIn[1].data[:10]
+        halos = fileIn[1].data
+        fileIn.close()
+
+        result = populate(model, log10Mstarmin, halos)
+
+        # print result['log10Mstar'][:10]
+
+        """ write galaxy catalogue
+        """
+        cols = []
+        for k in result:
+            if k in halos.columns.names:
+                fmt = halos.columns[k].format
+            else:
+                fmt = 'E'
+            cols.append(fits.Column(name=k, format=fmt, array=result[k]))
+        hdu_0 = fits.PrimaryHDU()
+        hdu_1 = fits.BinTableHDU.from_columns(fits.ColDefs(cols))
+        tbhdu = fits.HDUList([hdu_0, hdu_1])
+        tbhdu.writeto('/Users/coupon/Desktop/NBody/gals_7.fits', clobber=True)
+
+        # writeOrCheck(model, 'log10Mstar', result, computeRef)
+
+
+
     if 'satContrib' in actions:
         """ satellite HOD times the stellar mass
         """
@@ -862,6 +921,116 @@ main functions
 
 """
 
+def populate(model, log10Mstarmin, halos):
+    """ populate halos from input halo catalogue
+    and HOD set in model
+
+    INPUT
+    model: cosmological and HOD model
+    log10Mstarmin: lowest stellar mass limit
+    haloFileName: halo catalogue file name
+
+    OUTPUT
+    coordinates and masses of galaxies:
+    x,y,z,log10Mstar
+
+    log10Mstar in log10(Mstar/[h^-2 Msun]]
+    """
+    import collections
+
+    """ first interpolate phi(log10Mstar|log10Mh)
+    """
+    cumHOD = interpolateCumHOD(model)
+
+    """ loop over halo catalogue
+    """
+    N = len(halos)
+    log10Mstar = np.zeros(N)
+    for i, log10m in enumerate(np.log10(halos['M200m'])):
+        log10Mstar[i] = cumHOD(log10m, np.random.rand())
+
+    result = collections.OrderedDict()
+    for k in halos.columns:
+        result[k.name] = halos[k.name]
+    result['log10Mstar'] = log10Mstar
+
+    return result
+
+
+def interpolateCumHOD(model):
+    """ return function to interpolated
+    cumulative HOD (Mstar_inv) as a function
+    of [0:1] and logMstar.
+
+    For a given log10Mh and random number
+    number between 0 and 1, this function then
+    returns a log10Mstar with the probability
+    given by the HOD model.
+    """
+
+    import scipy.interpolate as interpolate
+
+
+    """ dimensions in both directions
+    """
+    Nlog10Mstar = 200
+    Nlog10Mh = 200
+
+    """ grids
+    """
+    log10Mstar = np.linspace(5.0, 12.50, Nlog10Mstar)
+    log10Mh = np.linspace(msmh_log10Mh(model, log10Mstar[0]), 16.0, Nlog10Mh)
+    log10Mstar_inv = np.linspace(0.0, 1.0, Nlog10Mstar)
+
+    HOD = np.zeros(Nlog10Mh*Nlog10Mstar)
+    phi_c_2D = np.zeros((Nlog10Mh,Nlog10Mstar))
+    cs = np.zeros(Nlog10Mstar)
+
+    for i,m in enumerate(log10Mh):
+
+        """ probability of Mstar given Mh
+        """
+        phi_c =  phi(model, log10Mstar, m, obs_type="cen")
+
+        """ commulative function
+        """
+        cs[1:] = np.cumsum(np.diff(log10Mstar)*(phi_c[:-1]+phi_c[1:])/2.0)
+
+        """ renormalise if case
+        probability goes beyond limits
+        """
+        cs /= max(cs)
+
+        """ inverse cumulative function
+        """
+        select = phi_c > 1.e-8
+        HOD[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(log10Mstar_inv, cs[select], log10Mstar[select])
+
+        # phi_c_2D[i,:] = phi_c
+        phi_c_2D[i,:] = cs/max(cs)
+        # phi_c_2D[i:] = np.interp(log10Mstar_inv, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
+
+    if False:
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(figsize=(6.0, 5.0))
+        im = ax.imshow(phi_c_2D, cmap=plt.cm.viridis, interpolation='nearest', origin='lower')
+
+        x_int = int(Nlog10Mstar/10)
+        y_int = int(Nlog10Mh/10)
+
+        ax.xaxis.set_ticks(np.arange(0, Nlog10Mstar, y_int))
+        ax.xaxis.set_ticklabels(["{0:4.2f}".format(b) for b in log10Mstar[np.arange(0, Nlog10Mstar, x_int)]], rotation=45)
+
+        ax.yaxis.set_ticks(np.arange(0, Nlog10Mh, y_int))
+        ax.yaxis.set_ticklabels(["{0:4.2f}".format(b) for b in log10Mh[np.arange(0, Nlog10Mh, y_int)]] )
+
+        fig.set_tight_layout(True)
+        fig.savefig('graph.pdf')
+
+    return interpolate.interp2d(log10Mh, log10Mstar_inv, HOD, kind='linear')
+
+
 
 def nGas(model, r, log10Mh, c, z):
     """ Wrapper for c-function nGas()
@@ -958,7 +1127,9 @@ def dndlnMh(model, log10Mh, z):
     z: redshift of the sample
 
     OUTPUT
-    dndlnMstar evaluated at log10Mh
+    dndlnMstar evaluated at log10Mh. Multiply by ln(10)
+    to get dndlog10Mstar
+
     """
 
     Mh = np.asarray(pow(10.0, log10Mh), dtype=np.float64)
@@ -1121,6 +1292,45 @@ def SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None):
     return result
 
 
+def phi(model, log10Mstar, log10Mh, obs_type="cen"):
+    """ Wrapper for c-functions "phi_c" and "phi_s"
+
+    Returns the probability of Mstar at
+    fixed Mh, phi(Mstar|Mh)
+
+    INPUT
+    log10Mh: log10(mass/[h^-1 Msun]) of the host halo
+    log10Mstar: log10(mass/[h^-2 Msun]) stellar mass
+    obs_type: [cen, sat]
+
+    OUTPUT
+    phi(log10Mstar|log10Mh), normalised to one
+    """
+
+    if isinstance(log10Mstar, (list, tuple, np.ndarray)):
+        log10Mstar = np.asarray(log10Mstar, dtype=np.float64)
+        result = np.asarray(np.zeros(len(log10Mstar)), dtype=np.float64)
+
+        if obs_type == "cen":
+            for i, m in enumerate(log10Mstar):
+                result[i] = C_HALOMODEL.phi_c(model, m, log10Mh)
+        elif obs_type == "sat":
+            for i, m in enumerate(log10Mstar):
+                result[i] = C_HALOMODEL.phi_s(model, m, log10Mh)
+        else:
+            raise ValueError("phi: obs_type \"{0:s}\" is not recognised".format(obs_type))
+
+    else:
+        if obs_type == "cen":
+            result = C_HALOMODEL.phi_c(model, log10Mstar, log10Mh)
+        elif obs_type == "sat":
+            result = C_HALOMODEL.phi_s(model, log10Mstar, log10Mh)
+        else:
+            raise ValueError("phi: obs_type \"{0:s}\" is not recognised".format(obs_type))
+
+
+    return result
+
 
 def Ngal(model, log10Mh, log10Mstar_min, log10Mstar_max, obs_type="all"):
     """ Wrapper for c-functions "Ngal"
@@ -1137,20 +1347,33 @@ def Ngal(model, log10Mh, log10Mstar_min, log10Mstar_max, obs_type="all"):
     N(Mh)
     """
 
-    Mh = np.asarray(pow(10.0, log10Mh), dtype=np.float64)
-    result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
+    if isinstance(log10Mh, (list, tuple, np.ndarray)):
 
-    if obs_type == "cen":
-        for i, m in enumerate(Mh):
-            result[i] = C_HALOMODEL.Ngal_c(model, m,  log10Mstar_min, log10Mstar_max)
-    elif obs_type == "sat":
-        for i, m in enumerate(Mh):
-            result[i] = C_HALOMODEL.Ngal_s(model, m,  log10Mstar_min, log10Mstar_max)
-    elif obs_type == "all":
-        for i, m in enumerate(Mh):
-            result[i] = C_HALOMODEL.Ngal(model, m,  log10Mstar_min, log10Mstar_max)
+        Mh = np.asarray(pow(10.0, log10Mh), dtype=np.float64)
+        result = np.asarray(np.zeros(len(Mh)), dtype=np.float64)
+
+        if obs_type == "cen":
+            for i, m in enumerate(Mh):
+                result[i] = C_HALOMODEL.Ngal_c(model, m,  log10Mstar_min, log10Mstar_max)
+        elif obs_type == "sat":
+            for i, m in enumerate(Mh):
+                result[i] = C_HALOMODEL.Ngal_s(model, m,  log10Mstar_min, log10Mstar_max)
+        elif obs_type == "all":
+            for i, m in enumerate(Mh):
+                result[i] = C_HALOMODEL.Ngal(model, m,  log10Mstar_min, log10Mstar_max)
+        else:
+            raise ValueError("Ngal: obs_type \"{0:s}\" is not recognised".format(obs_type))
+
     else:
-        raise ValueError("Ngal: obs_type \"{0:s}\" is not recognised".format(obs_type))
+        if obs_type == "cen":
+            result = C_HALOMODEL.Ngal_c(model, log10Mh,  log10Mstar_min, log10Mstar_max)
+        elif obs_type == "sat":
+            result = C_HALOMODEL.Ngal_s(model, log10Mh,  log10Mstar_min, log10Mstar_max)
+        elif obs_type == "all":
+            result = C_HALOMODEL.Ngal(model, log10Mh, log10Mstar_min, log10Mstar_max)
+        else:
+            raise ValueError("Ngal: obs_type \"{0:s}\" is not recognised".format(obs_type))
+
 
     return result
 

@@ -1,0 +1,83 @@
+# Omega_m = 0.258
+# Omega_de = 0.742
+# H0 = 72.0
+# h = 0.72
+# Omega_b = 0.0441
+# sigma_8 = 0.796
+# n_s = 0.963
+# log10h = -0.142667503569
+# massDef = M200m
+# concenDef = TJ03
+# hmfDef = T08
+# biasDef = T08
+# log10M1 = 12.5
+# log10Mstar0 = 10.6
+# beta = 0.3
+# delta = 0.7
+# gamma = 1.0
+# log10Mstar_min = 11.0
+# log10Mstar_max = 11.3
+# sigma_log_M0 = 0.2
+# sigma_lambda = 0.0
+# B_cut = 1.5
+# B_sat = 10.0
+# beta_cut = 1.0
+# beta_sat = 0.8
+# alpha = 1.0
+# fcen1 = -1.0
+# fcen2 = -1.0
+# hod = 1
+# IxXB_Re = 0.01196
+# IxXB_CR = 0.0
+# gas_log10n0 = -3.0
+# gas_log10beta = -1.0
+# gas_log10rc = -1.0
+# gas_log10n0_1 = -2.5
+# gas_log10n0_2 = 1.0
+# gas_log10n0_3 = nan
+# gas_log10n0_4 = nan
+# gas_log10beta_1 = 0.301029995664
+# gas_log10beta_2 = -0.45593195565
+# gas_log10beta_3 = -0.301029995664
+# gas_log10beta_4 = -0.301029995664
+# gas_log10rc_1 = -0.52287874528
+# gas_log10rc_2 = -1.39794000867
+# gas_log10rc_3 = -1.09691001301
+# gas_log10rc_4 = -1.09691001301
+# gas_TGasMh_N = 0
+# gas_TGasMh_log10Mh = <__main__.LP_c_double object at 0x10c8ab680>
+# gas_TGasMh_log10TGas = <__main__.LP_c_double object at 0x10c8ab680>
+# gas_ZGasMh_N = 0
+# gas_ZGasMh_log10Mh = <__main__.LP_c_double object at 0x10c8ab680>
+# gas_ZGasMh_ZGas = <__main__.LP_c_double object at 0x10c8ab680>
+# gas_LxToCR_NZGas = 0
+# gas_LxToCR_NTGas = 0
+# gas_LxToCR_ZGas = <__main__.LP_c_double object at 0x10c8ab680>
+# gas_LxToCR_log10TGas = <__main__.LP_c_double object at 0x10c8ab680>
+# gas_LxToCR_log10fac = <__main__.LP_c_double object at 0x10c8ab680>
+# ggl_pi_max = 60.0
+# ggl_log10c = nan
+# ggl_log10Mh = 14.0
+# ggl_log10Mstar = nan
+# wtheta_nz_N = 0
+# wtheta_nz_z = <__main__.LP_c_double object at 0x10c8ab680>
+# wtheta_nz = <__main__.LP_c_double object at 0x10c8ab680>
+# HOD_cen_N = 0
+# HOD_cen_log10Mh = <__main__.LP_c_double object at 0x10c8ab680>
+# HOD_cen_Ngal = <__main__.LP_c_double object at 0x10c8ab680>
+# HOD_sat_N = 0
+# HOD_sat_log10Mh = <__main__.LP_c_double object at 0x10c8ab680>
+# HOD_sat_Ngal = <__main__.LP_c_double object at 0x10c8ab680>
+# XMM_PSF_rc_deg = nan
+# XMM_PSF_alpha = nan
+# ID Mvir X Y Z VX VY VZ M200m M500c log10Mstar
+47692 33080999936.0 0.53998 2.37041 0.94947 187.14 99.75 6.01 33080999936.0 23389999104.0 5.761587046099711
+45030 63822000128.0 0.7045 2.91142 0.39225 169.89 82.57 37.71 63822000128.0 40432001024.0 6.605331368848215
+43180 121300000768.0 0.46634 2.7802 0.63403 204.86 93.22 11.69 123630002176.0 80195002368.0 7.507926496907219
+45388 53128998912.0 5.85223 2.26237 0.22898 285.44 21.88 -20.75 54131998720.0 42103001088.0 6.677646120922689
+44887 73177997312.0 5.46718 0.63929 1.43588 307.72 4.69 48.05 75182997504.0 45778001920.0 7.240993639515297
+47463 36756000768.0 8.71996 2.54921 3.53666 321.14001 -60.84 18.57 36756000768.0 23723999232.0 5.406327303887135
+46015 58141999104.0 3.11049 0.37301 4.6923 211.81 -46.66 160.05 58141999104.0 47449001984.0 6.423724316818118
+48063 32412000256.0 3.4642 0.20459 5.68977 191.32001 -50.47 161.49001 32412000256.0 25728999424.0 5.525543133344626
+45719 54465998848.0 4.83822 0.68207 7.40041 140.2 -32.59 52.84 55133999104.0 35754000384.0 5.955844663460883
+44862 56470999040.0 4.8257 0.87549 7.71774 151.42 -60.89 80.62 57138999296.0 35420000256.0 6.246047779307185

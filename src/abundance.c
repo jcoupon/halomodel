@@ -10,6 +10,8 @@
  * Stellar mass function
  * ---------------------------------------------------------------- */
 
+
+
 void dndlog10Mstar(const Model *model, double *log10Mstar, int N, double z, int obs_type, double *result)
 {
    /* Computes the stellar mass function.

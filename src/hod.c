@@ -10,6 +10,40 @@
  * HOD model functions                                              *
  * ---------------------------------------------------------------- */
 
+double phi_c(const Model *model, double log10Mstar, double log10Mh){
+    /*
+     *   phi(Mstar|Mh) for central galaxies
+     *   Eq. (1) of Leauthaud et al. (2011)
+     *   without ln(10) (typo?)
+     */
+   double arg, result;
+
+   double Mh = pow(10.0, log10Mh);
+
+   double dlog10Mstar = 0.01;
+
+   // double dN = Ngal_c(model, Mh, log10Mstar-dlog10Mstar/2.0, -1.0) - Ngal_c(model, Mh, log10Mstar+dlog10Mstar/2.0, -1.0);
+   // result = dN/dlog10Mstar;
+
+   double sigma_logM = sigma_log_M(model, log10Mstar);
+   arg = 0.5*pow( (log10Mstar - msmh_log10Mstar(model, log10Mh))/sigma_logM, 2.0);
+   result = 1.0/(sqrt(2.0*M_PI)*sigma_logM) * exp(-arg);
+
+   return result;
+ }
+
+double phi_s(const Model *model, double log10Mstar, double log10Mh){
+   /*
+    *    phi(Mstar|Mh) for satellite galaxies
+    *    TODO
+    */
+
+   // in python create 2D function to interpolate
+   // over
+
+   return 0.0;
+}
+
 double Ngal_c(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max){
    /*
     *    Number of central galaxies per halo between
@@ -120,32 +154,37 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
       }
    }
 
-   Msat = pow(10.0, log10M_sat(model, log10Mstar_min));
-   Mcut = pow(10.0, log10M_cut(model, log10Mstar_min));
-   result = Ngal_c(model, Mh, log10Mstar_min, -1.0)*pow(Mh/Msat, model->alpha) * exp(-Mcut/Mh);
-
-   /*
-   M0 = pow(10.0, log10Mcut);
-   if(Mh - M0 > 0.0){
-      result = pow((Mh - M0)/pow(10.0, log10Msat), model->alpha);
+   log10Msat = log10M_sat(model, log10Mstar_min);
+   log10Mcut = log10M_cut(model, log10Mstar_min);
+   if (model->B_cut < 0.0){
+      M0 = pow(10.0, log10Mcut);
+      if(Mh - M0 > 0.0){
+         result = pow((Mh - M0)/pow(10.0, log10Msat), model->alpha);
+      }else{
+         result = 0.0;
+      }
    }else{
-      result = 0.0;
+      Msat = pow(10.0, log10Msat);
+      Mcut = pow(10.0, log10Mcut);
+      result = Ngal_c(model, Mh, log10Mstar_min, -1.0)*pow(Mh/Msat, model->alpha)*exp(-Mcut/Mh);
    }
-   */
+
 
    /*    Stellar mass bin */
    if(log10Mstar_max > 0){
 
-      Msat = pow(10.0, log10M_sat(model, log10Mstar_max));
-      Mcut = pow(10.0, log10M_cut(model, log10Mstar_max));
-      result -= Ngal_c(model, Mh, log10Mstar_max, -1.0)*pow(Mh/Msat, model->alpha) * exp(-Mcut/Mh);
-
-      //log10Msat = log10M_sat(model, log10Mstar_max);
-      //log10Mcut = log10M_cut(model, log10Mstar_max);
-      //M0 = pow(10.0, log10Mcut);
-      //if(Mh - M0 > 0.0){
-      //   result -= pow((Mh - M0)/pow(10.0, log10Msat), model->alpha);
-      //}
+      log10Msat = log10M_sat(model, log10Mstar_max);
+      log10Mcut = log10M_cut(model, log10Mstar_max);
+      if (model->B_cut < 0.0){
+         M0 = pow(10.0, log10Mcut);
+         if(Mh - M0 > 0.0){
+            result -= pow((Mh - M0)/pow(10.0, log10Msat), model->alpha);
+         }
+      }else{
+         Msat = pow(10.0, log10Msat);
+         Mcut = pow(10.0, log10Mcut);
+         result -= Ngal_c(model, Mh, log10Mstar_max, -1.0)*pow(Mh/Msat, model->alpha) * exp(-Mcut/Mh);
+      }
    }
 
    return MAX(0.0, result);
@@ -262,7 +301,7 @@ double msmh_log10Mstar(const Model *model, double log10Mh){
     */
 
    int i, N = 64;
-   double log10Mstar_min = 6.0, log10Mstar_max = 12.5;
+   double log10Mstar_min = 4.0, log10Mstar_max = 13.0;
 
    static int firstcall = 1;
    static gsl_interp_accel *acc;

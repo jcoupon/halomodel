@@ -441,55 +441,40 @@ def test():
     computeRef = False will compare the current
     computation with the reference quantities
     """
-    computeRef = True
+    computeRef = False
     printModelChanges = False
 
     """ list of quantities to compute/check
     """
     # actions = ['satContrib', 'lookbackTime', 'dist', 'change_HOD', 'Ngal, ''MsMh', 'concen', 'mass_conv', 'xi_dm', 'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD']
-    actions = ['populate']
+    # actions = ['populate']
+
+    actions = ['satContrib']
 
     # TODO
     # actions = [ 'ggl', 'Lambda', 'LxToCR', 'uIx', 'SigmaIx_HOD', 'SigmaIx', 'SigmaIx_HOD_nonPara']
 
     """ cosmological model and redshift
     """
-    model = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+    model = Model(Omega_m = 0.258, Omega_de = 0.742, H0 = 72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod = 1, massDef = "M200m", concenDef = "TJ03", hmfDef = "T08", biasDef = "T08")
     z = 0.308898
 
     """ HOD model
     """
-    # model.log10M1 = 12.5 # in Msun h^-1
-    # model.log10Mstar0 = 10.6 # in Msun h^-2
-    # model.beta = 0.3
-    # model.delta = 0.7
-    # model.gamma = 1.0
-    # model.sigma_log_M0 = 0.2
-    # model.sigma_lambda = 0.0
-    # model.B_cut = 1.50
-    # model.B_sat = 10.0
-    # model.beta_cut = 1.0
-    # model.beta_sat = 0.8
-    # model.alpha = 1.0
-    # model.fcen1 = -1
-    # model.fcen2 = -1
-
-    model.log10M1 = 12.35 # in Msun h^-1
-    model.log10Mstar0 = 10.30 # in Msun h^-2
-    model.beta = 0.43
-    model.delta = 0.76
-    model.gamma = 0.0
-    model.sigma_log_M0 = 0.19
+    model.log10M1 = 12.5 # in Msun h^-1
+    model.log10Mstar0 = 10.6 # in Msun h^-2
+    model.beta = 0.3
+    model.delta = 0.7
+    model.gamma = 1.0
+    model.sigma_log_M0 = 0.2
     model.sigma_lambda = 0.0
-    model.B_cut = 2.10
-    model.B_sat = 8.70
-    model.beta_cut = 0.47
-    model.beta_sat = 0.69
+    model.B_cut = 1.50
+    model.B_sat = 10.0
+    model.beta_cut = 1.0
+    model.beta_sat = 0.8
     model.alpha = 1.0
     model.fcen1 = -1
     model.fcen2 = -1
-
-
 
     """ Stellar mass bins in log10(Mstar/[h^-2 Msun])
     """
@@ -511,6 +496,22 @@ def test():
     if 'populate' in actions:
         """ populate halos with halo catalogue
         """
+
+        model.log10M1 = 12.35 # in Msun h^-1
+        model.log10Mstar0 = 10.30 # in Msun h^-2
+        model.beta = 0.43
+        model.delta = 0.76
+        model.gamma = 0.0
+        model.sigma_log_M0 = 0.19
+        model.sigma_lambda = 0.0
+        model.B_cut = 2.10
+        model.B_sat = 8.70
+        model.beta_cut = 0.47
+        model.beta_sat = 0.69
+        model.alpha = 1.0
+        model.fcen1 = -1
+        model.fcen2 = -1
+
         log10Mstarmin = 10.0
         haloFileName = 'data/halos_z_0.90.fits'
 
@@ -544,8 +545,6 @@ def test():
 
         # writeOrCheck(model, 'log10Mstar', result, computeRef)
 
-
-
     if 'satContrib' in actions:
         """ satellite HOD times the stellar mass
         """
@@ -553,6 +552,10 @@ def test():
 
         result['log10Mstar'] = np.linspace(7.0, 12.0, 100)
         result['satContrib'] = pow(10.0, result['log10Mstar'])*dndlog10Mstar(model, result['log10Mstar'], z, obs_type="sat")
+
+        #for d in dndlog10Mstar(model, result['log10Mstar'], z, obs_type="sat"):
+        #    print d
+
         writeOrCheck(model, 'satContrib', result, computeRef)
 
     if 'lookbackTime' in actions:
@@ -837,7 +840,7 @@ def test():
 
     return
 
-def writeOrCheck(model, action, result, computeRef):
+def writeOrCheck(model, action, result, computeRef, decimal=6):
     """ Write or check a given action
     """
     import traceback
@@ -864,7 +867,7 @@ def writeOrCheck(model, action, result, computeRef):
         ref = ascii.read(fileOutName, format="commented_header", header_start=-1)
 
         try:
-            np.testing.assert_array_almost_equal(result[action], ref[action], err_msg='in '+action)
+            np.testing.assert_array_almost_equal(result[action], ref[action], err_msg='in '+action, decimal=decimal)
         except:
             sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
             traceback.print_exc()
@@ -996,7 +999,7 @@ def interpolateCumHOD(model):
         """
         cs[1:] = np.cumsum(np.diff(log10Mstar)*(phi_c[:-1]+phi_c[1:])/2.0)
 
-        """ renormalise if case
+        """ renormalise in case
         probability goes beyond limits
         """
         cs /= max(cs)

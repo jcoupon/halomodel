@@ -34,6 +34,14 @@ void dndlog10Mstar(const Model *model, double *log10Mstar, int N, double z, int 
       result[i] = ngal_den(model, LNMH_MAX,
          log10Mstar[i] - dlog10Mstar/2.0,
          log10Mstar[i] + dlog10Mstar/2.0, z, obs_type)/dlog10Mstar;
+
+      /* to avoid numerical issues when comparing results
+      between machines
+      */
+      if (result[i] < 1.e-10){
+         result[i] = 0.0;
+      }
+
    }
 
    return;

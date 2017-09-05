@@ -489,7 +489,6 @@ def test():
     model.fcen1 = -1
     model.fcen2 = -1
 
-
     """ Stellar mass bins in log10(Mstar/[h^-2 Msun])
     """
     model.log10Mstar_min = 11.00
@@ -510,7 +509,6 @@ def test():
     if 'populate' in actions:
         """ populate halos with halo catalogue
         """
-
 
         log10Mstarmin = 10.0
         haloFileName = 'data/halos_z_0.90.fits'

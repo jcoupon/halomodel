@@ -446,10 +446,8 @@ def test():
 
     """ list of quantities to compute/check
     """
-    # actions = ['satContrib', 'lookbackTime', 'dist', 'change_HOD', 'Ngal, ''MsMh', 'concen', 'mass_conv', 'xi_dm', 'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD']
+    actions = ['satContrib', 'lookbackTime', 'dist', 'change_HOD', 'Ngal, ''MsMh', 'concen', 'mass_conv', 'xi_dm', 'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD']
     # actions = ['populate']
-
-    actions = ['satContrib']
 
     # TODO
     # actions = [ 'ggl', 'Lambda', 'LxToCR', 'uIx', 'SigmaIx_HOD', 'SigmaIx', 'SigmaIx_HOD_nonPara']
@@ -461,20 +459,36 @@ def test():
 
     """ HOD model
     """
-    model.log10M1 = 12.5 # in Msun h^-1
-    model.log10Mstar0 = 10.6 # in Msun h^-2
-    model.beta = 0.3
-    model.delta = 0.7
-    model.gamma = 1.0
-    model.sigma_log_M0 = 0.2
+    # model.log10M1 = 12.5 # in Msun h^-1
+    # model.log10Mstar0 = 10.6 # in Msun h^-2
+    # model.beta = 0.3
+    # model.delta = 0.7
+    # model.gamma = 1.0
+    # model.sigma_log_M0 = 0.2
+    # model.sigma_lambda = 0.0
+    # model.B_cut = 1.50
+    # model.B_sat = 10.0
+    # model.beta_cut = 1.0
+    # model.beta_sat = 0.8
+    # model.alpha = 1.0
+    # model.fcen1 = -1
+    # model.fcen2 = -1
+
+    model.log10M1 = 12.35 # in Msun h^-1
+    model.log10Mstar0 = 10.30 # in Msun h^-2
+    model.beta = 0.43
+    model.delta = 0.76
+    model.gamma = 0.0
+    model.sigma_log_M0 = 0.19
     model.sigma_lambda = 0.0
-    model.B_cut = 1.50
-    model.B_sat = 10.0
-    model.beta_cut = 1.0
-    model.beta_sat = 0.8
+    model.B_cut = 2.10
+    model.B_sat = 8.70
+    model.beta_cut = 0.47
+    model.beta_sat = 0.69
     model.alpha = 1.0
     model.fcen1 = -1
     model.fcen2 = -1
+
 
     """ Stellar mass bins in log10(Mstar/[h^-2 Msun])
     """
@@ -497,20 +511,6 @@ def test():
         """ populate halos with halo catalogue
         """
 
-        model.log10M1 = 12.35 # in Msun h^-1
-        model.log10Mstar0 = 10.30 # in Msun h^-2
-        model.beta = 0.43
-        model.delta = 0.76
-        model.gamma = 0.0
-        model.sigma_log_M0 = 0.19
-        model.sigma_lambda = 0.0
-        model.B_cut = 2.10
-        model.B_sat = 8.70
-        model.beta_cut = 0.47
-        model.beta_sat = 0.69
-        model.alpha = 1.0
-        model.fcen1 = -1
-        model.fcen2 = -1
 
         log10Mstarmin = 10.0
         haloFileName = 'data/halos_z_0.90.fits'

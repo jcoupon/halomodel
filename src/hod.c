@@ -17,13 +17,13 @@ double phi_c(const Model *model, double log10Mstar, double log10Mh){
      *   without ln(10) (typo?)
      */
    double arg, result;
-
    double Mh = pow(10.0, log10Mh);
 
+   /*
    double dlog10Mstar = 0.01;
-
-   // double dN = Ngal_c(model, Mh, log10Mstar-dlog10Mstar/2.0, -1.0) - Ngal_c(model, Mh, log10Mstar+dlog10Mstar/2.0, -1.0);
-   // result = dN/dlog10Mstar;
+   double dN = Ngal_c(model, Mh, log10Mstar-dlog10Mstar/2.0, -1.0) - Ngal_c(model, Mh, log10Mstar+dlog10Mstar/2.0, -1.0);
+   result = dN/dlog10Mstar;
+   */
 
    double sigma_logM = sigma_log_M(model, log10Mstar);
    arg = 0.5*pow( (log10Mstar - msmh_log10Mstar(model, log10Mh))/sigma_logM, 2.0);
@@ -35,13 +35,17 @@ double phi_c(const Model *model, double log10Mstar, double log10Mh){
 double phi_s(const Model *model, double log10Mstar, double log10Mh){
    /*
     *    phi(Mstar|Mh) for satellite galaxies
-    *    TODO
+    *
     */
 
-   // in python create 2D function to interpolate
-   // over
+   double arg, result;
+   double Mh = pow(10.0, log10Mh);
 
-   return 0.0;
+   double dlog10Mstar = 0.01;
+   double dN = Ngal_s(model, Mh, log10Mstar-dlog10Mstar/2.0, -1.0) - Ngal_s(model, Mh, log10Mstar+dlog10Mstar/2.0, -1.0);
+   result = dN/dlog10Mstar;
+
+   return result;
 }
 
 double Ngal_c(const Model *model, double Mh, double log10Mstar_min, double log10Mstar_max){

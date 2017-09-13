@@ -21,7 +21,6 @@ void dndlog10Mstar(const Model *model, double *log10Mstar, int N, double z, int 
    takes Mstar in (Msun/h^2), returns result in (Mpc/h)^-3 dex^-1
    */
 
-
    int i;
    double dlog10Mstar = 0.01;
 
@@ -131,7 +130,7 @@ double ngal_den(const Model *model, double lnMh_max, double log10Mstar_min, doub
    p.log10Mstar_max = log10Mstar_max;
    p.obs_type = obs_type;
 
-    return int_gsl(int_for_ngal_den, (void*)&p, LNMH_MIN, lnMh_max, 1.e-5);
+   return int_gsl(int_for_ngal_den, (void*)&p, LNMH_MIN, lnMh_max, 1.e-5);
 }
 
 double int_for_ngal_den(double lnMh, void *p) {

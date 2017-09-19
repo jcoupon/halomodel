@@ -320,6 +320,7 @@ c function prototypes
 C_HALOMODEL.rhoHalo.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
 C_HALOMODEL.rhoHalo.restype = ctypes.c_double
 C_HALOMODEL.xi_m.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)]
+C_HALOMODEL.xi_m_lin.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)]
 C_HALOMODEL.dndlog10Mstar.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 C_HALOMODEL.dndlnMh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
 C_HALOMODEL.dndlnMh.restype = ctypes.c_double
@@ -1246,6 +1247,29 @@ def xi_dm(model, r, z):
     C_HALOMODEL.xi_m(model, r, len(r), z, result)
 
     return result
+
+
+def xi_dm_lin(model, r, z):
+    """ Wrapper for c-function xi_dm_lin()
+
+    Returns the linear dark matter two-point correlation function.
+
+    ** Mpc in comoving units **
+
+    INPUT
+    r: distance in h^-1 Mpc
+
+    OUTPUT
+    xi_dm evaluated at r
+    """
+
+    r = np.asarray(r, dtype=np.float64)
+    result = np.asarray(np.zeros(len(r)), dtype=np.float64)
+
+    C_HALOMODEL.xi_m_lin(model, r, len(r), z, result)
+
+    return result
+
 
 
 def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):

@@ -28,6 +28,14 @@ void xi_m(const Model *model, double *r, int N, double z, double *result);
 double intForxi_m(double k, void *params);
 
 /*
+ *    Angular correlation function of dark matter (linear power spectrum version)
+ */
+
+void xi_m_lin(const Model *model, double *r, int N, double z, double *result);
+double intForxi_m_lin(double k, void *params);
+
+
+/*
  *    halo bias
  */
 

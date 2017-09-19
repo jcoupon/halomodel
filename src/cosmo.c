@@ -172,6 +172,94 @@ double intForxi_m(double k, void *p)
 }
 
 /*
+ *    Angular correlation function of dark matter (linear power spectrum version)
+ */
+
+void xi_m_lin(const Model *model, double *r, int N, double z, double *result){
+
+   /*
+    *    Returns the dark matter correlation function.
+    *    i.e. the fourier transform P_m_nonlin.
+    */
+
+   static int firstcall = 1;
+   static gsl_interp_accel *acc;
+   static gsl_spline *spline;
+   static double inter_min, inter_max;
+
+   int i;
+
+   if(firstcall){
+
+      firstcall = 0;
+
+      /*    FFTLog config */
+      double q = 0.0, mu = 0.5;
+      int j, FFT_N = 64;
+      FFTLog_config *fc = FFTLog_init(FFT_N, KMIN, KMAX, q, mu);
+      double *r_FFT     = (double *)malloc(FFT_N*sizeof(double));
+      double *ar        = (double *)malloc(FFT_N*sizeof(double));
+      double *logr_FFT  = (double *)malloc(FFT_N*sizeof(double));
+
+      /*    parameters to pass to the function */
+      params p;
+      p.model = model;
+      p.z = z;
+
+      /*    fonction with parameters to fourier transform */
+      gsl_function Pk;
+      Pk.function = &intForxi_m_lin;
+      Pk.params   = &p;
+
+      /*    fourier transform... */
+      FFTLog(fc, &Pk, r_FFT, ar, -1);
+
+      /*    return values through interpolation */
+      acc    = gsl_interp_accel_alloc ();
+      spline = gsl_spline_alloc (gsl_interp_cspline, FFT_N);
+
+      /*    attention: N and FFT_N are different */
+      for(j=0;j<FFT_N;j++) logr_FFT[j] = log(r_FFT[j]);
+      gsl_spline_init (spline, logr_FFT, ar, FFT_N);
+
+      inter_min = logr_FFT[0];
+      inter_max = logr_FFT[FFT_N-1];
+
+      /*    free memory */
+      free(r_FFT);
+      free(ar);
+      free(logr_FFT);
+      FFTLog_free(fc);
+
+   }
+
+   // && r[i] < RMAX
+
+   for(i=0;i<N;i++){
+      if (inter_min < log(r[i]) && log(r[i]) <  inter_max ){
+         result[i] = gsl_spline_eval(spline, log(r[i]), acc)*pow(2.0*M_PI*r[i],-1.5);
+      }else{
+         result[i] = 0.0;
+      }
+   }
+
+   return;
+}
+
+
+
+double intForxi_m_lin(double k, void *p)
+{
+   const Model *model = ((params *)p)->model;
+   const double z  = ((params *)p)->z;
+
+   return pow(k, 1.5)*P_m_lin(model, k, z);
+
+}
+
+
+
+/*
  *    halo bias
  */
 
@@ -1036,8 +1124,13 @@ double P_m_nonlin(const Model *model, double k, double z)
    static gsl_spline *spline;
    static double inter_min, inter_max;
 
-   if(firstcall){
+   static double z_tmp = NAN;
 
+   if(firstcall || assert_float(z_tmp, z)){
+      // TODO: also check that model didn't change
+
+      firstcall = 0;
+      z_tmp = z;
       firstcall = 0;
 
       cosmo *cosmo = initCosmo(model);
@@ -1045,10 +1138,10 @@ double P_m_nonlin(const Model *model, double k, double z)
       error *myerr = NULL, **err;
       err = &myerr;
 
-      int i, Ninter  = 256;
-      double dlnk    = log(KMAX/KMIN)/(double)Ninter;
-      double *lnk    = (double *)malloc(Ninter*sizeof(double));
-      double *logP   = (double *)malloc(Ninter*sizeof(double));
+      int i, Ninter = 256;
+      double dlnk = log(KMAX/KMIN)/(double)Ninter;
+      double *lnk = (double *)malloc(Ninter*sizeof(double));
+      double *logP = (double *)malloc(Ninter*sizeof(double));
 
       for(i=0;i<Ninter;i++){
          lnk[i]  = log(KMIN)+dlnk*(double)i;
@@ -1060,7 +1153,7 @@ double P_m_nonlin(const Model *model, double k, double z)
       inter_max = exp(lnk[Ninter-1]);
 
       acc = gsl_interp_accel_alloc();
-      spline    = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+      spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
       gsl_spline_init(spline, lnk, logP, Ninter);
 
       free(lnk);
@@ -1090,19 +1183,23 @@ double P_m_lin(const Model *model, double k, double z)
    static gsl_spline *spline;
    static double inter_min, inter_max;
 
-   if(firstcall){
+   static double z_tmp = NAN;
+
+   if(firstcall || assert_float(z_tmp, z)){
+      // TODO: also check that model didn't change
 
       firstcall = 0;
+      z_tmp = z;
 
       cosmo *cosmo = initCosmo(model);
 
       error *myerr = NULL, **err;
       err = &myerr;
 
-      int i, Ninter  = 256;
-      double dlnk    = log(KMAX/KMIN)/(double)Ninter;
-      double *lnk    = (double *)malloc(Ninter*sizeof(double));
-      double *logP   = (double *)malloc(Ninter*sizeof(double));
+      int i, Ninter = 256;
+      double dlnk = log(KMAX/KMIN)/(double)Ninter;
+      double *lnk = (double *)malloc(Ninter*sizeof(double));
+      double *logP = (double *)malloc(Ninter*sizeof(double));
 
       for(i=0;i<Ninter;i++){
          lnk[i]  = log(KMIN)+dlnk*(double)i;

@@ -456,6 +456,7 @@ def test():
     actions = ['satContrib', 'lookbackTime', 'dist', 'change_HOD', 'Ngal, ''MsMh', 'concen', 'mass_conv', 'xi_dm', 'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD']
     # actions = ['populate']
 
+
     # TODO
     # actions = [ 'ggl', 'Lambda', 'LxToCR', 'uIx', 'SigmaIx_HOD', 'SigmaIx', 'SigmaIx_HOD_nonPara']
 
@@ -1105,7 +1106,7 @@ def interpolateCumRhoHalo(model, z, log10Mstar_min = 5.0, plot=False):
     """ dimensions in both directions
     """
     Nlog10r = 200
-    Nlog10Mh = 200
+    Nlog10Mh = 400
 
     """ grids
     """
@@ -1141,8 +1142,8 @@ def interpolateCumRhoHalo(model, z, log10Mstar_min = 5.0, plot=False):
         select = prob > 1.e-8
         NFW[i*Nlog10r:(i+1)*Nlog10r] = np.interp(log10r_inv, cs[select], log10r[select])
 
-        # prob_2D[i,:] = prob
-        prob_2D[i,:] = cs/max(cs)
+        prob_2D[i,:] = prob
+        prob_2D[i,:] = cs # /max(cs)
         # prob_2D[i:] = np.interp(log10Mstar_inv, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
 
     if plot:

@@ -105,7 +105,7 @@ void xi_gg(const Model *model, double *r, int N, double z, int obs_type, double 
          break;
       case all:
          result_tmp = (double *)malloc(N*sizeof(double));
-         xi_gg_censat(model, r, N, z, result_tmp); for(i=0;i<N;i++){result[i]  = result_tmp[i];}
+         xi_gg_censat(model, r, N, z, result_tmp); for(i=0;i<N;i++){result[i] = result_tmp[i];}
          xi_gg_satsat(model, r, N, z, result_tmp); for(i=0;i<N;i++){result[i] += result_tmp[i];}
          xi_gg_twohalo(model, r, N, z, result_tmp); for(i=0;i<N;i++){result[i] += result_tmp[i];}
          free(result_tmp);
@@ -151,7 +151,7 @@ void xi_gg_censat(const Model *model, double *r, int N, double z, double *result
       p.ng = ng;
 
       for(i=0;i<N;i++){
-         p.r       = r[i];
+         p.r = r[i];
          if(r[i] < RMAX1){
             result[i] = int_gsl(intForxi_gg_censat, (void*)&p, log(Mh_rh(model, r[i], z)), LNMH_MAX, 1.e-3) ;
          }else{
@@ -176,9 +176,12 @@ double intForxi_gg_censat(double logMh, void *p)
 
    double Mh = exp(logMh);
 
-   return Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max) * Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
+   // DEBUGGING
+   return 0.5*Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max) * Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
       * rhoHalo(model, r, Mh, c, z)
-      * dndlnMh(model, Mh, z) /(0.5*ng*ng) / Mh ;
+      * dndlnMh(model, Mh, z) /(0.5*ng*ng) / Mh  ;
+   // return 0.0;
+
 }
 
 
@@ -262,7 +265,9 @@ double P_gg_satsat(const Model *model, double k, double z)
       p.c = NAN;
 
       double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
-      return int_gsl(intForP_gg_satsat, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/pow(ng, 2.0);
+
+      // DEBUGGING
+      return 0.5*int_gsl(intForP_gg_satsat, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/pow(ng, 2.0);
 
    }else{
       printf("w(theta) not supported in non-HOD models. Exiting..."); exit(-1);
@@ -278,9 +283,25 @@ double intForP_gg_satsat(double logMh, void *p){
 
    double Mh = exp(logMh);
 
+   // DEBUGGING
+
+
    return  pow(Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max), 2.0)
       * pow(uHalo(model, k, Mh, c, z), 2.0)
       * dndlnMh(model, Mh, z);
+
+
+
+   /*
+   return pow(Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max), 2.0)
+            * pow(uHalo(model, k, Mh, c, z), 2.0)
+            * dndlnMh(model, Mh, z)
+            + 2.0*Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max)*Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
+            * uHalo(model, k, Mh, c, z)
+            * dndlnMh(model, Mh, z);
+   */
+
+
 
 }
 
@@ -319,6 +340,9 @@ void xi_gg_twohalo(const Model *model, double *r, int N, double z, double *resul
 
 			bias_fac = sqrt(pow(1.0+1.17*xidm[i],1.49)/pow(1.0+0.69*xidm[i],2.09));
          p.logMlim = logM_lim(model, r[i], p.c, z, all);
+         // NO HALO EXCLUSION
+         // p.logMlim = LNMH_MAX;
+
          p.r = r[i];
          p.ngp = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
 
@@ -351,7 +375,9 @@ double P_gg_twohalo(double k, void *p)
 
    ((params *)p)->k = k;
 
+   // DEBUGGING
    return P_m_nonlin(model, k, z)*pow(int_gsl(intForP_gg_twohalo, p, LNMH_MIN, logMlim, 1.e-3)/ngp, 2.0);
+   // return P_m_lin(model, k, z)*pow(int_gsl(intForP_gg_twohalo, p, LNMH_MIN, logMlim, 1.e-3)/ngp, 2.0);
 
 }
 

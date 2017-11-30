@@ -316,7 +316,6 @@ c function prototypes
 
 """
 
-
 C_HALOMODEL.rhoHalo.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
 C_HALOMODEL.rhoHalo.restype = ctypes.c_double
 C_HALOMODEL.xi_m.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)]
@@ -326,6 +325,7 @@ C_HALOMODEL.dndlnMh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c
 C_HALOMODEL.dndlnMh.restype = ctypes.c_double
 C_HALOMODEL.DeltaSigma.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 C_HALOMODEL.wOfTheta.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
+C_HALOMODEL.wOfThetaFromXi.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int,  np.ctypeslib.ndpointer(dtype = np.float64), np.ctypeslib.ndpointer(dtype = np.float64)]
 C_HALOMODEL.xi_gg.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 C_HALOMODEL.SigmaIx.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 C_HALOMODEL.rh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
@@ -379,11 +379,8 @@ C_HALOMODEL.phi_c.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_d
 C_HALOMODEL.phi_c.restype = ctypes.c_double
 C_HALOMODEL.phi_s.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
 C_HALOMODEL.phi_s.restype = ctypes.c_double
-
 C_HALOMODEL.ngal_den.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_int]
 C_HALOMODEL.ngal_den.restype = ctypes.c_double
-
-
 C_HALOMODEL.Ngal_s.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
 C_HALOMODEL.Ngal_s.restype = ctypes.c_double
 C_HALOMODEL.Ngal_c.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
@@ -1005,8 +1002,6 @@ def populate(model, log10Mstar_min, halos, redshift, verbose = False):
     for k in galaxies:
         galaxies[k] = np.array(galaxies[k])
 
-
-
     return galaxies
 
 
@@ -1034,13 +1029,14 @@ def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False):
     log10Mh = np.linspace(msmh_log10Mh(model, log10Mstar[0]), 16.0, Nlog10Mh)
     log10Mstar_inv = np.linspace(0.0, 1.0, Nlog10Mstar)
 
-    HOD = np.zeros(Nlog10Mh*Nlog10Mstar)
+    cs_2D = np.zeros(Nlog10Mh*Nlog10Mstar)
     prob_2D = np.zeros((Nlog10Mh,Nlog10Mstar))
     cs = np.zeros(Nlog10Mstar)
 
     for i,m in enumerate(log10Mh):
 
         """ probability of Mstar given Mh
+        TODO: not normalised, why??
         """
         prob =  phi(model, log10Mstar, m, obs_type=obs_type)
 
@@ -1048,18 +1044,15 @@ def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False):
         """
         cs[1:] = np.cumsum(np.diff(log10Mstar)*(prob[:-1]+prob[1:])/2.0)
 
-        """ renormalise in case
-        probability goes beyond limits
+        """ normalise
         """
         cs /= max(cs)
         prob /= np.trapz(prob, log10Mstar)
 
-        # print prob
-
         """ inverse cumulative function
         """
         select = prob > 1.e-8
-        HOD[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(log10Mstar_inv, cs[select], log10Mstar[select])
+        cs_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(log10Mstar_inv, cs[select], log10Mstar[select])
 
         # prob_2D[i,:] = prob
         prob_2D[i,:] = cs/max(cs)
@@ -1083,11 +1076,11 @@ def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False):
         fig.set_tight_layout(True)
         fig.savefig('graph.pdf')
 
-    return interpolate.interp2d(log10Mh, log10Mstar_inv, HOD, kind='linear')
+    return interpolate.interp2d(log10Mh, log10Mstar_inv, cs_2D, kind='linear')
 
 
 def interpolateCumRhoHalo(model, z, log10Mstar_min = 5.0, plot=False):
-    """ return function to interpolated
+    """ return function to interpolate
     cumulative halo profile probability
     to populate satellites in halos.
 
@@ -1117,15 +1110,16 @@ def interpolateCumRhoHalo(model, z, log10Mstar_min = 5.0, plot=False):
 
     r = pow(10.0, log10r)
 
-    NFW = np.zeros(Nlog10Mh*Nlog10r)
+    cs_2D = np.zeros(Nlog10Mh*Nlog10r)
     prob_2D = np.zeros((Nlog10Mh,Nlog10r))
     cs = np.zeros(Nlog10r)
 
     for i,m in enumerate(log10Mh):
 
-        """ probability of position (= NFW profile x r^3)
+        """ normalised probability of position
+        (= normalised NFW profile x r^2 x 4 pi x r [because log scale])
         """
-        prob = r*r*r*rhoHalo(model, r, m, z)
+        prob = rhoHalo(model, r, m, z) / pow(10.0, m) * r**2 * 4.0 * np.pi * r * np.log(10.0)
 
         """ commulative function
         """
@@ -1135,12 +1129,11 @@ def interpolateCumRhoHalo(model, z, log10Mstar_min = 5.0, plot=False):
         probability goes beyond limits
         """
         cs /= max(cs)
-        prob /= np.trapz(prob, log10r)
 
         """ inverse cumulative function
         """
         select = prob > 1.e-8
-        NFW[i*Nlog10r:(i+1)*Nlog10r] = np.interp(log10r_inv, cs[select], log10r[select])
+        cs_2D[i*Nlog10r:(i+1)*Nlog10r] = np.interp(log10r_inv, cs[select], log10r[select])
 
         prob_2D[i,:] = prob
         prob_2D[i,:] = cs # /max(cs)
@@ -1164,7 +1157,7 @@ def interpolateCumRhoHalo(model, z, log10Mstar_min = 5.0, plot=False):
         fig.set_tight_layout(True)
         fig.savefig('graph.pdf')
 
-    return interpolate.interp2d(log10Mh, log10r_inv, NFW, kind='linear')
+    return interpolate.interp2d(log10Mh, log10r_inv, cs_2D, kind='linear')
 
 
 def rhoHalo(model, r, log10Mh, z, c=None):
@@ -1404,6 +1397,29 @@ def xi_gg(model, r, z, obs_type="all"):
         raise ValueError("xi(r): obs_type \"{0:s}\" is not recognised".format(obs_type))
 
     C_HALOMODEL.xi_gg(model, r, len(r), z, obs_type, result)
+
+    return result
+
+
+def wOfThetaFromXi(model, theta, z, r, xi):
+    """ Returns w(theta) from input xi and n(z)
+
+    INPUT PARAMETERS:
+    theta: (array or single value) in degree
+    r: (array)in h^-1 Mpc
+    xi: (array) 3D clustering
+
+    OUTPUT
+    w(theta)
+    """
+
+    theta = np.asarray(theta, dtype=np.float64)
+    result = np.asarray(np.zeros(len(theta)), dtype=np.float64)
+
+    r = np.asarray(r, dtype=np.float64)
+    xi = np.asarray(xi, dtype=np.float64)
+
+    C_HALOMODEL.wOfThetaFromXi(model, theta, len(theta), z, r, len(r), xi, result)
 
     return result
 

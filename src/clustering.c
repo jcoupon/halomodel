@@ -6,6 +6,82 @@
 
 #include "clustering.h"
 
+
+void wOfThetaFromXi(const Model *model, double *theta, int N, double z, double *u, int Ninter, double *xi, double *result)
+{
+   /*
+    *    Project inpu xi using Limber equation
+    *    and return w(theta).
+    *    See Bartelmann & Schneider (2001) eq. (2.79),
+    *    Tinker et al. 2010 eq. (3), Ross et al. 2009 eq (27), ...
+    *    Theta in degrees.
+    */
+
+   double nsqr_dzdr;
+
+   /*    tabulate xi(r) */
+   int i,j,k;
+   double *logu = malloc(Ninter*sizeof(double));
+   double umin = u[0], umax = u[Ninter-1];
+   double dlogu = log(umax/umin)/(double)Ninter;
+
+   for(i=0;i<Ninter;i++){
+      logu[i] = log(u[i]);
+   }
+
+   /*    interpolate xi(r) */
+   gsl_interp_accel *acc = gsl_interp_accel_alloc();
+   gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
+   gsl_spline_init(spline, logu, xi, Ninter);
+
+   /*    out of xi(r) limits, use the last two points
+   and compute a linear extrapolation, y = ax+b */
+   double a = (xi[Ninter-2]-xi[Ninter-1])/(u[Ninter-2]-u[Ninter-1]);
+   double b = xi[Ninter-1] - a*u[Ninter-1];
+
+   double deg_to_rad_sqr = pow(M_PI/180.0, 2.0);
+   double r, x, sum;
+
+   double nz_Norm = trapz(model->wtheta_nz_z, model->wtheta_nz, model->wtheta_nz_N);
+   double nz_dz = model->wtheta_nz_z[1] - model->wtheta_nz_z[0];
+
+   /*    Limber equation - project xi to get w */
+   for(i=0;i<N;i++){ /* loop over theta */
+      result[i] = 0.0;
+      /*    loop over z */
+      for (j=0; j<model->wtheta_nz_N; j++) {
+         /*    loop over u */
+         x = DM(model, z, 0);
+         sum = 0.0;
+         for (k=0;k<Ninter;k++) {
+            r = sqrt(u[k]*u[k] + x*x*theta[i]*theta[i]*deg_to_rad_sqr);
+            if (log(r) < logu[Ninter-1]) {
+               /*    to unsure log(r) lies within interpolation limits */
+               sum += u[k]*gsl_spline_eval(spline,log(r),acc);
+            }else{
+               /*    linear extrapolation with last 2 points */
+               // sum += u[k]*(a*r+b);
+            }
+         }
+         nsqr_dzdr = pow(model->wtheta_nz[j], 2.0)/ dr_dz(model, z);
+
+         result[i] += nsqr_dzdr * sum;
+      }
+
+      result[i] *= 2.0*nz_dz*dlogu/pow(nz_Norm, 2.0);
+   }
+
+   //free(xi);
+   //free(u);
+   free(logu);
+   gsl_spline_free (spline);
+   gsl_interp_accel_free (acc);
+
+   return;
+}
+
+
+
 void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, double *result)
 {
    /*
@@ -26,7 +102,7 @@ void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, 
 
    double nsqr_dzdr;
 
-   /* tabulate xi(r) */
+   /*    tabulate xi(r) */
    int i,j,k,Ninter = 40;
    double *u = malloc(Ninter*sizeof(double));
    double *logu = malloc(Ninter*sizeof(double));
@@ -41,7 +117,7 @@ void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, 
    double *xi = malloc(Ninter*sizeof(double));
    xi_gg(model, u, Ninter, z, obs_type, xi);
 
-   /* interpolate xi(r) */
+   /*    interpolate xi(r) */
    gsl_interp_accel *acc = gsl_interp_accel_alloc();
    gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, Ninter);
    gsl_spline_init(spline, logu, xi, Ninter);
@@ -52,12 +128,12 @@ void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, 
    double nz_Norm = trapz(model->wtheta_nz_z, model->wtheta_nz, model->wtheta_nz_N);
    double nz_dz = model->wtheta_nz_z[1] - model->wtheta_nz_z[0];
 
-   /* Limber equation - project xi to get w */
+   /*    Limber equation - project xi to get w */
    for(i=0;i<N;i++){ /* loop over theta */
       result[i] = 0.0;
-      /* loop over z */
+      /*    loop over z */
       for (j=0; j<model->wtheta_nz_N; j++) {
-         /* loop over u */
+         /*    loop over u */
          x = DM(model, z, 0);
          sum = 0.0;
          for (k=0;k<Ninter;k++) {
@@ -136,7 +212,7 @@ void xi_gg_censat(const Model *model, double *r, int N, double z, double *result
    /*
     *    Returns the central/sagtellite
     *    two-point correlation function.
-   */
+    */
 
    int i;
 

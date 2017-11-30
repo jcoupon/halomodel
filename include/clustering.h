@@ -17,8 +17,9 @@
 /* ---------------------------------------------------------------- *
  * two-point correlation function
  * ---------------------------------------------------------------- */
-void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, double *result);
+void wOfThetaFromXi(const Model *model, double *theta, int N, double z, double *u, int Ninter, double *xi, double *result);
 
+void wOfTheta(const Model *model, double *theta, int N, double z, int obs_type, double *result);
 void xi_gg(const Model *model, double *r, int N, double z, int obs_type, double *result);
 void wOfThetaAll(const Model *model, double *theta, int N, double z, double *result);
 

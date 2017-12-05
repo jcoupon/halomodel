@@ -60,7 +60,7 @@ void wOfThetaFromXi(const Model *model, double *theta, int N, double z, double *
                sum += u[k]*gsl_spline_eval(spline,log(r),acc);
             }else{
                /*    linear extrapolation with last 2 points */
-               // sum += u[k]*(a*r+b);
+               sum += u[k]*(a*r+b);
             }
          }
          nsqr_dzdr = pow(model->wtheta_nz[j], 2.0)/ dr_dz(model, z);

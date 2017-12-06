@@ -103,6 +103,7 @@ class Model(ctypes.Structure):
         ("alpha", ctypes.c_double),
         ("fcen1", ctypes.c_double),
         ("fcen2", ctypes.c_double),
+        ("haloExcl", ctypes.c_int),
 
         # if using hod model
         ("hod", ctypes.c_int),
@@ -177,7 +178,7 @@ class Model(ctypes.Structure):
         ]
 
     # default parameters
-    def __init__(self, Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963,  hod=0, massDef="M500c", concenDef="TJ03", hmfDef="T08", biasDef="T08"):
+    def __init__(self, Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963,  hod=0, massDef="M500c", concenDef="TJ03", hmfDef="T08", biasDef="T08", haloExcl=1):
 
         # cosmology (default: matched to Coupon et al. 2015)
         self.Omega_m = Omega_m
@@ -210,6 +211,7 @@ class Model(ctypes.Structure):
         self.alpha = 1.0
         self.fcen1 = -1
         self.fcen2 = -1
+        self.haloExcl = haloExcl
 
         # if using hod model
         self.hod = hod

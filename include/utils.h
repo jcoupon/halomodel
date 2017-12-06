@@ -68,6 +68,7 @@ typedef struct Model
    double alpha;
    double fcen1;
    double fcen2;
+   int haloExcl;
 
    /* for X-ray luminosity profiles */
    int    hod;
@@ -160,7 +161,7 @@ typedef struct {
 
 typedef struct {
 
-   double r, R, k, z;
+   double r, R, k, z, R1;
    double ng, ngp, logMlim;
 
    double Mh, log10Mh, c;

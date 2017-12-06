@@ -255,7 +255,7 @@ double intForxi_gg_censat(double logMh, void *p)
    // DEBUGGING
    return 0.5*Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max) * Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
       * rhoHalo(model, r, Mh, c, z)
-      * dndlnMh(model, Mh, z) /(0.5*ng*ng) / Mh  ;
+      * dndlnMh(model, Mh, z) /(0.5*ng*ng) / Mh;
    // return 0.0;
 
 }
@@ -359,16 +359,13 @@ double intForP_gg_satsat(double logMh, void *p){
 
    double Mh = exp(logMh);
 
-   // DEBUGGING
-
-
    return  pow(Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max), 2.0)
       * pow(uHalo(model, k, Mh, c, z), 2.0)
       * dndlnMh(model, Mh, z);
 
-
-
+   // The code below is equivalent to the sum of cen-sat + sat+sat profiles
    /*
+
    return pow(Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max), 2.0)
             * pow(uHalo(model, k, Mh, c, z), 2.0)
             * dndlnMh(model, Mh, z)
@@ -376,8 +373,6 @@ double intForP_gg_satsat(double logMh, void *p){
             * uHalo(model, k, Mh, c, z)
             * dndlnMh(model, Mh, z);
    */
-
-
 
 }
 
@@ -415,12 +410,16 @@ void xi_gg_twohalo(const Model *model, double *r, int N, double z, double *resul
       for(i=0;i<N;i++){
 
 			bias_fac = sqrt(pow(1.0+1.17*xidm[i],1.49)/pow(1.0+0.69*xidm[i],2.09));
-         p.logMlim = logM_lim(model, r[i], p.c, z, all);
-         // NO HALO EXCLUSION
-         // p.logMlim = LNMH_MAX;
 
-         p.r = r[i];
-         p.ngp = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
+         // Halo exclusion
+         if (model->haloExcl) {
+            p.logMlim = logM_lim(model, r[i], p.c, z, all);
+            p.r = r[i];
+            p.ngp = ngal_den(model, p.logMlim, model->log10Mstar_min, model->log10Mstar_max, z, all);
+         }else{
+            p.logMlim = LNMH_MAX;
+            p.ngp = p.ng;
+         }
 
          if(p.ng < 1.0e-14 || p.ngp < 1.0e-14 || r[i] < RMIN2){
             result[i] = 0.0;

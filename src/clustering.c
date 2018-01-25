@@ -229,7 +229,7 @@ void xi_gg_censat(const Model *model, double *r, int N, double z, double *result
       for(i=0;i<N;i++){
          p.r = r[i];
          if(r[i] < RMAX1){
-            result[i] = int_gsl(intForxi_gg_censat, (void*)&p, log(Mh_rh(model, r[i], z)), LNMH_MAX, 1.e-3) ;
+            result[i] = int_gsl(intForxi_gg_censat, (void*)&p, log(Mh_rh(model, r[i], z)), LNMH_MAX, 1.e-3)/pow(ng, 2.0);
          }else{
             result[i] = 0.0;
          }
@@ -248,16 +248,20 @@ double intForxi_gg_censat(double logMh, void *p)
    double r = ((params *)p)->r;
    double z = ((params *)p)->z;
    double c = ((params *)p)->c;
-   double ng = ((params *)p)->ng;
+   // double ng = ((params *)p)->ng;
 
    double Mh = exp(logMh);
 
    // DEBUGGING
-   return 0.5*Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max) * Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
-      * rhoHalo(model, r, Mh, c, z)
-      * dndlnMh(model, Mh, z) /(0.5*ng*ng) / Mh;
-   // return 0.0;
+   //return 0.5*Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max)* Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
+   //   * rhoHalo(model, r, Mh, c, z)
+   //   * dndlnMh(model, Mh, z) /(0.5*ng*ng) / Mh;
 
+   return Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
+      *Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
+      *rhoHalo(model, r, Mh, c, z)
+      *dndlnMh(model, Mh, z) / Mh;
+   // return 0.0;
 }
 
 
@@ -342,8 +346,8 @@ double P_gg_satsat(const Model *model, double k, double z)
 
       double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
 
-      // DEBUGGING
       return 0.5*int_gsl(intForP_gg_satsat, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/pow(ng, 2.0);
+
 
    }else{
       printf("w(theta) not supported in non-HOD models. Exiting..."); exit(-1);
@@ -359,13 +363,15 @@ double intForP_gg_satsat(double logMh, void *p){
 
    double Mh = exp(logMh);
 
+
    return  pow(Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max), 2.0)
       * pow(uHalo(model, k, Mh, c, z), 2.0)
       * dndlnMh(model, Mh, z);
 
-   // The code below is equivalent to the sum of cen-sat + sat+sat profiles
-   /*
 
+   // The code below is equivalent to the sum of cen-sat + sat+sat profiles
+
+   /*
    return pow(Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max), 2.0)
             * pow(uHalo(model, k, Mh, c, z), 2.0)
             * dndlnMh(model, Mh, z)
@@ -464,6 +470,10 @@ double intForP_gg_twohalo(double logMh, void *p){
    const double c = ((params *)p)->c;
 
    const double Mh = exp(logMh);
+
+   // DEBUGING
+//   return Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max) * uHalo(model, k, Mh, c, z)
+//      * bias_h(model, Mh, z) * dndlnMh(model, Mh, z);
 
    return Ngal(model, Mh, model->log10Mstar_min, model->log10Mstar_max) * uHalo(model, k, Mh, c, z)
       * bias_h(model, Mh, z) * dndlnMh(model, Mh, z);

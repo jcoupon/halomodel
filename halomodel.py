@@ -452,9 +452,8 @@ def test():
 
     """ list of quantities to compute/check
     """
-    actions = ['satContrib', 'lookbackTime', 'dist', 'change_HOD', 'Ngal, ''MsMh', 'concen', 'mass_conv', 'xi_dm', 'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD']
+    actions = ['satContrib', 'lookbackTime', 'dist', 'change_HOD', 'Ngal', 'MsMh', 'concen', 'mass_conv', 'xi_dm', 'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD']
     # actions = ['populate']
-
 
     # TODO
     # actions = [ 'ggl', 'Lambda', 'LxToCR', 'uIx', 'SigmaIx_HOD', 'SigmaIx', 'SigmaIx_HOD_nonPara']
@@ -914,7 +913,7 @@ main functions
 
 """
 
-def populate(model, log10Mstar_min, halos, redshift, verbose = False):
+def populate(model, log10Mstar_min, halos, redshift, verbose = False, MhLimits=None):
     """ populate halos from input halo catalogue
     and HOD set in model
 
@@ -941,8 +940,8 @@ def populate(model, log10Mstar_min, halos, redshift, verbose = False):
 
     """ interpolate phi(log10Mstar|log10Mh)
     """
-    cumHODCen = interpolateCumHOD(model, log10Mstar_min = log10Mstar_min,  obs_type="cen")
-    cumHODSat = interpolateCumHOD(model, log10Mstar_min = log10Mstar_min,  obs_type="sat")
+    cumHODCen = interpolateCumHOD(model, log10Mstar_min = log10Mstar_min,  obs_type="cen", MhLimits=MhLimits)
+    cumHODSat = interpolateCumHOD(model, log10Mstar_min = log10Mstar_min,  obs_type="sat", MhLimits=MhLimits)
 
     """ interpolate DM profiles (for satellites)
     """
@@ -968,6 +967,9 @@ def populate(model, log10Mstar_min, halos, redshift, verbose = False):
 
         """ satellites
         """
+
+        # print log10Mh, Ngal(model, log10Mh, log10Mstar_min, -1.0, obs_type='sat')
+
         # number of satellites
         Nsat = np.random.poisson(Ngal(model, log10Mh, log10Mstar_min, -1.0, obs_type='sat'))
 
@@ -1007,7 +1009,7 @@ def populate(model, log10Mstar_min, halos, redshift, verbose = False):
     return galaxies
 
 
-def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False):
+def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False, MhLimits=None):
     """ return function to interpolated
     cumulative HOD (Mstar_inv) as a function
     of [0:1] and logMstar.
@@ -1028,8 +1030,14 @@ def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False):
     """ grids
     """
     log10Mstar = np.linspace(log10Mstar_min, 12.50, Nlog10Mstar)
-    log10Mh = np.linspace(msmh_log10Mh(model, log10Mstar[0]), 16.0, Nlog10Mh)
+    if MhLimits is not None:
+        log10Mh = np.linspace(MhLimits[0], MhLimits[1], Nlog10Mh)
+    else:
+        log10Mh = np.linspace(msmh_log10Mh(model, log10Mstar[0]), 16.0, Nlog10Mh)
     log10Mstar_inv = np.linspace(0.0, 1.0, Nlog10Mstar)
+
+    # print log10Mh
+
 
     cs_2D = np.zeros(Nlog10Mh*Nlog10Mstar)
     prob_2D = np.zeros((Nlog10Mh,Nlog10Mstar))
@@ -1040,11 +1048,17 @@ def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False):
         """ probability of Mstar given Mh
         TODO: not normalised, why??
         """
-        prob =  phi(model, log10Mstar, m, obs_type=obs_type)
+        prob = phi(model, log10Mstar, m, obs_type=obs_type)
+
+        if np.sum(prob) < 1.e-8:
+            prob[:] = 1.0
 
         """ commulative function
         """
         cs[1:] = np.cumsum(np.diff(log10Mstar)*(prob[:-1]+prob[1:])/2.0)
+
+        if np.sum(cs) < 1.e-8:
+            cs[:] = 1.0
 
         """ normalise
         """
@@ -1054,6 +1068,7 @@ def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False):
         """ inverse cumulative function
         """
         select = prob > 1.e-8
+
         cs_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(log10Mstar_inv, cs[select], log10Mstar[select])
 
         # prob_2D[i,:] = prob

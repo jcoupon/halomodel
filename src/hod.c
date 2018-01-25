@@ -19,16 +19,17 @@ double phi_c(const Model *model, double log10Mstar, double log10Mh){
    double arg, result;
    double Mh = pow(10.0, log10Mh);
 
-   /*
+
    double dlog10Mstar = 0.01;
    double dN = Ngal_c(model, Mh, log10Mstar-dlog10Mstar/2.0, -1.0) - Ngal_c(model, Mh, log10Mstar+dlog10Mstar/2.0, -1.0);
    result = dN/dlog10Mstar;
-   */
 
+
+   /*
    double sigma_logM = sigma_log_M(model, log10Mstar);
    arg = 0.5*pow( (log10Mstar - msmh_log10Mstar(model, log10Mh))/sigma_logM, 2.0);
    result = 1.0/(sqrt(2.0*M_PI)*sigma_logM) * exp(-arg);
-
+   */
    return result;
  }
 
@@ -73,7 +74,9 @@ double Ngal_c(const Model *model, double Mh, double log10Mstar_min, double log10
          firstcall = 0;
          copyModelHOD(model, &model_tmp);
          acc = gsl_interp_accel_alloc();
-         spline = gsl_spline_alloc (gsl_interp_cspline, N);
+         // spline = gsl_spline_alloc (gsl_interp_cspline, N);
+         // DEBUGGING
+         spline = gsl_spline_alloc (gsl_interp_linear, N);
          gsl_spline_init(spline, model->HOD_cen_log10Mh, model->HOD_cen_Ngal, N);
       }
 
@@ -147,7 +150,9 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
          firstcall = 0;
          copyModelHOD(model, &model_tmp);
          acc = gsl_interp_accel_alloc();
-         spline = gsl_spline_alloc (gsl_interp_cspline, N);
+         // spline = gsl_spline_alloc (gsl_interp_cspline, N);
+         // DEBUGGING
+         spline = gsl_spline_alloc (gsl_interp_linear, N);
          gsl_spline_init(spline, model->HOD_sat_log10Mh, model->HOD_sat_Ngal, N);
       }
 

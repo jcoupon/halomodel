@@ -252,16 +252,10 @@ double intForxi_gg_censat(double logMh, void *p)
 
    double Mh = exp(logMh);
 
-   // DEBUGGING
-   //return 0.5*Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max)* Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
-   //   * rhoHalo(model, r, Mh, c, z)
-   //   * dndlnMh(model, Mh, z) /(0.5*ng*ng) / Mh;
-
    return Ngal_c(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
       *Ngal_s(model, Mh, model->log10Mstar_min, model->log10Mstar_max)
       *rhoHalo(model, r, Mh, c, z)
       *dndlnMh(model, Mh, z) / Mh;
-   // return 0.0;
 }
 
 

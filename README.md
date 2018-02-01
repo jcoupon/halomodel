@@ -1,6 +1,6 @@
 # halomodel
 
-Jean coupon - 2017
+Jean coupon - 2016 - 2018
 Library to run halomodel routines
 
 Required libraries:
@@ -13,7 +13,7 @@ for c (set path in Makefile if necessary):
 for python:
 - numpy 1.10.2 (http://www.numpy.org/)
 - scipy 0.17.1 (https://www.scipy.org/scipylib/download.html)
-- (for tests only) astropy 1.2.1 (http://www.astropy.org/)
+- astropy 1.2.1 (http://www.astropy.org/)
 
 To install the library:
 

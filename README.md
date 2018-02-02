@@ -20,7 +20,7 @@ To install the library:
 run
 ```
 $ git clone https://github.com/jcoupon/halomodel.git
-$ cd halomodel
+$ cd halomodel/halomodel
 $ make
 ```
 

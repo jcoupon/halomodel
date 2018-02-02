@@ -26,6 +26,7 @@
 # alpha = 1.0
 # fcen1 = -1.0
 # fcen2 = -1.0
+# haloExcl = 1
 # hod = 1
 # IxXB_Re = 0.01196
 # IxXB_CR = 0.0
@@ -45,30 +46,30 @@
 # gas_log10rc_3 = -1.09691001301
 # gas_log10rc_4 = -1.09691001301
 # gas_TGasMh_N = 0
-# gas_TGasMh_log10Mh = <__main__.LP_c_double object at 0x10f023d40>
-# gas_TGasMh_log10TGas = <__main__.LP_c_double object at 0x10f023d40>
+# gas_TGasMh_log10Mh = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
+# gas_TGasMh_log10TGas = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
 # gas_ZGasMh_N = 0
-# gas_ZGasMh_log10Mh = <__main__.LP_c_double object at 0x10f023d40>
-# gas_ZGasMh_ZGas = <__main__.LP_c_double object at 0x10f023d40>
+# gas_ZGasMh_log10Mh = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
+# gas_ZGasMh_ZGas = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
 # gas_LxToCR_NZGas = 0
 # gas_LxToCR_NTGas = 0
-# gas_LxToCR_ZGas = <__main__.LP_c_double object at 0x10f023d40>
-# gas_LxToCR_log10TGas = <__main__.LP_c_double object at 0x10f023d40>
-# gas_LxToCR_log10fac = <__main__.LP_c_double object at 0x10f023d40>
+# gas_LxToCR_ZGas = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
+# gas_LxToCR_log10TGas = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
+# gas_LxToCR_log10fac = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
 # ggl_pi_max = 60.0
 # ggl_log10c = nan
 # ggl_log10Mh = 14.0
 # ggl_log10Mstar = nan
 # wtheta_nz_N = 0
-# wtheta_nz_z = <__main__.LP_c_double object at 0x10f023d40>
-# wtheta_nz = <__main__.LP_c_double object at 0x10f023d40>
+# wtheta_nz_z = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
+# wtheta_nz = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
 # HOD_cen_N = 0
-# HOD_cen_log10Mh = <__main__.LP_c_double object at 0x10f023d40>
-# HOD_cen_Ngal = <__main__.LP_c_double object at 0x10f023d40>
+# HOD_cen_log10Mh = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
+# HOD_cen_Ngal = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
 # HOD_sat_N = 0
-# HOD_sat_log10Mh = <__main__.LP_c_double object at 0x10f023d40>
-# HOD_sat_Ngal = <__main__.LP_c_double object at 0x10f023d40>
+# HOD_sat_log10Mh = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
+# HOD_sat_Ngal = <halomodel.halomodel.LP_c_double object at 0x180a701b00>
 # XMM_PSF_rc_deg = nan
 # XMM_PSF_alpha = nan
 # dist distAstropy
-920.1309551295423 920.1056861251209
+920.1309551295423 920.1309490032802

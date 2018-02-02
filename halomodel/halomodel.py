@@ -34,18 +34,20 @@ for python:
 # see http://stackoverflow.com/questions/458550/standard-way-to-embed-version-into-python-package
 # __version__ = "1.0.2"
 
+from __future__ import print_function, division
+
 import os
 import numpy as np
 import sys
 import inspect
 import collections
-
 import ctypes
+import traceback
 
+import scipy.interpolate as interpolate
 from astropy.io import fits,ascii
 from astropy.table import Table, Column
-
-from __future__ import print_function, division
+import matplotlib.pyplot as plt
 
 
 """
@@ -437,19 +439,14 @@ def test():
     computeRef = False
     printModelChanges = False
 
-
-    print(__FILE__)
-
-
-    return
-
     # list of quantities to compute/check
     actions = [
         'satContrib', 'lookbackTime', 'dist', 'change_HOD',
         'Ngal', 'MsMh', 'concen', 'mass_conv', 'xi_dm',
-        'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD'
+        'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD', 'populate'
         ]
-    # actions = ['populate']
+
+    # actions = ['MsMh']
 
     # TODO
     """
@@ -459,8 +456,7 @@ def test():
         ]
     """
 
-    """ cosmological model and redshift
-    """
+    # cosmological model
     model = Model(
         Omega_m = 0.258, Omega_de = 0.742, H0 = 72.0,
         Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963,
@@ -468,11 +464,10 @@ def test():
         hmfDef = "T08", biasDef = "T08"
         )
 
+    # redshift
     z = 0.308898
 
-
-    """ HOD model
-    """
+    # HOD model
     model.log10M1 = 12.35 # in Msun h^-1
     model.log10Mstar0 = 10.30 # in Msun h^-2
     model.beta = 0.43
@@ -488,59 +483,16 @@ def test():
     model.fcen1 = -1
     model.fcen2 = -1
 
-    """ Stellar mass bins in log10(Mstar/[h^-2 Msun])
-    """
+    # Stellar mass bins in log10(Mstar/[h^-2 Msun])
     model.log10Mstar_min = 11.00
     model.log10Mstar_max = 11.30
 
-    """ record current model
-    """
+    # record current model
     m1 =  dumpModel(model)
 
-    """ astropy for compararison
-    """
+    # astropy for compararison
     from astropy.cosmology import FlatLambdaCDM
     cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
-
-    """ start loop
-    """
-
-    if 'populate' in actions:
-        """ populate halos with halo catalogue
-        """
-
-        log10Mstar_min = 10.0
-        haloFileName = 'data/halos_z_0.90.fits'
-
-        np.random.seed(seed = 2009182)
-
-        """ first open the halo catalogue
-        file and read the data
-        """
-        fileIn = fits.open(haloFileName)
-        # halos = fileIn[1].data[:10]
-        halos = fileIn[1].data
-        fileIn.close()
-
-        result = populate(model, log10Mstar_min, halos)
-
-        # print result['log10Mstar'][:10]
-
-        """ write galaxy catalogue
-        """
-        cols = []
-        for k in result:
-            if k in halos.columns.names:
-                fmt = halos.columns[k].format
-            else:
-                fmt = 'E'
-            cols.append(fits.Column(name=k, format=fmt, array=result[k]))
-        hdu_0 = fits.PrimaryHDU()
-        hdu_1 = fits.BinTableHDU.from_columns(fits.ColDefs(cols))
-        tbhdu = fits.HDUList([hdu_0, hdu_1])
-        tbhdu.writeto('/Users/coupon/Desktop/NBody/gals_7.fits', clobber=True)
-
-        # writeOrCheck(model, 'log10Mstar', result, computeRef)
 
     if 'satContrib' in actions:
         """ satellite HOD times the stellar mass
@@ -548,12 +500,10 @@ def test():
         result = collections.OrderedDict()
 
         result['log10Mstar'] = np.linspace(7.0, 12.0, 100)
-        result['satContrib'] = pow(10.0, result['log10Mstar'])*dndlog10Mstar(model, result['log10Mstar'], z, obs_type="sat")
-
-        #for d in dndlog10Mstar(model, result['log10Mstar'], z, obs_type="sat"):
-        #    print d
-
-        writeOrCheck(model, 'satContrib', result, computeRef)
+        result['satContrib'] = pow(
+            10.0, result['log10Mstar'])*dndlog10Mstar(model,
+            result['log10Mstar'], z, obs_type="sat")
+        _write_or_check(model, 'satContrib', result, computeRef)
 
     if 'lookbackTime' in actions:
         """ look back time
@@ -561,9 +511,10 @@ def test():
         result = collections.OrderedDict()
 
         result['lookbackTime'] = C_HALOMODEL.lookbackTime(model, z)
-        result['lookbackTimeInv'] = C_HALOMODEL.lookbackTimeInv(model, result['lookbackTime'])
+        result['lookbackTimeInv'] = C_HALOMODEL.lookbackTimeInv(
+            model, result['lookbackTime'])
         result['lookbackTimeAstropy'] = cosmo.lookback_time([z]).value
-        writeOrCheck(model, 'lookbackTime', result, computeRef)
+        _write_or_check(model, 'lookbackTime', result, computeRef)
 
     if 'dist' in actions:
         """ angular diameter distance
@@ -572,7 +523,7 @@ def test():
 
         result['dist'] =  C_HALOMODEL.DA(model, z, 0)/model.h
         result['distAstropy'] = cosmo.angular_diameter_distance([z]).value
-        writeOrCheck(model, 'dist', result, computeRef)
+        _write_or_check(model, 'dist', result, computeRef)
 
     if 'change_HOD' in actions:
         """ check whether the HOD
@@ -580,10 +531,12 @@ def test():
         """
         result = collections.OrderedDict()
 
-        model2 = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+        model2 = Model(
+            Omega_m=0.258, Omega_de=0.742, H0=72.0, hod=1,
+            massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
         model2.hod = 0
         result['change_HOD'] = C_HALOMODEL.changeModelHOD(model, model2)
-        writeOrCheck(model2, 'change_HOD', result, computeRef)
+        _write_or_check(model2, 'change_HOD', result, computeRef)
 
         del model2
 
@@ -594,7 +547,7 @@ def test():
 
         result['log10Mh'] = np.linspace(10.0, 15.0, 100)
         result['N'] = Ngal(model, result['log10Mh'], 10.0, 11.0, obs_type='all')
-        writeOrCheck(model, 'Ngal', result, computeRef)
+        _write_or_check(model, 'Ngal', result, computeRef, qty_to_check='N')
 
     if 'MsMh' in actions:
         """ Stellar mass halo mass
@@ -604,7 +557,8 @@ def test():
 
         result['log10Mh'] = np.linspace(10.0, 15.0, 100)
         result['log10Mstar'] = msmh_log10Mstar(model, result['log10Mh'])
-        writeOrCheck(model, 'MsMh', result, computeRef)
+        _write_or_check(
+            model, 'MsMh', result, computeRef, qty_to_check='log10Mstar')
 
     if 'concen' in actions:
         """ halo concentration
@@ -612,16 +566,18 @@ def test():
         """
         result = collections.OrderedDict()
 
-        result['concentration'] = concentration(model, 1.e14, z, concenDef="TJ03")
-        writeOrCheck(model, 'concentration', result, computeRef)
+        result['concentration'] = concentration(
+            model, 1.e14, z, concenDef="TJ03")
+        _write_or_check(model, 'concentration', result, computeRef)
 
     if 'mass_conv' in actions:
         """ mass conversion
         """
         result = collections.OrderedDict()
 
-        result['mass_conv'] = log10M1_to_log10M2(model, 13.0, None, "M200m", "M500c", z)
-        writeOrCheck(model, 'mass_conv', result, computeRef)
+        result['mass_conv'] = log10M1_to_log10M2(
+            model, 13.0, None, "M200m", "M500c", z)
+        _write_or_check(model, 'mass_conv', result, computeRef)
 
     if 'xi_dm' in actions:
         """ matter two-point
@@ -629,22 +585,28 @@ def test():
         """
         result = collections.OrderedDict()
 
-        result['r'] = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(2.0e2), 100))
+        result['r'] = pow(10.0, np.linspace(
+            np.log10(2.e-3), np.log10(2.0e2), 100))
         result['xi_dm'] = xi_dm(model, result['r'], z)
-        writeOrCheck(model, 'xi_dm', result, computeRef)
+        _write_or_check(model, 'xi_dm', result, computeRef)
 
     if 'uHalo' in actions:
         """ Fourrier transform of halo profile
         """
         result = collections.OrderedDict()
 
-        result['k'] =  pow(10.0, np.linspace(np.log10(2.e-3), np.log10(1.e4), 100))
-        result['uHalo'] = np.asarray(np.zeros(len(result['k'])), dtype=np.float64)
-        result['uHaloAnalytic'] = np.asarray(np.zeros(len(result['k'])), dtype=np.float64)
+        result['k'] =  pow(10.0, np.linspace(
+            np.log10(2.e-3), np.log10(1.e4), 100))
+        result['uHalo'] = np.asarray(
+            np.zeros(len(result['k'])), dtype=np.float64)
+        result['uHaloAnalytic'] = np.asarray(
+            np.zeros(len(result['k'])), dtype=np.float64)
         for i in range(len(result['k'])):
-            result['uHalo'][i] = C_HALOMODEL.uHalo(model, result['k'][i], 1.e14, np.nan, z)
-            result['uHaloAnalytic'][i]  = C_HALOMODEL.uHaloClosedFormula(model, result['k'][i], 1.e14, np.nan, z)
-        writeOrCheck(model, 'uHalo', result, computeRef)
+            result['uHalo'][i] = C_HALOMODEL.uHalo(
+                model, result['k'][i], 1.e14, np.nan, z)
+            result['uHaloAnalytic'][i]  = C_HALOMODEL.uHaloClosedFormula(
+                model, result['k'][i], 1.e14, np.nan, z)
+        _write_or_check(model, 'uHalo', result, computeRef)
 
     if 'smf' in actions:
         """ stellar mass function
@@ -652,8 +614,9 @@ def test():
         result = collections.OrderedDict()
 
         result['log10Mstar'] = np.linspace(9.0, 12.0, 100)
-        result['smf'] = dndlog10Mstar(model, result['log10Mstar'], z, obs_type="all")
-        writeOrCheck(model, 'smf', result, computeRef)
+        result['smf'] = dndlog10Mstar(
+            model, result['log10Mstar'], z, obs_type="all")
+        _write_or_check(model, 'smf', result, computeRef)
 
     if 'ggl_HOD' in actions:
         """ Galaxy-galaxy lensing, HOD model
@@ -665,15 +628,19 @@ def test():
         result['star'] = DeltaSigma(model, result['R'], z, obs_type="star")
         result['cen'] = DeltaSigma(model, result['R'], z, obs_type="cen")
         result['sat'] = DeltaSigma(model, result['R'], z, obs_type="sat")
-        result['twohalo'] = DeltaSigma(model, result['R'], z, obs_type="twohalo")
-        writeOrCheck(model, 'ggl_HOD', result, computeRef)
+        result['twohalo'] = DeltaSigma(
+            model, result['R'], z, obs_type="twohalo")
+        _write_or_check(model, 'ggl_HOD', result, computeRef)
 
     if "ggl" in actions:
         """ Galaxy-galaxy lensing, no HOD
         """
         result = collections.OrderedDict()
 
-        modelNoHOD = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=0, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+        modelNoHOD = Model(
+            Omega_m=0.258, Omega_de=0.742, H0=72.0,
+            Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=0,
+            massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
         modelNoHOD.ggl_log10Mh = 13.4
         modelNoHOD.ggl_log10c = 0.69
         modelNoHOD.ggl_log10Mstar = 11.0
@@ -683,8 +650,9 @@ def test():
         result['star'] = DeltaSigma(model, result['R'], z, obs_type="star")
         result['cen'] = DeltaSigma(model, result['R'], z, obs_type="cen")
         result['sat'] = DeltaSigma(model, result['R'], z, obs_type="sat")
-        result['twohalo'] = DeltaSigma(model, result['R'], z, obs_type="twohalo")
-        writeOrCheck(modelNoHOD, 'ggl', result, computeRef)
+        result['twohalo'] = DeltaSigma(
+            model, result['R'], z, obs_type="twohalo")
+        _write_or_check(modelNoHOD, 'ggl', result, computeRef)
 
         del modelNoHOD
 
@@ -695,36 +663,69 @@ def test():
 
         loadWtheta_nz(model, HALOMODEL_DIRNAME+"/data/wtheta_nz.ascii")
         result['theta'] = pow(10.0, np.linspace(-3.0, 2.0, 100))
-        result['wtheta_HOD'] = wOfTheta(model, result['theta'], z, obs_type="all")
-        result['censat'] = wOfTheta(model, result['theta'], z, obs_type="censat")
-        result['satsat'] = wOfTheta(model, result['theta'], z, obs_type="satsat")
-        result['twohalo'] = wOfTheta(model, result['theta'], z, obs_type="twohalo")
-        writeOrCheck(model, 'wtheta_HOD', result, computeRef)
+        result['wtheta_HOD'] = wOfTheta(
+            model, result['theta'], z, obs_type="all")
+        result['censat'] = wOfTheta(
+            model, result['theta'], z, obs_type="censat")
+        result['satsat'] = wOfTheta(
+            model, result['theta'], z, obs_type="satsat")
+        result['twohalo'] = wOfTheta(
+            model, result['theta'], z, obs_type="twohalo")
+        _write_or_check(model, 'wtheta_HOD', result, computeRef)
+
+    # populate halos with halo catalogue
+    if 'populate' in actions:
+
+        # DEBUGGING
+        """
+        func_cum_prob_HOD(
+            model, log10Mstar_min = 5.0, obs_type="cen", plot=True)
+        func_cum_prob_rho_halo(model, z, log10Mstar_min = 5.0, plot=True)
+        """
+
+        # options
+        log10Mstar_min = 7.0
+        np.random.seed(seed = 2009182)
+
+        halo_file_name = HALOMODEL_DIRNAME+'/data/halos_z0.38.fits'
+
+        with fits.open(halo_file_name) as tbhdu:
+            halos = tbhdu[1].data[:10]
+        result = populate(model, log10Mstar_min, halos, z, verbose=False)
+        _write_or_check(
+            model, 'populate', result, computeRef, qty_to_check='log10Mstar')
+
+        return
+
+
+
 
     if "Lambda" in actions:
         """ X-ray cooling function
         """
         result = collections.OrderedDict()
 
-        result['TGas'] = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(0.8e1), 100))
+        result['TGas'] = pow(10.0, np.linspace(
+            np.log10(1.01e-1), np.log10(0.8e1), 100))
         result['Lambda'] = LambdaBolo(result['TGas'], 0.15)
         result['Lambda_0_00'] = LambdaBolo(result['TGas'], 0.00)
         result['Lambda_0_40'] = LambdaBolo(result['TGas'], 0.40)
 
-        writeOrCheck(model, 'Lambda', result, computeRef)
+        _write_or_check(model, 'Lambda', result, computeRef)
 
     if "LxToCR" in actions:
         """ CR to Lx conversion
         """
         result = collections.OrderedDict()
 
-        result['TGas'] = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(0.8e1), 100))
+        result['TGas'] = pow(10.0, np.linspace(
+            np.log10(1.01e-1), np.log10(0.8e1), 100))
         TGas = pow(10.0, np.linspace(np.log10(1.01e-1), np.log10(1.e1), 100))
         result['LxToCR'] = LxToCR(model, result['TGas'], 0.15)
         result['LxToCR_0_00'] = LxToCR(model, result['TGas'], 0.00)
         result['LxToCR_0_40'] = LxToCR(model, result['TGas'], 0.40)
 
-        writeOrCheck(model, 'LxToCR', result, computeRef)
+        _write_or_check(model, 'LxToCR', result, computeRef)
         # formats={'LxToCR_0_00':'%.8g', 'LxToCR_0_15':'%.8g', 'LxToCR_0_40':'%.8g'}
 
     if "uIx" in actions:
@@ -732,12 +733,13 @@ def test():
         """
         result = collections.OrderedDict()
 
-        result['k'] = pow(10.0, np.linspace(np.log10(2.e-3), np.log10(1.e4), 100))
+        result['k'] = pow(10.0, np.linspace(
+            np.log10(2.e-3), np.log10(1.e4), 100))
         result['uIx'] = np.asarray(np.zeros(len(result['k'])), dtype=np.float64)
         for i in range(len(k)):
             result['uIx'][i] = C_HALOMODEL.uIx(model, k[i], 1.e14, np.nan, z)
 
-        writeOrCheck(model, 'uIx', result, computeRef)
+        _write_or_check(model, 'uIx', result, computeRef)
 
     if "SigmaIx_HOD" in actions:
         """ X-ray projected profile, HOD model
@@ -748,13 +750,19 @@ def test():
         model.IxXB_CR = 6.56997872802e-05
 
         result['theta'] = pow(10.0, np.linspace(-4.0, 5.0, 100))
-        result['SigmaIx_HOD'] = SigmaIx(model, result['theta'] , np.nan, np.nan, z, obs_type="all", PSF=None)
-        result['cen'] = SigmaIx(model, result['theta'] , np.nan, np.nan, z, obs_type="cen", PSF=None)
-        result['sat'] = SigmaIx(model, result['theta'] , np.nan, np.nan, z, obs_type="sat", PSF=None)
-        result['XB'] = SigmaIx(model, result['theta'] , np.nan, np.nan, z, obs_type="XB", PSF=None)
-        result['twohalo'] = SigmaIx(model, result['theta'] , np.nan, np.nan, z, obs_type="twohalo", PSF=None)
+        result['SigmaIx_HOD'] = SigmaIx(
+            model, result['theta'], np.nan, np.nan, z, obs_type="all", PSF=None)
+        result['cen'] = SigmaIx(
+            model, result['theta'], np.nan, np.nan, z, obs_type="cen", PSF=None)
+        result['sat'] = SigmaIx(
+            model, result['theta'], np.nan, np.nan, z, obs_type="sat", PSF=None)
+        result['XB'] = SigmaIx(
+            model, result['theta'] , np.nan, np.nan, z, obs_type="XB", PSF=None)
+        result['twohalo'] = SigmaIx(
+            model, result['theta'] , np.nan, np.nan, z,
+            obs_type="twohalo", PSF=None)
 
-        writeOrCheck(model, 'SigmaIx_HOD', result, computeRef)
+        _write_or_check(model, 'SigmaIx_HOD', result, computeRef)
 
     if "SigmaIx" in actions:
         """ X-ray projected profile no
@@ -766,7 +774,10 @@ def test():
         c = np.nan
         PSF = [0.00211586211541, 1.851542]
 
-        modelNoHOD = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=0, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+        modelNoHOD = Model(
+            Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441,
+            sigma_8 = 0.796, n_s = 0.963, hod=0, massDef="M200m",
+            concenDef="TJ03", hmfDef="T08", biasDef="T08")
 
         result['R500'] = C_HALOMODEL.rh(modelNoHOD, Mh, Delta(model, z, "M500c"), z)
 
@@ -777,25 +788,34 @@ def test():
         modelNoHOD.IxXB_CR = 6.56997872802e-05
 
         result['theta'] = pow(10.0, np.linspace(-4.0, 2,0, 100))
-        result['SigmaIx'] = SigmaIx(model, result['theta'], Mh, c, z, obs_type="all", PSF=None)
-        result['cen'] = SigmaIx(model, result['theta'], Mh, c, z, obs_type="cen", PSF=PSF)
-        result['sat'] = SigmaIx(model, result['theta'], Mh, c, z, obs_type="sat", PSF=None)
-        result['XB'] = SigmaIx(model, result['theta'], Mh, c, z, obs_type="XB", PSF=None)
-        result['twohalo'] = SigmaIx(model, result['theta'], Mh, c, z, obs_type="twohalo", PSF=None)
+        result['SigmaIx'] = SigmaIx(
+            model, result['theta'], Mh, c, z, obs_type="all", PSF=None)
+        result['cen'] = SigmaIx(
+            model, result['theta'], Mh, c, z, obs_type="cen", PSF=PSF)
+        result['sat'] = SigmaIx(
+            model, result['theta'], Mh, c, z, obs_type="sat", PSF=None)
+        result['XB'] = SigmaIx(
+            model, result['theta'], Mh, c, z, obs_type="XB", PSF=None)
+        result['twohalo'] = SigmaIx(
+            model, result['theta'], Mh, c, z, obs_type="twohalo", PSF=None)
 
-        writeOrCheck(modelHOD_nonPara, 'SigmaIx', result, computeRef)
-
+        _write_or_check(modelHOD_nonPara, 'SigmaIx', result, computeRef)
 
     if "SigmaIx_HOD_nonPara" in actions:
         """ X-ray projected profile, HOD model
         """
         result = collections.OrderedDict()
 
-        modelHOD_nonPara = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963, hod=0, massDef="M200m", concenDef="TJ03", hmfDef="T08", biasDef="T08")
+        modelHOD_nonPara = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0,
+            Omega_b = 0.0441, sigma_8 = 0.796, n_s = 0.963,
+            hod=0, massDef="M200m", concenDef="TJ03",
+            hmfDef="T08", biasDef="T08")
 
         """ set non parametric HODs
         """
-        cen = ascii.read(HALOMODEL_DIRNAME+"/data/HOD_0.20_0.35_cen_M200m_Mstar_11.30_11.45.ascii", format="no_header")
+        cen = ascii.read(HALOMODEL_DIRNAME
+            +"/data/HOD_0.20_0.35_cen_M200m_Mstar_11.30_11.45.ascii",
+            format="no_header")
 
 
         # TODO correct below
@@ -806,7 +826,9 @@ def test():
         modelHOD_nonPara.HOD_cen_log10Mh = np.ctypeslib.as_ctypes(cen["col1"])
         modelHOD_nonPara.HOD_cen_Ngal = np.ctypeslib.as_ctypes(cen["col2"])
 
-        sat = ascii.read(HALOMODEL_DIRNAME+"/data/HOD_0.20_0.35_sat_M200m_Mstar_11.30_11.45.ascii", format="no_header")
+        sat = ascii.read(HALOMODEL_DIRNAME
+            +"/data/HOD_0.20_0.35_sat_M200m_Mstar_11.30_11.45.ascii",
+            format="no_header")
 
         # TODO correct below
         # sat["col1"] += 1.0*model.log10h
@@ -820,13 +842,22 @@ def test():
         modelHOD_nonPara.IxXB_CR = -1.0
 
         result['theta'] = pow(10.0, np.linspace(-4.0, 5.0, 100))
-        result['SigmaIx_HOD'] = SigmaIx(modelHOD_nonPara, result['theta'], np.nan, np.nan, z, obs_type="all", PSF=None)
-        result['cen'] = SigmaIx(modelHOD_nonPara, result['theta'], np.nan, np.nan, z, obs_type="cen", PSF=None)
-        result['sat'] = SigmaIx(modelHOD_nonPara, result['theta'], np.nan, np.nan, z, obs_type="sat", PSF=None)
-        result['XB'] = SigmaIx(modelHOD_nonPara, result['theta'], np.nan, np.nan, z, obs_type="XB", PSF=None)
-        result['twohalo'] = SigmaIx(modelHOD_nonPara, result['theta'], np.nan, np.nan, z, obs_type="twohalo", PSF=None)
+        result['SigmaIx_HOD'] = SigmaIx(
+            modelHOD_nonPara, result['theta'], np.nan,
+            np.nan, z, obs_type="all", PSF=None)
+        result['cen'] = SigmaIx(
+            modelHOD_nonPara, result['theta'], np.nan,
+            np.nan, z, obs_type="cen", PSF=None)
+        result['sat'] = SigmaIx(
+            modelHOD_nonPara, result['theta'], np.nan,
+            np.nan, z, obs_type="sat", PSF=None)
+        result['XB'] = SigmaIx(
+            modelHOD_nonPara, result['theta'], np.nan,
+            np.nan, z, obs_type="XB", PSF=None)
+        result['twohalo'] = SigmaIx(modelHOD_nonPara,
+            result['theta'], np.nan, np.nan, z, obs_type="twohalo", PSF=None)
 
-        writeOrCheck(modelHOD_nonPara, 'SigmaIx_HOD', result, computeRef)
+        _write_or_check(modelHOD_nonPara, 'SigmaIx_HOD', result, computeRef)
 
         del modelHOD_nonPara
 
@@ -846,14 +877,15 @@ def test():
 
     return
 
-def writeOrCheck(model, action, result, computeRef, decimal=6):
-    """ Write or check a given action
+def _write_or_check(
+        model, action, result, computeRef, decimal=6, qty_to_check=None):
+    """ Write or check outputs of the test() function.
     """
-    import traceback
 
-    """ how the messages
-    should appear on screen
-    """
+    if qty_to_check is None:
+        qty_to_check = action
+
+    # how the messages should appear on screen
     OK_MESSAGE = "OK\n"
     FAIL_MESSAGE = "FAILED\n"
     DONE_MESSAGE = "DONE\n"
@@ -862,18 +894,21 @@ def writeOrCheck(model, action, result, computeRef, decimal=6):
         if isinstance(result[k], (int, float)):
             result[k] = [result[k]]
 
-    fileOutName = HALOMODEL_DIRNAME+'/test/'+action+'_ref.ascii'
+    fileOutName = HALOMODEL_DIRNAME+'/data/tests/'+action+'_ref.ascii'
     if computeRef:
         sys.stderr.write('Computing reference for '+action+':')
-        ascii.write(result, fileOutName, format="commented_header", overwrite=True)
+        ascii.write(
+            result, fileOutName, format="commented_header", overwrite=True)
         dumpModel(model, fileOutName=fileOutName)
         sys.stderr.write(bcolors.OKGREEN+DONE_MESSAGE+bcolors.ENDC)
     else:
         sys.stderr.write(action+':')
-        ref = ascii.read(fileOutName, format="commented_header", header_start=-1)
-
+        ref = ascii.read(
+            fileOutName, format="commented_header", header_start=-1)
         try:
-            np.testing.assert_array_almost_equal(result[action], ref[action], err_msg='in '+action, decimal=decimal)
+            np.testing.assert_array_almost_equal(
+                result[qty_to_check], ref[qty_to_check], err_msg='in '+action,
+                decimal=decimal)
         except:
             sys.stderr.write(bcolors.FAIL+FAIL_MESSAGE+bcolors.ENDC)
             traceback.print_exc()
@@ -932,22 +967,22 @@ main functions
 
 def populate(
         model, log10Mstar_min, halos, redshift,
-        verbose = False, MhLimits=None):
+        verbose = False, MhLimits=None, log10Mh_name='log10Mh'):
 
-    """ populate halos from input halo catalogue
-    and HOD set in model
+    """ Populate halos with galaxies from input
+    halo catalogue and HOD (set in model).
 
     INPUT
     model: cosmological and HOD model
     log10Mstar_min: lowest stellar mass limit
     halos: dictionary with the following keys:
         - 'log10Mh': log halo mass in h^-1 Msun
-        - 'X': x coordinate
-        - 'Y': y coordinate
-        - 'Z': z coordinate
+        - 'x': x coordinate
+        - 'y': y coordinate
+        - 'z': z coordinate
     redshift: mean redshift
-    MhLimits: [log10Mh_min, log10Mh_max], halo mass limits over which
-    HOD is populated
+    MhLimits: [log10Mh_min, log10Mh_max], halo
+    mass limits over which HOD is populated
 
     OUTPUT
     dictionary with coordinates, masses and types
@@ -957,42 +992,42 @@ def populate(
     log10Mh in log10(Mstar/[h^-1 Msun]]
     """
 
+    # dictionary to be output
     galaxies = collections.OrderedDict({
-        'log10Mstar': [], 'X': [], 'Y': [], 'Z': [],
+        'log10Mstar': [], 'x': [], 'y': [], 'z': [],
         'cen': [], 'log10Mh': []
         })
 
     # interpolate phi(log10Mstar|log10Mh)
-    cumHODCen = interpolateCumHOD(
+    cum_prob_HOD_cen = func_cum_prob_HOD(
         model, log10Mstar_min = log10Mstar_min,
         obs_type="cen", MhLimits=MhLimits)
-    cumHODSat = interpolateCumHOD(
+    cum_prob_HOD_sat = func_cum_prob_HOD(
         model, log10Mstar_min = log10Mstar_min,
                 obs_type="sat", MhLimits=MhLimits)
 
     # interpolate DM profiles (for satellites)
-    cumRhoHalo = interpolateCumRhoHalo(
+    cum_prob_rho_Halo = func_cum_prob_rho_halo(
         model, redshift, log10Mstar_min = log10Mstar_min)
 
-    # loop over halos
     Nh = len(halos['log10Mh'])
-    if verbose:
-        sys.stderr.write("\r" + "Populated {0:d}/{1:d} halos".format(0, Nh))
-        sys.stderr.flush()
 
+    if verbose:
+        sys.stdout.write('\rPopulated {0:d}/{1:d} halos'.format(0, Nh))
+        sys.stdout.flush()
+
+    # loop over halos
     for count, (log10Mh, x, y, z) in enumerate(
-        zip(halos['log10Mh'], halos['X'], halos['Y'], halos['Z'])):
+        zip(halos[log10Mh_name], halos['x'], halos['y'], halos['z'])):
 
         # centrals
-        galaxies['log10Mstar'].append(cumHODCen(log10Mh, np.random.rand())[0])
-        galaxies['X'].append(x)
-        galaxies['Y'].append(y)
-        galaxies['Z'].append(z)
+        galaxies['log10Mstar'].append(cum_prob_HOD_cen(
+            log10Mh, np.random.rand())[0])
+        galaxies['x'].append(x)
+        galaxies['y'].append(y)
+        galaxies['z'].append(z)
         galaxies['cen'].append(1)
         galaxies['log10Mh'].append(log10Mh)
-
-        # satellites
-        # print log10Mh, Ngal(model, log10Mh, log10Mstar_min, -1.0, obs_type='sat')
 
         # number of satellites
         Nsat = np.random.poisson(
@@ -1000,41 +1035,48 @@ def populate(
 
         if Nsat > 0:
 
-            log10Mstar = cumHODSat(log10Mh, np.random.rand(Nsat)).flatten()
+            # Mstar distrubution within halo
+            log10Mstar = cum_prob_HOD_sat(
+                log10Mh, np.random.rand(Nsat)).flatten()
 
             # radius and angle
-            r = pow(10.0, cumRhoHalo(log10Mh, np.random.rand(Nsat))).flatten()
+            r = pow(10.0, cum_prob_rho_Halo(
+                log10Mh, np.random.rand(Nsat))).flatten()
             ra = np.random.rand(Nsat)*2.0*np.pi
             dec = np.random.rand(Nsat)*2.0-1.0
             dec = np.arcsin(dec)
 
+            # set galaxies
             for i in range(Nsat):
                 galaxies['log10Mstar'].append(log10Mstar[i])
-                galaxies['X'].append(x+r[i]*np.cos(ra[i])*np.cos(dec[i]))
-                galaxies['Y'].append(y+r[i]*np.sin(ra[i])*np.cos(dec[i]))
-                galaxies['Z'].append(z+r[i]*np.sin(-dec[i]))
+                galaxies['x'].append(x+r[i]*np.cos(ra[i])*np.cos(dec[i]))
+                galaxies['y'].append(y+r[i]*np.sin(ra[i])*np.cos(dec[i]))
+                galaxies['z'].append(z+r[i]*np.sin(-dec[i]))
                 galaxies['cen'].append(0)
                 galaxies['log10Mh'].append(log10Mh)
 
         if verbose:
             if (count+1)%1000 == 0:
-                sys.stderr.write("\r" + "Populated {0:d}/{1:d} halos".format(count+1, Nh))
-                sys.stderr.flush()
-
+                sys.stdout.write(
+                    '\rPopulated {0:d}/{1:d} halos'.format(count+1, Nh))
+                sys.stdout.flush()
 
     if verbose:
-        sys.stderr.write("\r" + "Populated {0:d}/{1:d} halos\n".format(Nh, Nh))
+        sys.stdout.write('\rPopulated {0:d}/{1:d} halos\n'.format(Nh, Nh))
 
+    # convert to numpy arrays
     for k in galaxies:
         galaxies[k] = np.array(galaxies[k])
 
     return galaxies
 
 
-def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False, MhLimits=None):
-    """ return function to interpolated
-    cumulative HOD (Mstar_inv) as a function
-    of [0:1] and logMstar.
+def func_cum_prob_HOD(
+        model, log10Mstar_min = 5.0, obs_type="cen",
+        plot=False, MhLimits=None):
+
+    """ Return a function to interpolate
+    cumulative HOD (Mstar_inv).
 
     For a given log10Mh and random number
     number between 0 and 1, this function then
@@ -1042,75 +1084,83 @@ def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False, M
     given by the HOD model.
     """
 
-    import scipy.interpolate as interpolate
+    # dimensions in both directions
+    Nlog10Mstar = 400
+    Nlog10Mh = 400
 
-    """ dimensions in both directions
-    """
-    Nlog10Mstar = 200
-    Nlog10Mh = 200
-
-    """ grids
-    """
+    # grids
     log10Mstar = np.linspace(log10Mstar_min, 12.50, Nlog10Mstar)
     if MhLimits is not None:
         log10Mh = np.linspace(MhLimits[0], MhLimits[1], Nlog10Mh)
     else:
-        log10Mh = np.linspace(msmh_log10Mh(model, log10Mstar[0]), 16.0, Nlog10Mh)
+        log10Mh = np.linspace(
+            msmh_log10Mh(model, log10Mstar[0]), 16.0, Nlog10Mh)
     log10Mstar_inv = np.linspace(0.0, 1.0, Nlog10Mstar)
 
-    # print log10Mh
-
-
+    # cumulative sums and 2D probability
     cs_2D = np.zeros(Nlog10Mh*Nlog10Mstar)
     prob_2D = np.zeros((Nlog10Mh,Nlog10Mstar))
     cs = np.zeros(Nlog10Mstar)
 
+    # loop over halo masses
     for i,m in enumerate(log10Mh):
 
-        """ probability of Mstar given Mh
-        TODO: not normalised, why??
-        """
+        # probability of Mstar given Mh
+        # TODO: not normalised, why??
         prob = phi(model, log10Mstar, m, obs_type=obs_type)
 
         if np.sum(prob) < 1.e-8:
             prob[:] = 1.0
 
-        """ commulative function
-        """
+        # commulative function
         cs[1:] = np.cumsum(np.diff(log10Mstar)*(prob[:-1]+prob[1:])/2.0)
 
         if np.sum(cs) < 1.e-8:
             cs[:] = 1.0
 
-        """ normalise
-        """
+        # normalise
         cs /= max(cs)
         prob /= np.trapz(prob, log10Mstar)
 
-        """ inverse cumulative function
-        """
+        # inverse cumulative function
         select = prob > 1.e-8
 
-        cs_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(log10Mstar_inv, cs[select], log10Mstar[select])
+        cs_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(
+            log10Mstar_inv, cs[select], log10Mstar[select])
 
-        # prob_2D[i,:] = prob
         prob_2D[i,:] = cs/max(cs)
-        # prob_2D[i:] = np.interp(log10Mstar_inv, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
+
+        # DEBUGGING
+        """
+        prob_2D[i:] = np.interp(
+            log10Mstar_inv, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
+        prob_2D[i,:] = prob
+        """
 
     if plot:
-        import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(6.0, 5.0))
-        im = ax.imshow(prob_2D, cmap=plt.cm.viridis, interpolation='nearest', origin='lower')
+        im = ax.imshow(
+            prob_2D, cmap=plt.cm.viridis,
+            interpolation='nearest', origin='lower')
 
-        x_int = int(Nlog10Mstar/10)
-        y_int = int(Nlog10Mh/10)
+        x_int = Nlog10Mstar//10
+        y_int = Nlog10Mh//10
 
-        ax.xaxis.set_ticks(np.arange(0, Nlog10Mstar, y_int))
-        ax.xaxis.set_ticklabels(["{0:4.2f}".format(b) for b in log10Mstar[np.arange(0, Nlog10Mstar, x_int)]], rotation=45)
+        xticks = np.arange(0, Nlog10Mstar, x_int)
+        xticklabels = ["{0:4.2f}".format(b) for b in log10Mstar[xticks]]
 
-        ax.yaxis.set_ticks(np.arange(0, Nlog10Mh, y_int))
-        ax.yaxis.set_ticklabels(["{0:4.2f}".format(b) for b in log10Mh[np.arange(0, Nlog10Mh, y_int)]] )
+        yticks = np.arange(0, Nlog10Mh, y_int)
+        yticklabels = ["{0:4.2f}".format(b) for b in log10Mh[yticks]]
+
+        ax.xaxis.set_ticks(xticks)
+        ax.xaxis.set_ticklabels(xticklabels, rotation=45)
+
+        ax.yaxis.set_ticks(yticks)
+        ax.yaxis.set_ticklabels(yticklabels)
+
+        ax.set_xlabel('log10Mstar')
+        ax.set_ylabel('log10Mh')
 
         fig.set_tight_layout(True)
         fig.savefig('graph.pdf')
@@ -1118,8 +1168,8 @@ def interpolateCumHOD(model, log10Mstar_min = 5.0, obs_type="cen", plot=False, M
     return interpolate.interp2d(log10Mh, log10Mstar_inv, cs_2D, kind='linear')
 
 
-def interpolateCumRhoHalo(model, z, log10Mstar_min = 5.0, plot=False):
-    """ return function to interpolate
+def func_cum_prob_rho_halo(model, z, log10Mstar_min = 5.0, plot=False):
+    """ Return function to interpolate
     cumulative halo profile probability
     to populate satellites in halos.
 
@@ -1135,16 +1185,14 @@ def interpolateCumRhoHalo(model, z, log10Mstar_min = 5.0, plot=False):
 
     import scipy.interpolate as interpolate
 
-    """ dimensions in both directions
-    """
-    Nlog10r = 200
+    # dimensions in both directions
+    Nlog10r = 400
     Nlog10Mh = 400
 
-    """ grids
-    """
-
+    # grids
     log10Mh = np.linspace(msmh_log10Mh(model, log10Mstar_min), 16.0, Nlog10Mh)
-    log10r = np.linspace(-3.0, np.log10(rh(model, pow(10.0, log10Mh[-1]), z)), Nlog10r)
+    log10r = np.linspace(
+        -3.0, np.log10(rh(model, pow(10.0, log10Mh[-1]), z)), Nlog10r)
     log10r_inv = np.linspace(0.0, 1.0, Nlog10r)
 
     r = pow(10.0, log10r)
@@ -1155,43 +1203,56 @@ def interpolateCumRhoHalo(model, z, log10Mstar_min = 5.0, plot=False):
 
     for i,m in enumerate(log10Mh):
 
-        """ normalised probability of position
-        (= normalised NFW profile x r^2 x 4 pi x r [because log scale])
-        """
-        prob = rhoHalo(model, r, m, z) / pow(10.0, m) * r**2 * 4.0 * np.pi * r * np.log(10.0)
+        # normalised probability of position
+        # (= normalised NFW profile x r^2 x 4 pi x r
+        # [because log scale])
+        prob = rhoHalo(model, r, m, z) \
+            /pow(10.0, m) * r**2 * 4.0 * np.pi * r * np.log(10.0)
 
-        """ commulative function
-        """
+        # commulative function
         cs[1:] = np.cumsum(np.diff(log10r)*(prob[:-1]+prob[1:])/2.0)
 
-        """ renormalise in case
-        probability goes beyond limits
-        """
+        # renormalise in case
+        # probability goes beyond limits
         cs /= max(cs)
 
-        """ inverse cumulative function
-        """
+        # inverse cumulative function
         select = prob > 1.e-8
-        cs_2D[i*Nlog10r:(i+1)*Nlog10r] = np.interp(log10r_inv, cs[select], log10r[select])
+        cs_2D[i*Nlog10r:(i+1)*Nlog10r] = np.interp(
+            log10r_inv, cs[select], log10r[select])
 
-        prob_2D[i,:] = prob
         prob_2D[i,:] = cs # /max(cs)
-        # prob_2D[i:] = np.interp(log10Mstar_inv, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
+
+        # DEBUGGING
+        """
+        prob_2D[i,:] = prob
+        prob_2D[i:] = np.interp(
+            log10Mstar_inv, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
+        """
 
     if plot:
-        import matplotlib.pyplot as plt
-
         fig, ax = plt.subplots(figsize=(6.0, 5.0))
-        im = ax.imshow(prob_2D, cmap=plt.cm.viridis, interpolation='nearest', origin='lower')
+        im = ax.imshow(
+            prob_2D, cmap=plt.cm.viridis,
+            interpolation='nearest', origin='lower')
 
-        x_int = int(Nlog10r/10)
-        y_int = int(Nlog10Mh/10)
+        x_int = Nlog10r//10
+        y_int = Nlog10Mh//10
 
-        ax.xaxis.set_ticks(np.arange(0, Nlog10r, y_int))
-        ax.xaxis.set_ticklabels(["{0:4.2f}".format(b) for b in log10r[np.arange(0, Nlog10r, x_int)]], rotation=45)
+        xticks = np.arange(0, Nlog10r, x_int)
+        xticklabels = ["{0:4.2f}".format(b) for b in log10r[xticks]]
 
-        ax.yaxis.set_ticks(np.arange(0, Nlog10Mh, y_int))
-        ax.yaxis.set_ticklabels(["{0:4.2f}".format(b) for b in log10Mh[np.arange(0, Nlog10Mh, y_int)]] )
+        yticks = np.arange(0, Nlog10Mh, y_int)
+        yticklabels = ["{0:4.2f}".format(b) for b in log10Mh[yticks]]
+
+        ax.xaxis.set_ticks(xticks)
+        ax.xaxis.set_ticklabels(xticklabels, rotation=45)
+
+        ax.yaxis.set_ticks(yticks)
+        ax.yaxis.set_ticklabels(yticklabels)
+
+        ax.set_xlabel('log10r')
+        ax.set_ylabel('log10Mh')
 
         fig.set_tight_layout(True)
         fig.savefig('graph.pdf')

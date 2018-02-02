@@ -330,11 +330,6 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-C_HALOMODEL.dndlnMh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double]
-C_HALOMODEL.dndlnMh.restype = ctypes.c_double
-C_HALOMODEL.DeltaSigma.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
-C_HALOMODEL.wOfTheta.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
-C_HALOMODEL.wOfThetaFromXi.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int,  np.ctypeslib.ndpointer(dtype = np.float64), np.ctypeslib.ndpointer(dtype = np.float64)]
 C_HALOMODEL.xi_gg.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 C_HALOMODEL.SigmaIx.argtypes = [ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)]
 C_HALOMODEL.rh.argtypes = [ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double, ctypes.c_double]
@@ -428,7 +423,7 @@ test
 """
 
 def test():
-    """ Perform basic tests
+    """ Perform basic tests.
     """
 
     """ computeRef = True will compute and write
@@ -445,8 +440,6 @@ def test():
         'Ngal', 'MsMh', 'concen', 'mass_conv', 'xi_dm',
         'uHalo', 'smf', 'ggl_HOD', 'wtheta_HOD', 'populate'
         ]
-
-    # actions = ['MsMh']
 
     # TODO
     """
@@ -494,9 +487,9 @@ def test():
     from astropy.cosmology import FlatLambdaCDM
     cosmo = FlatLambdaCDM(H0=model.H0, Om0=model.Omega_m)
 
+    # satellite HOD times the stellar mass
     if 'satContrib' in actions:
-        """ satellite HOD times the stellar mass
-        """
+
         result = collections.OrderedDict()
 
         result['log10Mstar'] = np.linspace(7.0, 12.0, 100)
@@ -505,9 +498,9 @@ def test():
             result['log10Mstar'], z, obs_type="sat")
         _write_or_check(model, 'satContrib', result, computeRef)
 
+    # look back time
     if 'lookbackTime' in actions:
-        """ look back time
-        """
+
         result = collections.OrderedDict()
 
         result['lookbackTime'] = C_HALOMODEL.lookbackTime(model, z)
@@ -516,19 +509,18 @@ def test():
         result['lookbackTimeAstropy'] = cosmo.lookback_time([z]).value
         _write_or_check(model, 'lookbackTime', result, computeRef)
 
+    # angular diameter distance
     if 'dist' in actions:
-        """ angular diameter distance
-        """
+
         result = collections.OrderedDict()
 
         result['dist'] =  C_HALOMODEL.DA(model, z, 0)/model.h
         result['distAstropy'] = cosmo.angular_diameter_distance([z]).value
         _write_or_check(model, 'dist', result, computeRef)
 
+    # check whether the HOD
     if 'change_HOD' in actions:
-        """ check whether the HOD
-        model has changed
-        """
+
         result = collections.OrderedDict()
 
         model2 = Model(
@@ -540,19 +532,18 @@ def test():
 
         del model2
 
+    # HOD's N(Mh)
     if 'Ngal' in actions:
-        """ HOD's N(Mh)
-        """
+
         result = collections.OrderedDict()
 
         result['log10Mh'] = np.linspace(10.0, 15.0, 100)
         result['N'] = Ngal(model, result['log10Mh'], 10.0, 11.0, obs_type='all')
         _write_or_check(model, 'Ngal', result, computeRef, qty_to_check='N')
 
+    # Stellar mass halo mass
     if 'MsMh' in actions:
-        """ Stellar mass halo mass
-        relation
-        """
+
         result = collections.OrderedDict()
 
         result['log10Mh'] = np.linspace(10.0, 15.0, 100)
@@ -560,29 +551,27 @@ def test():
         _write_or_check(
             model, 'MsMh', result, computeRef, qty_to_check='log10Mstar')
 
+    # halo concentration relationship
     if 'concen' in actions:
-        """ halo concentration
-        relationship
-        """
+
         result = collections.OrderedDict()
 
         result['concentration'] = concentration(
             model, 1.e14, z, concenDef="TJ03")
         _write_or_check(model, 'concentration', result, computeRef)
 
+    # mass conversion
     if 'mass_conv' in actions:
-        """ mass conversion
-        """
+
         result = collections.OrderedDict()
 
         result['mass_conv'] = log10M1_to_log10M2(
             model, 13.0, None, "M200m", "M500c", z)
         _write_or_check(model, 'mass_conv', result, computeRef)
 
+    # matter two-point
     if 'xi_dm' in actions:
-        """ matter two-point
-        correlation function
-        """
+
         result = collections.OrderedDict()
 
         result['r'] = pow(10.0, np.linspace(
@@ -590,9 +579,9 @@ def test():
         result['xi_dm'] = xi_dm(model, result['r'], z)
         _write_or_check(model, 'xi_dm', result, computeRef)
 
+    # Fourrier transform of halo profile
     if 'uHalo' in actions:
-        """ Fourrier transform of halo profile
-        """
+
         result = collections.OrderedDict()
 
         result['k'] =  pow(10.0, np.linspace(
@@ -608,9 +597,9 @@ def test():
                 model, result['k'][i], 1.e14, np.nan, z)
         _write_or_check(model, 'uHalo', result, computeRef)
 
+    # stellar mass function
     if 'smf' in actions:
-        """ stellar mass function
-        """
+
         result = collections.OrderedDict()
 
         result['log10Mstar'] = np.linspace(9.0, 12.0, 100)
@@ -618,9 +607,9 @@ def test():
             model, result['log10Mstar'], z, obs_type="all")
         _write_or_check(model, 'smf', result, computeRef)
 
+    # Galaxy-galaxy lensing, HOD model
     if 'ggl_HOD' in actions:
-        """ Galaxy-galaxy lensing, HOD model
-        """
+
         result = collections.OrderedDict()
 
         result['R'] = pow(10.0, np.linspace(3.0, 2.0, 100))
@@ -632,9 +621,9 @@ def test():
             model, result['R'], z, obs_type="twohalo")
         _write_or_check(model, 'ggl_HOD', result, computeRef)
 
+    # Galaxy-galaxy lensing, no HOD
     if "ggl" in actions:
-        """ Galaxy-galaxy lensing, no HOD
-        """
+
         result = collections.OrderedDict()
 
         modelNoHOD = Model(
@@ -656,9 +645,9 @@ def test():
 
         del modelNoHOD
 
+    # W(theta) HOD model
     if "wtheta_HOD" in actions:
-        """ W(theta) HOD model
-        """
+
         result = collections.OrderedDict()
 
         loadWtheta_nz(model, HALOMODEL_DIRNAME+"/data/wtheta_nz.ascii")
@@ -695,14 +684,9 @@ def test():
         _write_or_check(
             model, 'populate', result, computeRef, qty_to_check='log10Mstar')
 
-        return
-
-
-
-
+    # X-ray cooling function
     if "Lambda" in actions:
-        """ X-ray cooling function
-        """
+
         result = collections.OrderedDict()
 
         result['TGas'] = pow(10.0, np.linspace(
@@ -713,9 +697,9 @@ def test():
 
         _write_or_check(model, 'Lambda', result, computeRef)
 
+    # CR to Lx conversion
     if "LxToCR" in actions:
-        """ CR to Lx conversion
-        """
+
         result = collections.OrderedDict()
 
         result['TGas'] = pow(10.0, np.linspace(
@@ -728,9 +712,9 @@ def test():
         _write_or_check(model, 'LxToCR', result, computeRef)
         # formats={'LxToCR_0_00':'%.8g', 'LxToCR_0_15':'%.8g', 'LxToCR_0_40':'%.8g'}
 
+    # Fourrier transform of X-ray profile
     if "uIx" in actions:
-        """ Fourrier transform of X-ray profile
-        """
+
         result = collections.OrderedDict()
 
         result['k'] = pow(10.0, np.linspace(
@@ -741,9 +725,9 @@ def test():
 
         _write_or_check(model, 'uIx', result, computeRef)
 
+    # X-ray projected profile, HOD model
     if "SigmaIx_HOD" in actions:
-        """ X-ray projected profile, HOD model
-        """
+
         result = collections.OrderedDict()
 
         model.IxXB_Re = 0.01196
@@ -764,10 +748,9 @@ def test():
 
         _write_or_check(model, 'SigmaIx_HOD', result, computeRef)
 
+    # X-ray projected profile no HOD model
     if "SigmaIx" in actions:
-        """ X-ray projected profile no
-        HOD model
-        """
+
         result = collections.OrderedDict()
 
         Mh = 1.e14
@@ -779,7 +762,8 @@ def test():
             sigma_8 = 0.796, n_s = 0.963, hod=0, massDef="M200m",
             concenDef="TJ03", hmfDef="T08", biasDef="T08")
 
-        result['R500'] = C_HALOMODEL.rh(modelNoHOD, Mh, Delta(model, z, "M500c"), z)
+        result['R500'] = C_HALOMODEL.rh(
+            modelNoHOD, Mh, Delta(model, z, "M500c"), z)
 
         modelNoHOD.gas_log10n0 = np.log10(5.3e-3)
         modelNoHOD.gas_log10beta = np.log10(0.40)
@@ -801,9 +785,9 @@ def test():
 
         _write_or_check(modelHOD_nonPara, 'SigmaIx', result, computeRef)
 
+    # X-ray projected profile, HOD model
     if "SigmaIx_HOD_nonPara" in actions:
-        """ X-ray projected profile, HOD model
-        """
+
         result = collections.OrderedDict()
 
         modelHOD_nonPara = Model(Omega_m=0.258, Omega_de=0.742, H0=72.0,
@@ -816,7 +800,6 @@ def test():
         cen = ascii.read(HALOMODEL_DIRNAME
             +"/data/HOD_0.20_0.35_cen_M200m_Mstar_11.30_11.45.ascii",
             format="no_header")
-
 
         # TODO correct below
         # cen["col1"] += 1.0*model.log10h
@@ -862,9 +845,7 @@ def test():
         del modelHOD_nonPara
 
 
-    """ sanity check: the model
-    should not have changed
-    """
+    # sanity check: the model should not have changed
     m2 = dumpModel(model)
     if printModelChanges:
         if m1 != m2:
@@ -1331,14 +1312,10 @@ C_HALOMODEL.xi_m.argtypes = [
     ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64),
     ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)
     ]
-C_HALOMODEL.xi_m_lin.argtypes = [
-    ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64),
-    ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)
-    ]
 def xi_dm(model, r, z):
     """ Wrapper for c-function xi_dm()
 
-    Returns the dark matter two-point correlation function
+    Return the dark matter two-point correlation function.
 
     ** Mpc in comoving units **
 
@@ -1357,10 +1334,14 @@ def xi_dm(model, r, z):
     return result
 
 
+C_HALOMODEL.xi_m_lin.argtypes = [
+    ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64),
+    ctypes.c_int, ctypes.c_double,  np.ctypeslib.ndpointer(dtype = np.float64)
+    ]
 def xi_dm_lin(model, r, z):
     """ Wrapper for c-function xi_dm_lin()
 
-    Returns the linear dark matter two-point correlation function.
+    Return the linear dark matter two-point correlation function.
 
     ** Mpc in comoving units **
 
@@ -1411,16 +1392,22 @@ def dndlog10Mstar(model, log10Mstar, z, obs_type="all"):
     elif obs_type == "all":
         obs_type = 3
     else:
-        raise ValueError("dndlog10Mstar: obs_type \"{0:s}\" is not recognised".format(obs_type))
+        raise ValueError(
+            "dndlog10Mstar: obs_type \"{0:s}\" is not recognised".format(obs_type))
 
     C_HALOMODEL.dndlog10Mstar(model, log10Mstar, len(log10Mstar), z, obs_type, result)
 
     return result
 
-def dndlnMh(model, log10Mh, z):
-    """ Wrapper for c-function dndlnMh()
 
-    Returns the stellar mass function in units of (Mpc/h)^-3 dex^-1
+C_HALOMODEL.dndlnMh.argtypes = [
+    ctypes.POINTER(Model), ctypes.c_double, ctypes.c_double
+    ]
+C_HALOMODEL.dndlnMh.restype = ctypes.c_double
+def dndlnMh(model, log10Mh, z):
+    """ Wrapper for c-function dndlnMh().
+
+    Return the stellar mass function in units of (Mpc/h)^-3 dex^-1
     Mh in [h^-1 Msun]
 
     ** volume in comoving units **
@@ -1444,9 +1431,14 @@ def dndlnMh(model, log10Mh, z):
     return result
 
 
+C_HALOMODEL.DeltaSigma.argtypes = [
+    ctypes.POINTER(Model), np.ctypeslib.ndpointer(dtype = np.float64),
+    ctypes.c_int, ctypes.c_double, ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype = np.float64)
+    ]
 def DeltaSigma(model, R, zl, obs_type="all"):
-    """ Returns DeltaSigma for NFW halo mass profile (in h Msun/pc^2) -
-    PHYSICAL UNITS, unless como=True set
+    """ Return DeltaSigma for NFW halo mass profile (in h Msun/pc^2) -
+    PHYSICAL UNITS, unless como=True set.
 
     ** DS and R in comoving units **
 
@@ -1480,12 +1472,13 @@ def DeltaSigma(model, R, zl, obs_type="all"):
     elif obs_type == "all":
         obs_type = 3
     else:
-        raise ValueError("DeltaSigma: obs_type \"{0:s}\" is not recognised".format(obs_type))
-
+        raise ValueError(
+            "DeltaSigma: obs_type \"{0:s}\" is not recognised".format(obs_type))
 
     C_HALOMODEL.DeltaSigma(model, R, len(R), zl, obs_type, result)
 
     return result
+
 
 def xi_gg(model, r, z, obs_type="all"):
     """ Returns xi_gg(r) for NFW halo mass profile -
@@ -1512,13 +1505,58 @@ def xi_gg(model, r, z, obs_type="all"):
     elif obs_type == "all":
         obs_type = 3
     else:
-        raise ValueError("xi(r): obs_type \"{0:s}\" is not recognised".format(obs_type))
+        raise ValueError(
+            'xi(r): obs_type \"{0:s}\" is not recognised'.format(obs_type))
 
     C_HALOMODEL.xi_gg(model, r, len(r), z, obs_type, result)
 
     return result
 
 
+C_HALOMODEL.wOfTheta.argtypes = [ctypes.POINTER(Model),
+    np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int,
+    ctypes.c_double, ctypes.c_int, np.ctypeslib.ndpointer(dtype = np.float64)
+    ]
+def wOfTheta(model, theta, z, obs_type="all"):
+    """ Return w(theta) for NFW halo mass profile.
+
+    INPUT PARAMETERS:
+    theta: (array or single value) in degree
+    z: mean redshift of the population
+
+    OUTPUT
+    w(theta)
+
+    obs_type: [censat, satsat, twohalo, all]
+    """
+
+    theta = np.asarray(theta, dtype=np.float64)
+    result = np.asarray(np.zeros(len(theta)), dtype=np.float64)
+
+    if obs_type == 'censat':
+        obs_type = 12
+    elif obs_type == 'satsat':
+        obs_type = 22
+    elif obs_type == 'twohalo':
+        obs_type = 33
+    elif obs_type == "all":
+        obs_type = 3
+    else:
+        raise ValueError(
+            'wOfTheta: obs_type "{0:s}" is not recognised'.format(obs_type))
+
+    C_HALOMODEL.wOfTheta(model, theta, len(theta), z, obs_type, result)
+
+    return result
+
+
+C_HALOMODEL.wOfThetaFromXi.argtypes = [ctypes.POINTER(Model),
+    np.ctypeslib.ndpointer(dtype = np.float64),
+    ctypes.c_int, ctypes.c_double,
+    np.ctypeslib.ndpointer(dtype = np.float64), ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype = np.float64),
+    np.ctypeslib.ndpointer(dtype = np.float64)
+    ]
 def wOfThetaFromXi(model, theta, z, r, xi):
     """ Returns w(theta) from input xi and n(z)
 
@@ -1542,36 +1580,6 @@ def wOfThetaFromXi(model, theta, z, r, xi):
     return result
 
 
-def wOfTheta(model, theta, z, obs_type="all"):
-    """ Returns w(theta) for NFW halo mass profile -
-
-    INPUT PARAMETERS:
-    theta: (array or single value) in degree
-    z: mean redshift of the population
-
-    OUTPUT
-    w(theta)
-
-    obs_type: [censat, satsat, twohalo, all]
-    """
-
-    theta = np.asarray(theta, dtype=np.float64)
-    result = np.asarray(np.zeros(len(theta)), dtype=np.float64)
-
-    if obs_type == "censat":
-        obs_type = 12
-    elif obs_type == "satsat":
-        obs_type = 22
-    elif obs_type == "twohalo":
-        obs_type = 33
-    elif obs_type == "all":
-        obs_type = 3
-    else:
-        raise ValueError("wOfTheta: obs_type \"{0:s}\" is not recognised".format(obs_type))
-
-    C_HALOMODEL.wOfTheta(model, theta, len(theta), z, obs_type, result)
-
-    return result
 
 
 def SigmaIx(model, theta, Mh, c, z, obs_type="all", PSF=None):

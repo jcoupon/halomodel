@@ -19,11 +19,10 @@ double phi_c(const Model *model, double log10Mstar, double log10Mh){
    double arg, result;
    double Mh = pow(10.0, log10Mh);
 
-
-   double dlog10Mstar = 0.01;
-   double dN = Ngal_c(model, Mh, log10Mstar-dlog10Mstar/2.0, -1.0) - Ngal_c(model, Mh, log10Mstar+dlog10Mstar/2.0, -1.0);
+   double dlog10Mstar = 1.e-3;
+   // double dN = Ngal_c(model, Mh, log10Mstar-dlog10Mstar/2.0, -1.0) - Ngal_c(model, Mh, log10Mstar+dlog10Mstar/2.0, -1.0);
+   double dN = Ngal_c(model, Mh, log10Mstar-dlog10Mstar/2.0,  log10Mstar+dlog10Mstar/2.0);
    result = dN/dlog10Mstar;
-
 
    /*
    double sigma_logM = sigma_log_M(model, log10Mstar);
@@ -42,8 +41,13 @@ double phi_s(const Model *model, double log10Mstar, double log10Mh){
    double arg, result;
    double Mh = pow(10.0, log10Mh);
 
-   double dlog10Mstar = 0.01;
-   double dN = Ngal_s(model, Mh, log10Mstar-dlog10Mstar/2.0, -1.0) - Ngal_s(model, Mh, log10Mstar+dlog10Mstar/2.0, -1.0);
+   // double dlog10Mstar = 0.01;
+   // double dN = Ngal_s(model, Mh, log10Mstar-dlog10Mstar/2.0, -1.0) - Ngal_s(model, Mh, log10Mstar+dlog10Mstar/2.0, -1.0);
+
+   // DEBUGGING
+   double dlog10Mstar = 1.e-3;
+   double dN = Ngal_s(model, Mh, log10Mstar-dlog10Mstar/2.0, log10Mstar+dlog10Mstar/2.0);
+
    result = dN/dlog10Mstar;
 
    return result;
@@ -131,7 +135,7 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
     *    Number of satellite galaxies per halo mass.
     */
 
-   double M0, log10Msat,log10Mcut, Msat, Mcut, result;
+   double M0, log10Msat,log10Mcut, Msat, Mcut, Mh_cen, result;
 
    if(Mh < 1.e6) return 0.0;
 
@@ -175,7 +179,12 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
    }else{
       Msat = pow(10.0, log10Msat);
       Mcut = pow(10.0, log10Mcut);
-      result = Ngal_c(model, Mh, log10Mstar_min, -1.0)*pow(Mh/Msat, model->alpha)*exp(-Mcut/Mh);
+      Mh_cen = pow(10.0, msmh_log10Mh(model, log10Mstar_min));
+      // result = Ngal_c(model, Mh, log10Mstar_min, -1.0)*pow(Mh/Msat, model->alpha)*exp(-Mcut/Mh);
+
+      // DEBUGGING
+      result = pow(Mh/Msat, model->alpha)*exp(-(Mcut+Mh_cen)/Mh);
+
    }
 
 
@@ -192,10 +201,16 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
       }else{
          Msat = pow(10.0, log10Msat);
          Mcut = pow(10.0, log10Mcut);
-         result -= Ngal_c(model, Mh, log10Mstar_max, -1.0)*pow(Mh/Msat, model->alpha) * exp(-Mcut/Mh);
+         Mh_cen = pow(10.0, msmh_log10Mh(model, log10Mstar_max));
+         // result -= Ngal_c(model, Mh, log10Mstar_max, -1.0)*pow(Mh/Msat, model->alpha) * exp(-Mcut/Mh);
+
+         // DEBUGGING
+         result -= pow(Mh/Msat, model->alpha)*exp(-(Mcut+Mh_cen)/Mh);
+
+
       }
    }
-
+   // return result;
    return MAX(0.0, result);
 }
 
@@ -310,7 +325,7 @@ double msmh_log10Mstar(const Model *model, double log10Mh){
     */
 
    int i, N = 64;
-   double log10Mstar_min = 4.0, log10Mstar_max = 13.0;
+   double log10Mstar_min = 3.0, log10Mstar_max = 13.0;
 
    static int firstcall = 1;
    static gsl_interp_accel *acc;

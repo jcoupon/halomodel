@@ -948,7 +948,7 @@ main functions
 
 def populate(
         model, log10Mstar_min, halos, redshift,
-        verbose = False, MhLimits=None, log10Mh_name='log10Mh'):
+        verbose = False, Mh_limits=None, log10Mh_name='log10Mh'):
 
     """ Populate halos with galaxies from input
     halo catalogue and HOD (set in model).
@@ -962,7 +962,7 @@ def populate(
         - 'y': y coordinate
         - 'z': z coordinate
     redshift: mean redshift
-    MhLimits: [log10Mh_min, log10Mh_max], halo
+    Mh_limits: [log10Mh_min, log10Mh_max], halo
     mass limits over which HOD is populated
 
     OUTPUT
@@ -982,10 +982,10 @@ def populate(
     # interpolate phi(log10Mstar|log10Mh)
     cum_prob_HOD_cen = func_cum_prob_HOD(
         model, log10Mstar_min = log10Mstar_min,
-        obs_type="cen", MhLimits=MhLimits)
+        obs_type="cen", Mh_limits=Mh_limits)
     cum_prob_HOD_sat = func_cum_prob_HOD(
         model, log10Mstar_min = log10Mstar_min,
-                obs_type="sat", MhLimits=MhLimits)
+                obs_type="sat", Mh_limits=Mh_limits)
 
     # interpolate DM profiles (for satellites)
     cum_prob_rho_Halo = func_cum_prob_rho_halo(
@@ -1053,8 +1053,8 @@ def populate(
 
 
 def func_cum_prob_HOD(
-        model, log10Mstar_min = 5.0, obs_type="cen",
-        plot=False, MhLimits=None):
+        model, log10Mstar_min = 6.0, obs_type="cen",
+        plot=False, Mh_limits=None):
 
     """ Return a function to interpolate
     cumulative HOD (Mstar_inv).
@@ -1063,19 +1063,26 @@ def func_cum_prob_HOD(
     number between 0 and 1, this function then
     returns a log10Mstar with the probability
     given by the HOD model.
+
+    The Mh_limits is not given, the minimum halo mass
+    is deduced from the Mstar-Mh relation (with +0.2
+    added to avoid truncated gaussian in Mstar at
+    given Mh)
+
     """
 
     # dimensions in both directions
-    Nlog10Mstar = 400
-    Nlog10Mh = 400
+    Nlog10Mstar = 600
+    Nlog10Mh = 600
 
     # grids
     log10Mstar = np.linspace(log10Mstar_min, 12.50, Nlog10Mstar)
-    if MhLimits is not None:
-        log10Mh = np.linspace(MhLimits[0], MhLimits[1], Nlog10Mh)
+    if Mh_limits is not None:
+        log10Mh = np.linspace(Mh_limits[0], Mh_limits[1], Nlog10Mh)
     else:
         log10Mh = np.linspace(
-            msmh_log10Mh(model, log10Mstar[0]), 16.0, Nlog10Mh)
+            msmh_log10Mh(model, log10Mstar[0])+0.2, 16.0, Nlog10Mh)
+
     log10Mstar_inv = np.linspace(0.0, 1.0, Nlog10Mstar)
 
     # cumulative sums and 2D probability
@@ -1087,32 +1094,32 @@ def func_cum_prob_HOD(
     for i,m in enumerate(log10Mh):
 
         # probability of Mstar given Mh
-        # TODO: not normalised, why??
         prob = phi(model, log10Mstar, m, obs_type=obs_type)
+        if obs_type == 'sat':
+            prob[prob < 1.e-1] = 0.0
 
-        if np.sum(prob) < 1.e-8:
-            prob[:] = 1.0
+        sum_prob = np.trapz(prob, log10Mstar)
 
-        # commulative function
-        cs[1:] = np.cumsum(np.diff(log10Mstar)*(prob[:-1]+prob[1:])/2.0)
+        # skip those halos with too few satallites
+        # or too low probability
+        if (Ngal(model, m, 5.0, 13.0, obs_type=obs_type) > 1.e-5) \
+            and (sum_prob > 0.0):
 
-        if np.sum(cs) < 1.e-8:
-            cs[:] = 1.0
+            # commulative function
+            cs[1:] = np.cumsum(np.diff(log10Mstar)*(prob[:-1]+prob[1:])/2.0)
 
-        # normalise
-        cs /= max(cs)
-        prob /= np.trapz(prob, log10Mstar)
+            # normalise
+            cs /= max(cs)
+            prob /= sum_prob
 
-        # inverse cumulative function
-        select = prob > 1.e-8
+            cs_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(
+                log10Mstar_inv, cs, log10Mstar)
 
-        cs_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(
-            log10Mstar_inv, cs[select], log10Mstar[select])
-
-        prob_2D[i,:] = cs/max(cs)
+            prob_2D[i,:] = prob
 
         # DEBUGGING
         """
+        prob_2D[i,:] = cs/max(cs)
         prob_2D[i:] = np.interp(
             log10Mstar_inv, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
         prob_2D[i,:] = prob

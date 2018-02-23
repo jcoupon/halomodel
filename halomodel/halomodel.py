@@ -338,7 +338,7 @@ class Model(ctypes.Structure):
         defaults = type(self)._defaults_
         assert type(defaults) is types.DictionaryType
 
-        # use defaults, but override with keyword arguments, if any
+        # use defaults
         values = defaults.copy()
         for k in values:
             setattr(self, k, values[k])

@@ -43,6 +43,7 @@ import inspect
 import collections
 import ctypes
 import traceback
+import types
 
 import scipy.interpolate as interpolate
 from astropy.io import fits,ascii
@@ -189,133 +190,170 @@ class Model(ctypes.Structure):
 
         ]
 
-    # default parameters
-    def __init__(
-            self, Omega_m=0.258, Omega_de=0.742, H0=72.0, Omega_b = 0.0441,
-            sigma_8 = 0.796, n_s = 0.963,  hod=0, massDef="M500c",
-            concenDef="TJ03", hmfDef="T08", biasDef="T08", haloExcl=1, **kwargs):
+
+
+    _defaults_ = {
 
         # cosmology
-        self.Omega_m = Omega_m
-        self.Omega_de = Omega_de
-        self.H0 = H0
-        self.h = self.H0/100.0
-        self.log10h = np.log10(self.h)
-        self.Omega_b = Omega_b
-        self.sigma_8 = sigma_8
-        self.n_s = n_s
+        'Omega_m' : 0.258,
+        'Omega_de' : 0.742,
+        'H0' : 72.0,
+        'Omega_b' : 0.0441,
+        'sigma_8' : 0.796,
+        'n_s' : 0.963,
 
         # halo mass definition: M500c, M500m, M200c, M200m, Mvir, MvirC15
-        self.massDef = massDef
+        'massDef' : 'M500c',
 
         # mass/concentration relation: D11, M11, TJ03, B12_F, B12_R, B01
-        self.concenDef = concenDef
+        'concenDef' : 'TJ03',
 
         # halo mass defintion: PS74, ST99, ST02, J01, T08
-        self.hmfDef = hmfDef
+        'hmfDef' : 'T08',
 
         # mass/bias relation:  PS74, ST99, ST02, J01, T08
-        self.biasDef = biasDef
+        'biasDef' : 'T08',
 
         # halo model / HOD parameters
-        self.log10M1 = 12.5 # in Msun h^-1
-        self.log10Mstar0 = 10.6 # in Msun h^-2
-        self.beta = 0.3
-        self.delta = 0.7
-        self.gamma = 1.0
-        self.log10Mstar_min = 10.00
-        self.log10Mstar_max = 11.00
-        self.sigma_log_M0 = 0.2
-        self.sigma_lambda = 0.0
-        self.B_cut = 1.50
-        self.B_sat = 10.0
-        self.beta_cut = 1.0
-        self.beta_sat = 0.8
-        self.alpha = 1.0
-        self.fcen1 = -1
-        self.fcen2 = -1
-        self.haloExcl = haloExcl
+        'log10M1' : 12.5, # in Msun h^-1
+        'log10Mstar0' : 10.6, # in Msun h^-2
+        'beta' : 0.3,
+        'delta' : 0.7,
+        'gamma' : 1.0,
+        'log10Mstar_min' : 10.00,
+        'log10Mstar_max' : 11.00,
+        'sigma_log_M0' : 0.2,
+        'sigma_lambda' : 0.0,
+        'B_cut' : 1.50,
+        'B_sat' : 10.0,
+        'beta_cut' : 1.0,
+        'beta_sat' : 0.8,
+        'alpha' : 1.0,
+        'fcen1' : -1,
+        'fcen2' : -1,
+        'haloExcl' : 1,
 
         # if using hod model
-        self.hod = hod
+        'hod' : 0,
 
         # for X-ray binaries
-        self.IxXB_Re = 0.01196 # in h^-1 Mpc
-        self.IxXB_CR = 0.0 # in CR
+        'IxXB_Re' : 0.01196, # in h^-1 Mpc
+        'IxXB_CR' : 0.0, # in CR
 
-        # X-ray, if hod = 0
-        self.gas_log10n0 = -3.0
-        self.gas_log10beta = -1.0
-        self.gas_log10rc = -1.0
+        # X-ray, if hod' :0
+        'gas_log10n0' : -3.0,
+        'gas_log10beta' : -1.0,
+        'gas_log10rc' : -1.0,
 
-        # X-ray, if hod = 1
-        # log10n0 = gas_log10n0_1  + gas_log10n0_2 * (log10Mh-14.0)
+        # X-ray, if hod' :1
+        # log10n0' :gas_log10n0_1  + gas_log10n0_2 * (log10Mh-14.0)
         # n0 in [h^3 Mpc^-3], Mpc in comoving coordinate.
-        self.gas_log10n0_1 = -2.5
-        self.gas_log10n0_2 = 1.0
-        self.gas_log10n0_3 = np.nan # not used
-        self.gas_log10n0_4 = np.nan # not used
+        'gas_log10n0_1' : -2.5,
+        'gas_log10n0_2' : 1.0,
+        'gas_log10n0_3' : np.nan, # not used
+        'gas_log10n0_4' : np.nan, # not used
 
         # spline function
-        self.gas_log10beta_1 = np.log10(2.0)
-        self.gas_log10beta_2 = np.log10(0.35)
-        self.gas_log10beta_3 = np.log10(0.5)
-        self.gas_log10beta_4 = np.log10(0.5)
+        'gas_log10beta_1' : np.log10(2.0),
+        'gas_log10beta_2' : np.log10(0.35),
+        'gas_log10beta_3' : np.log10(0.5),
+        'gas_log10beta_4' : np.log10(0.5),
 
         # spline function
-        self.gas_log10rc_1 = np.log10(0.3)
-        self.gas_log10rc_2 = np.log10(0.04)
-        self.gas_log10rc_3 = np.log10(0.08)
-        self.gas_log10rc_4 = np.log10(0.08)
+        'gas_log10rc_1' : np.log10(0.3),
+        'gas_log10rc_2' : np.log10(0.04),
+        'gas_log10rc_3' : np.log10(0.08),
+        'gas_log10rc_4' : np.log10(0.08),
 
         # for tx(Mh) - Temperature-Mass relationship
-        self.gas_TGasMh_N = 0
-        self.gas_TGasMh_log10Mh = None
-        self.gas_TGasMh_log10TGas = None
+        'gas_TGasMh_N' : 0,
+        'gas_TGasMh_log10Mh' : None,
+        'gas_TGasMh_log10TGas' : None,
 
         # for ZGas(Mh) - Metallicity-Mass relationship
-        self.gas_ZGasMh_N = 0
-        self.gas_ZGasMh_log10Mh = None
-        self.gas_ZGasMh_ZGas = None
+        'gas_ZGasMh_N' : 0,
+        'gas_ZGasMh_log10Mh' : None,
+        'gas_ZGasMh_ZGas' : None,
 
-        # for Lx to CR conversion flux [CR] = Lx * fac
-        self.gas_LxToCR_NZGas = 0
-        self.gas_LxToCR_NTGas = 0
-        self.gas_LxToCR_ZGas = None
-        self.gas_LxToCR_log10TGas = None
-        self.gas_LxToCR_log10fac = None
+        # for Lx to CR conversion flux [CR]' :Lx * fac
+        'gas_LxToCR_NZGas' : 0,
+        'gas_LxToCR_NTGas' : 0,
+        'gas_LxToCR_ZGas' : None,
+        'gas_LxToCR_log10TGas' : None,
+        'gas_LxToCR_log10fac' : None,
 
         # for gg lensing
-        self.ggl_pi_max = 60.0
-        self.ggl_log10c = np.nan
-        self.ggl_log10Mh = 14.0
-        self.ggl_log10Mstar = np.nan
+        'ggl_pi_max' : 60.0,
+        'ggl_log10c' : np.nan,
+        'ggl_log10Mh' : 14.0,
+        'ggl_log10Mstar' : np.nan,
 
-        # n(z) for wtheta, if hod = 1
-        self.wtheta_nz_N = 0
-        self.wtheta_nz_z = None
-        self.wtheta_nz = None
+        # n(z) for wtheta, if hod' : 1
+        'wtheta_nz_N' : 0,
+        'wtheta_nz_z' : None,
+        'wtheta_nz' : None,
 
-        # if hod = 1, one may input non-parametric HOD - centrals
-        self.HOD_cen_N = 0
-        self.HOD_cen_log10Mh = None
-        self.HOD_cen_Ngal = None
+        # if hod' : 1, one may input non-parametric HOD - centrals
+        'HOD_cen_N' : 0,
+        'HOD_cen_log10Mh' : None,
+        'HOD_cen_Ngal' : None,
 
-        # if hod = 1, one may input non-parametric HOD - satellites
-        self.HOD_sat_N = 0
-        self.HOD_sat_log10Mh = None
-        self.HOD_sat_Ngal = None
+        # if hod' : 1, one may input non-parametric HOD - satellites
+        'HOD_sat_N' : 0,
+        'HOD_sat_log10Mh' : None,
+        'HOD_sat_Ngal' : None,
 
         # XMM PSF
         # ATTENTION: rc is in degrees
-        # self.XMM_PSF_A = np.nan
-        self.XMM_PSF_rc_deg = np.nan
-        self.XMM_PSF_alpha = np.nan
+        # 'XMM_PSF_A' : np.nan
+        'XMM_PSF_rc_deg' : np.nan,
+        'XMM_PSF_alpha' : np.nan
+    }
 
+
+    def print_default(self):
+        """ Print the default values
+        """
+
+        for k in self._defaults_:
+            print('{} {}'.format(k, self._defaults_[k]))
+
+
+    def print_current(self):
+        """ Print the current values
+        """
+
+        for k in self._defaults_:
+            print('{} {}'.format(k, getattr(self, k)))
+
+    def __init__(self, *args, **kwargs):
+        """ Ctypes.Structure with integrated default values.
+        https://stackoverflow.com/questions/7946519/default-values-in-a-ctypes-structure/25892189#25892189
+
+        :param kwargs: values different to defaults
+        :type kwargs: dict
+        """
+
+        # sanity checks
+        defaults = type(self)._defaults_
+        assert type(defaults) is types.DictionaryType
+
+        # use defaults, but override with keyword arguments, if any
+        values = defaults.copy()
+        for k in values:
+            setattr(self, k, values[k])
 
         # set attributes passed during init
         for k in kwargs:
+            values[k] = kwargs[k]
             setattr(self, k, kwargs[k])
+
+        self.h = self.H0/100.0
+        self.log10h = np.log10(self.h)
+
+        # appropriately initialize ctypes.Structure
+        # super().__init__(**values)                       # Python 3 syntax
+        return ctypes.Structure.__init__(self, **values)  # Python 2 syntax
 
         # TODO
         # for each redshift:

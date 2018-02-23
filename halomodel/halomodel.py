@@ -328,6 +328,7 @@ class Model(ctypes.Structure):
 
     def __init__(self, *args, **kwargs):
         """ Ctypes.Structure with integrated default values.
+        https://www.programcreek.com/python/example/105644/ctypes.Structure.__init__
         https://stackoverflow.com/questions/7946519/default-values-in-a-ctypes-structure/25892189#25892189
 
         :param kwargs: values different to defaults

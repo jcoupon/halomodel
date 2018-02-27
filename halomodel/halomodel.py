@@ -1096,8 +1096,8 @@ def populate(
 
 
 def func_cum_prob_HOD(
-        model, log10Mstar_low = 5.0, obs_type='cen',
-        plot=None, Mh_limits=None):
+        model, obs_type='cen',
+        plot=None, Mh_limits=None, return_prob=False):
 
     """ Return a function to interpolate
     cumulative HOD (Mstar_inv).
@@ -1112,23 +1112,25 @@ def func_cum_prob_HOD(
     added to avoid truncated gaussian in Mstar at
     given Mh)
 
+    return_prob: if True, returns the probability
+    instead of the cumulative one.
+
     """
 
-    # dimensions in both directions
-    Nlog10Mstar_1 = 500
-    Nlog10Mstar_2 = 500
-    Nlog10Mstar_3 = 10000
-    Nlog10Mstar = Nlog10Mstar_1+Nlog10Mstar_2+Nlog10Mstar_3
-    Nlog10Mh = 100
-
-    # grids
-    # log10Mstar = np.linspace(log10Mstar_low, 12.50, Nlog10Mstar)
+    # Mstar grid
+    log10Mstar_low = 5.0
     log10Mstar = np.concatenate((
-        np.linspace(log10Mstar_low, 11.0, Nlog10Mstar_1),
-        np.linspace(11.0, 11.5, Nlog10Mstar_2),
-        np.linspace(11.5, 12.5, Nlog10Mstar_3)))
+        np.linspace(log10Mstar_low, 11.00, 200),
+        np.linspace(11.00, 11.50, 200),
+        np.linspace(11.50, 12.50, 200)))
 
-    log10Mstar = np.linspace(log10Mstar_low, 12.50, Nlog10Mstar)
+    # DEBUGGING
+    log10Mstar = np.linspace(log10Mstar_low, 12.50, 200)
+
+    Nlog10Mstar = len(log10Mstar)
+
+    # Mh grid
+    Nlog10Mh = 100
 
     if Mh_limits is not None:
         log10Mh = np.linspace(Mh_limits[0], Mh_limits[1], Nlog10Mh)
@@ -1136,11 +1138,14 @@ def func_cum_prob_HOD(
         log10Mh = np.linspace(
             msmh_log10Mh(model, log10Mstar[0])+0.2, 16.0, Nlog10Mh)
 
-    log10Mstar_inv = np.linspace(0.0, 1.0, Nlog10Mstar)
+    uniform = np.linspace(0.0, 1.0, Nlog10Mstar)
 
     # cumulative sums and 2D probability containers
     cs_2D = np.zeros(Nlog10Mh*Nlog10Mstar)
-    prob_2D = np.zeros((Nlog10Mh,Nlog10Mstar))
+    cs_2D_array = np.zeros((Nlog10Mh,Nlog10Mstar))
+    prob_2D = np.zeros(Nlog10Mh*Nlog10Mstar)
+
+    prob_2D_array = np.zeros((Nlog10Mh,Nlog10Mstar))
     cs = np.zeros(Nlog10Mstar)
 
     # loop over halo masses
@@ -1148,8 +1153,6 @@ def func_cum_prob_HOD(
 
         # probability of Mstar given Mh
         prob = phi(model, log10Mstar, m, obs_type=obs_type)
-        #if obs_type == 'sat':
-        #    prob[prob < 1.e-1] = 0.0
 
         sum_prob = np.trapz(prob, log10Mstar)
 
@@ -1165,15 +1168,19 @@ def func_cum_prob_HOD(
             prob /= sum_prob
 
             cs_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(
-                log10Mstar_inv, cs, log10Mstar)
+                uniform, cs, log10Mstar)
 
-            prob_2D[i,:] = prob
+            cs_2D_array[i, :] = np.interp(uniform, cs, log10Mstar)
+
+            prob_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = prob
+
+            prob_2D_array[i,:] = prob
 
         # DEBUGGING
         """
         prob_2D[i,:] = cs/max(cs)
         prob_2D[i:] = np.interp(
-            log10Mstar_inv, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
+            uniform, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
         prob_2D[i,:] = prob
         """
 
@@ -1181,7 +1188,7 @@ def func_cum_prob_HOD(
 
         fig, ax = plt.subplots(figsize=(6.0, 5.0))
         im = ax.imshow(
-            prob_2D, cmap=plt.cm.viridis,
+            prob_2D_array, cmap=plt.cm.viridis,
             interpolation='nearest', origin='lower')
 
         x_int = Nlog10Mstar//10
@@ -1205,8 +1212,18 @@ def func_cum_prob_HOD(
         fig.set_tight_layout(True)
         fig.savefig(plot)
 
-    return interpolate.interp2d(log10Mh, log10Mstar_inv, cs_2D, kind='linear')
+    if return_prob:
+        # return log10Mh, log10Mstar, prob_2D
 
+        X, Y = np.meshgrid(log10Mh, log10Mstar)
+        return X.flatten(), Y.flatten(), prob_2D.flatten()
+        # return X, Y, prob_2D
+
+        #func = interpolate.interp2d(X, Y, prob_2D, kind='linear')
+
+        # func = interpolate.interp2d(log10Mh, log10Mstar, prob_2D, kind='linear')
+    else:
+        return interpolate.interp2d(log10Mh, uniform, cs_2D, kind='linear')
 
 def func_cum_prob_rho_halo(model, z, log10Mstar_low = 5.0, plot=None):
     """ Return function to interpolate
@@ -1265,7 +1282,7 @@ def func_cum_prob_rho_halo(model, z, log10Mstar_low = 5.0, plot=None):
         """
         prob_2D[i,:] = prob
         prob_2D[i:] = np.interp(
-            log10Mstar_inv, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
+            uniform, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
         """
 
     if plot is not None:

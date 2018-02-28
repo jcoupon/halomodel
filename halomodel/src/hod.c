@@ -180,13 +180,11 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
       Msat = pow(10.0, log10Msat);
       Mcut = pow(10.0, log10Mcut);
       Mh_cen = pow(10.0, msmh_log10Mh(model, log10Mstar_min));
-      // result = Ngal_c(model, Mh, log10Mstar_min, -1.0)*pow(Mh/Msat, model->alpha)*exp(-Mcut/Mh);
 
-      // DEBUGGING
-      result = pow(Mh/Msat, model->alpha)*exp(-(Mcut+Mh_cen)/Mh);
-
+      result = Ngal_c(model, Mh, log10Mstar_min, -1.0)*pow(Mh/Msat, model->alpha)*exp(-Mcut/Mh);
+      // Tinker et al. (2015)
+      // result = pow(Mh/Msat, model->alpha)*exp(-(Mcut+Mh_cen)/Mh);
    }
-
 
    /*    Stellar mass bin */
    if(log10Mstar_max > 0){
@@ -202,11 +200,10 @@ double Ngal_s(const Model *model, double Mh, double log10Mstar_min, double log10
          Msat = pow(10.0, log10Msat);
          Mcut = pow(10.0, log10Mcut);
          Mh_cen = pow(10.0, msmh_log10Mh(model, log10Mstar_max));
-         // result -= Ngal_c(model, Mh, log10Mstar_max, -1.0)*pow(Mh/Msat, model->alpha) * exp(-Mcut/Mh);
 
-         // DEBUGGING
-         result -= pow(Mh/Msat, model->alpha)*exp(-(Mcut+Mh_cen)/Mh);
-
+         result -= Ngal_c(model, Mh, log10Mstar_max, -1.0)*pow(Mh/Msat, model->alpha) * exp(-Mcut/Mh);
+         // Tinker et al. (2015)
+         // result -= pow(Mh/Msat, model->alpha)*exp(-(Mcut+Mh_cen)/Mh);
 
       }
    }

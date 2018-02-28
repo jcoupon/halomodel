@@ -989,7 +989,110 @@ main functions
 
 """
 
+
 def populate(
+        model, halos, redshift, verbose = False, Mh_limits=None, sat=True,
+        log10Mh_name='log10Mh', log10Mstar_low=5.0, log10Mstar_high=12.5):
+
+    """ Populate halos with galaxies from input
+    halo catalogue and HOD (set in model).
+
+    INPUT
+    model: cosmological and HOD model
+    halos: dictionary with the following keys:
+        - 'log10Mh': log halo mass in h^-1 Msun
+        - 'x': x coordinate
+        - 'y': y coordinate
+        - 'z': z coordinate
+    redshift: mean redshift
+    Mh_limits: [log10Mh_min, log10Mh_max], halo
+    mass limits over which HOD is populated
+    log10Mstar_low: lowest stellar mass limit
+
+    OUTPUT
+    dictionary with coordinates, masses and types
+    (central or not) of galaxies: x,y,z,log10Mstar,cen
+
+    log10Mstar in log10(Mstar/[h^-2 Msun]]
+    log10Mh in log10(Mstar/[h^-1 Msun]]
+    """
+
+    # dictionary to be output
+    galaxies = collections.OrderedDict({
+        'log10Mstar': [], 'x': [], 'y': [], 'z': [],
+        'cen': [], 'log10Mh': []
+        })
+
+    # interpolate DM profiles (for satellites)
+    cum_prob_rho_Halo = func_cum_prob_rho_halo(
+        model, redshift, log10Mstar_low = log10Mstar_low)
+
+    Nh = len(halos['log10Mh'])
+
+    if verbose:
+        sys.stdout.write('\rPopulated {0:d}/{1:d} halos'.format(0, Nh))
+        sys.stdout.flush()
+
+    # loop over halos
+    for count, (log10Mh, x, y, z) in enumerate(
+        zip(halos[log10Mh_name], halos['x'], halos['y'], halos['z'])):
+
+        # centrals
+        galaxies['log10Mstar'].append(
+            draw_log10Mstar(model, log10Mh, obs_type='cen')[0])
+        galaxies['x'].append(x)
+        galaxies['y'].append(y)
+        galaxies['z'].append(z)
+        galaxies['cen'].append(1)
+        galaxies['log10Mh'].append(log10Mh)
+
+        # number of satellites
+        if sat:
+            log10Mstar = draw_log10Mstar(
+                model, log10Mh, obs_type='sat',
+                log10Mstar_low=log10Mstar_low,
+                log10Mstar_high=log10Mstar_high)
+            Nsat = len(log10Mstar)
+            if Nsat > 0:
+
+                # print(Nsat)
+
+                # radius and angle
+                #r = pow(10.0, cum_prob_rho_Halo(
+                #    log10Mh, np.random.rand(Nsat))).flatten()
+                #ra = np.random.rand(Nsat)*2.0*np.pi
+                #dec = np.random.rand(Nsat)*2.0-1.0
+                #dec = np.arcsin(dec)
+
+                # set galaxies
+                for i in range(Nsat):
+                    galaxies['log10Mstar'].append(log10Mstar[i])
+
+                    # galaxies['x'].append(x+r[i]*np.cos(ra[i])*np.cos(dec[i]))
+                    # galaxies['y'].append(y+r[i]*np.sin(ra[i])*np.cos(dec[i]))
+                    # galaxies['z'].append(z+r[i]*np.sin(-dec[i]))
+                    galaxies['cen'].append(0)
+                    # galaxies['log10Mh'].append(log10Mh)
+
+        if verbose:
+            if (count+1)%1000 == 0:
+                sys.stdout.write(
+                    '\rPopulated {0:d}/{1:d} halos'.format(count+1, Nh))
+                sys.stdout.flush()
+
+    if verbose:
+        sys.stdout.write('\rPopulated {0:d}/{1:d} halos\n'.format(Nh, Nh))
+
+    # convert to numpy arrays
+    for k in galaxies:
+        galaxies[k] = np.array(galaxies[k])
+
+    return galaxies
+
+
+
+
+def populate2(
         model, halos, redshift, verbose = False, log10Mstar_low = 5.0,
         Mh_limits=None, log10Mh_name='log10Mh', sat=True):
 
@@ -1313,6 +1416,67 @@ def func_cum_prob_rho_halo(model, z, log10Mstar_low = 5.0, plot=None):
         fig.savefig(plot)
 
     return interpolate.interp2d(log10Mh, log10r_inv, cs_2D, kind='linear')
+
+def draw_log10Mstar(
+        model, log10Mh, obs_type='cen',
+        log10Mstar_low=5.0, log10Mstar_high=12.5):
+    """ Draw log10(Mstar) value at given halo mass
+    """
+
+    if log10Mstar_low > 11.0:
+        raise ValueError(
+            'draw_log10Mstar: log10Mstar_low must be larger than 11.0')
+
+    if log10Mstar_high < 11.5:
+        raise ValueError(
+            'draw_log10Mstar: log10Mstar_high must be higher than 11.5')
+
+    # split log10Mstar range so that high-mass values are well represented
+    log10Mstar = np.concatenate((
+        np.linspace(log10Mstar_low, 11.0, 20),
+        np.linspace(11.0, 11.5, 20),
+        np.linspace(11.5, 12.50, 20)))
+    Nlog10Mstar = len(log10Mstar)
+
+    # phi(Mh) = probability of Mstar given a halo mass
+    P = phi(model, log10Mstar, log10Mh, obs_type=obs_type)
+
+    # number of values to draw
+    if obs_type == 'cen':
+        N = 1
+    elif obs_type == 'sat':
+        N = np.random.poisson(Ngal(
+            model, log10Mh, log10Mstar_low, log10Mstar_high, obs_type='sat'))
+    else:
+        raise ValueError(
+            "draw_log10Mstar: obs_type \"{0:s}\" is not recognised".format(
+                obs_type))
+
+    return draw_dist(log10Mstar, P, N)
+
+
+def draw_dist(x, P, N):
+    """ Draw values at random from distribution
+    """
+
+    # return empty array
+    if N == 0:
+        return np.array([])
+
+    N_bins = len(x)
+
+    # cumulative sum
+    cs = np.zeros(N_bins)
+    # cs = np.cumsum(phi_sat)
+    cs[1:] = np.cumsum(np.diff(x)*(P[:-1]+P[1:])/2.0)
+
+    # normalise
+    cs /= max(cs)
+
+    # inverse distribution
+    x_inv = interpolate.interp1d(cs, x)
+
+    return x_inv(np.random.rand(N))
 
 
 # c-function prototype

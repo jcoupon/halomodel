@@ -1058,21 +1058,21 @@ def populate(
                 # print(Nsat)
 
                 # radius and angle
-                #r = pow(10.0, cum_prob_rho_Halo(
-                #    log10Mh, np.random.rand(Nsat))).flatten()
-                #ra = np.random.rand(Nsat)*2.0*np.pi
-                #dec = np.random.rand(Nsat)*2.0-1.0
-                #dec = np.arcsin(dec)
+                r = pow(10.0, cum_prob_rho_Halo(
+                    log10Mh, np.random.rand(Nsat))).flatten()
+                ra = np.random.rand(Nsat)*2.0*np.pi
+                dec = np.random.rand(Nsat)*2.0-1.0
+                dec = np.arcsin(dec)
 
                 # set galaxies
                 for i in range(Nsat):
                     galaxies['log10Mstar'].append(log10Mstar[i])
 
-                    # galaxies['x'].append(x+r[i]*np.cos(ra[i])*np.cos(dec[i]))
-                    # galaxies['y'].append(y+r[i]*np.sin(ra[i])*np.cos(dec[i]))
-                    # galaxies['z'].append(z+r[i]*np.sin(-dec[i]))
+                    galaxies['x'].append(x+r[i]*np.cos(ra[i])*np.cos(dec[i]))
+                    galaxies['y'].append(y+r[i]*np.sin(ra[i])*np.cos(dec[i]))
+                    galaxies['z'].append(z+r[i]*np.sin(-dec[i]))
                     galaxies['cen'].append(0)
-                    # galaxies['log10Mh'].append(log10Mh)
+                    galaxies['log10Mh'].append(log10Mh)
 
         if verbose:
             if (count+1)%1000 == 0:

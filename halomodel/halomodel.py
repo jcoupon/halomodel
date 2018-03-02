@@ -989,7 +989,6 @@ main functions
 
 """
 
-
 def populate(
         model, halos, redshift, verbose = False, Mh_limits=None, sat=True,
         log10Mh_name='log10Mh', log10Mstar_low=5.0, log10Mstar_high=12.5):
@@ -1024,8 +1023,8 @@ def populate(
         })
 
     # interpolate DM profiles (for satellites)
-    cum_prob_rho_Halo = func_cum_prob_rho_halo(
-        model, redshift, log10Mstar_low = log10Mstar_low)
+    #cum_prob_rho_Halo = func_cum_prob_rho_halo(
+    #    model, redshift, log10Mstar_low = log10Mstar_low)
 
     Nh = len(halos['log10Mh'])
 
@@ -1058,117 +1057,10 @@ def populate(
                 # print(Nsat)
 
                 # radius and angle
-                r = pow(10.0, cum_prob_rho_Halo(
-                    log10Mh, np.random.rand(Nsat))).flatten()
-                ra = np.random.rand(Nsat)*2.0*np.pi
-                dec = np.random.rand(Nsat)*2.0-1.0
-                dec = np.arcsin(dec)
+                #r = pow(10.0, cum_prob_rho_Halo(
+                #    log10Mh, np.random.rand(Nsat))).flatten()
 
-                # set galaxies
-                for i in range(Nsat):
-                    galaxies['log10Mstar'].append(log10Mstar[i])
-
-                    galaxies['x'].append(x+r[i]*np.cos(ra[i])*np.cos(dec[i]))
-                    galaxies['y'].append(y+r[i]*np.sin(ra[i])*np.cos(dec[i]))
-                    galaxies['z'].append(z+r[i]*np.sin(-dec[i]))
-                    galaxies['cen'].append(0)
-                    galaxies['log10Mh'].append(log10Mh)
-
-        if verbose:
-            if (count+1)%1000 == 0:
-                sys.stdout.write(
-                    '\rPopulated {0:d}/{1:d} halos'.format(count+1, Nh))
-                sys.stdout.flush()
-
-    if verbose:
-        sys.stdout.write('\rPopulated {0:d}/{1:d} halos\n'.format(Nh, Nh))
-
-    # convert to numpy arrays
-    for k in galaxies:
-        galaxies[k] = np.array(galaxies[k])
-
-    return galaxies
-
-
-
-
-def populate2(
-        model, halos, redshift, verbose = False, log10Mstar_low = 5.0,
-        Mh_limits=None, log10Mh_name='log10Mh', sat=True):
-
-    """ Populate halos with galaxies from input
-    halo catalogue and HOD (set in model).
-
-    INPUT
-    model: cosmological and HOD model
-    halos: dictionary with the following keys:
-        - 'log10Mh': log halo mass in h^-1 Msun
-        - 'x': x coordinate
-        - 'y': y coordinate
-        - 'z': z coordinate
-    redshift: mean redshift
-    Mh_limits: [log10Mh_min, log10Mh_max], halo
-    mass limits over which HOD is populated
-    log10Mstar_low: lowest stellar mass limit
-
-    OUTPUT
-    dictionary with coordinates, masses and types
-    (central or not) of galaxies: x,y,z,log10Mstar,cen
-
-    log10Mstar in log10(Mstar/[h^-2 Msun]]
-    log10Mh in log10(Mstar/[h^-1 Msun]]
-    """
-
-    # dictionary to be output
-    galaxies = collections.OrderedDict({
-        'log10Mstar': [], 'x': [], 'y': [], 'z': [],
-        'cen': [], 'log10Mh': []
-        })
-
-    # interpolate phi(log10Mstar|log10Mh)
-    cum_prob_HOD_cen = func_cum_prob_HOD(
-        model, log10Mstar_low = log10Mstar_low,
-        obs_type="cen", Mh_limits=Mh_limits)
-    cum_prob_HOD_sat = func_cum_prob_HOD(
-        model, log10Mstar_low = log10Mstar_low,
-        obs_type="sat", Mh_limits=Mh_limits)
-
-    # interpolate DM profiles (for satellites)
-    cum_prob_rho_Halo = func_cum_prob_rho_halo(
-        model, redshift, log10Mstar_low = log10Mstar_low)
-
-    Nh = len(halos['log10Mh'])
-
-    if verbose:
-        sys.stdout.write('\rPopulated {0:d}/{1:d} halos'.format(0, Nh))
-        sys.stdout.flush()
-
-    # loop over halos
-    for count, (log10Mh, x, y, z) in enumerate(
-        zip(halos[log10Mh_name], halos['x'], halos['y'], halos['z'])):
-
-        # centrals
-        galaxies['log10Mstar'].append(cum_prob_HOD_cen(
-            log10Mh, np.random.rand())[0])
-        galaxies['x'].append(x)
-        galaxies['y'].append(y)
-        galaxies['z'].append(z)
-        galaxies['cen'].append(1)
-        galaxies['log10Mh'].append(log10Mh)
-
-        # number of satellites
-        if sat:
-            Nsat = np.random.poisson(
-                Ngal(model, log10Mh, log10Mstar_low, -1.0, obs_type='sat'))
-            if Nsat > 0:
-
-                # Mstar distribution within halo
-                log10Mstar = cum_prob_HOD_sat(
-                    log10Mh, np.random.rand(Nsat)).flatten()
-
-                # radius and angle
-                r = pow(10.0, cum_prob_rho_Halo(
-                    log10Mh, np.random.rand(Nsat))).flatten()
+                r =  pow(10.0, draw_r_halo(model, log10Mh, z, Nsat))
                 ra = np.random.rand(Nsat)*2.0*np.pi
                 dec = np.random.rand(Nsat)*2.0-1.0
                 dec = np.arcsin(dec)
@@ -1197,141 +1089,8 @@ def populate2(
 
     return galaxies
 
-
-def func_cum_prob_HOD(
-        model, obs_type='cen',
-        plot=None, Mh_limits=None, return_prob=False):
-
-    """ Return a function to interpolate
-    cumulative HOD (Mstar_inv).
-
-    For a given log10Mh and random number
-    number between 0 and 1, this function then
-    returns a log10Mstar with the probability
-    given by the HOD model.
-
-    The Mh_limits is not given, the minimum halo mass
-    is deduced from the Mstar-Mh relation (with +0.2
-    added to avoid truncated gaussian in Mstar at
-    given Mh)
-
-    return_prob: if True, returns the probability
-    instead of the cumulative one.
-
-    """
-
-    # Mstar grid
-    log10Mstar_low = 5.0
-    log10Mstar = np.concatenate((
-        np.linspace(log10Mstar_low, 11.00, 200),
-        np.linspace(11.00, 11.50, 200),
-        np.linspace(11.50, 12.50, 200)))
-
-    # DEBUGGING
-    log10Mstar = np.linspace(log10Mstar_low, 12.50, 200)
-
-    Nlog10Mstar = len(log10Mstar)
-
-    # Mh grid
-    Nlog10Mh = 100
-
-    if Mh_limits is not None:
-        log10Mh = np.linspace(Mh_limits[0], Mh_limits[1], Nlog10Mh)
-    else:
-        log10Mh = np.linspace(
-            msmh_log10Mh(model, log10Mstar[0])+0.2, 16.0, Nlog10Mh)
-
-    uniform = np.linspace(0.0, 1.0, Nlog10Mstar)
-
-    # cumulative sums and 2D probability containers
-    cs_2D = np.zeros(Nlog10Mh*Nlog10Mstar)
-    cs_2D_array = np.zeros((Nlog10Mh,Nlog10Mstar))
-    prob_2D = np.zeros(Nlog10Mh*Nlog10Mstar)
-
-    prob_2D_array = np.zeros((Nlog10Mh,Nlog10Mstar))
-    cs = np.zeros(Nlog10Mstar)
-
-    # loop over halo masses
-    for i,m in enumerate(log10Mh):
-
-        # probability of Mstar given Mh
-        prob = phi(model, log10Mstar, m, obs_type=obs_type)
-
-        sum_prob = np.trapz(prob, log10Mstar)
-
-        # skip those halos with too few satellites
-        # or too low probability
-        if sum_prob > 0.0:
-
-            # commulative function
-            cs[1:] = np.cumsum(np.diff(log10Mstar)*(prob[:-1]+prob[1:])/2.0)
-
-            # normalise
-            cs /= max(cs)
-            prob /= sum_prob
-
-            cs_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(
-                uniform, cs, log10Mstar)
-
-            cs_2D_array[i, :] = np.interp(uniform, cs, log10Mstar)
-
-            prob_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = prob
-
-            prob_2D_array[i,:] = prob
-
-        # DEBUGGING
-        """
-        prob_2D[i,:] = cs/max(cs)
-        prob_2D[i:] = np.interp(
-            uniform, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
-        prob_2D[i,:] = prob
-        """
-
-    if plot is not None:
-
-        fig, ax = plt.subplots(figsize=(6.0, 5.0))
-        im = ax.imshow(
-            prob_2D_array, cmap=plt.cm.viridis,
-            interpolation='nearest', origin='lower')
-
-        x_int = Nlog10Mstar//10
-        y_int = Nlog10Mh//10
-
-        xticks = np.arange(0, Nlog10Mstar, x_int)
-        xticklabels = ["{0:4.2f}".format(b) for b in log10Mstar[xticks]]
-
-        yticks = np.arange(0, Nlog10Mh, y_int)
-        yticklabels = ["{0:4.2f}".format(b) for b in log10Mh[yticks]]
-
-        ax.xaxis.set_ticks(xticks)
-        ax.xaxis.set_ticklabels(xticklabels, rotation=45)
-
-        ax.yaxis.set_ticks(yticks)
-        ax.yaxis.set_ticklabels(yticklabels)
-
-        ax.set_xlabel('log10Mstar')
-        ax.set_ylabel('log10Mh')
-
-        fig.set_tight_layout(True)
-        fig.savefig(plot)
-
-    if return_prob:
-        # return log10Mh, log10Mstar, prob_2D
-
-        X, Y = np.meshgrid(log10Mh, log10Mstar)
-        return X.flatten(), Y.flatten(), prob_2D.flatten()
-        # return X, Y, prob_2D
-
-        #func = interpolate.interp2d(X, Y, prob_2D, kind='linear')
-
-        # func = interpolate.interp2d(log10Mh, log10Mstar, prob_2D, kind='linear')
-    else:
-        return interpolate.interp2d(log10Mh, uniform, cs_2D, kind='linear')
-
-def func_cum_prob_rho_halo(model, z, log10Mstar_low = 5.0, plot=None):
-    """ Return function to interpolate
-    cumulative halo profile probability
-    to populate satellites in halos.
+def draw_r_halo(model, log10Mh, z, N):
+    """ Draw radius value at given halo mass
 
     For a given log10Mh and random number
     number between 0 and 1, this function then
@@ -1343,79 +1102,18 @@ def func_cum_prob_rho_halo(model, z, log10Mstar_low = 5.0, plot=None):
     of the halos
     """
 
-    # dimensions in both directions
-    Nlog10r = 1000
-    Nlog10Mh = 100
-
-    # grids
-    log10Mh = np.linspace(msmh_log10Mh(model, log10Mstar_low), 16.0, Nlog10Mh)
+    Nlog10r = 50
     log10r = np.linspace(
-        -3.0, np.log10(rh(model, pow(10.0, log10Mh[-1]), z)), Nlog10r)
-    log10r_inv = np.linspace(0.0, 1.0, Nlog10r)
-
+        -3.0, np.log10(rh(model, pow(10.0, log10Mh), z)), Nlog10r)
     r = pow(10.0, log10r)
 
-    cs_2D = np.zeros(Nlog10Mh*Nlog10r)
-    prob_2D = np.zeros((Nlog10Mh,Nlog10r))
-    cs = np.zeros(Nlog10r)
+    # normalised probability of position
+    # (= normalised NFW profile x r^2 x 4 pi x r
+    # [because log scale])
+    P = rhoHalo(model, r, log10Mh, z) \
+        /pow(10.0, log10Mh) * r**2 * 4.0 * np.pi * r * np.log(10.0)
 
-    for i,m in enumerate(log10Mh):
-
-        # normalised probability of position
-        # (= normalised NFW profile x r^2 x 4 pi x r
-        # [because log scale])
-        prob = rhoHalo(model, r, m, z) \
-            /pow(10.0, m) * r**2 * 4.0 * np.pi * r * np.log(10.0)
-
-        # commulative function
-        cs[1:] = np.cumsum(np.diff(log10r)*(prob[:-1]+prob[1:])/2.0)
-
-        # renormalise in case
-        # probability goes beyond limits
-        cs /= max(cs)
-
-        # inverse cumulative function
-        select = prob > 1.e-8
-        cs_2D[i*Nlog10r:(i+1)*Nlog10r] = np.interp(
-            log10r_inv, cs[select], log10r[select])
-
-        prob_2D[i,:] = cs # /max(cs)
-
-        # DEBUGGING
-        """
-        prob_2D[i,:] = prob
-        prob_2D[i:] = np.interp(
-            uniform, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
-        """
-
-    if plot is not None:
-        fig, ax = plt.subplots(figsize=(6.0, 5.0))
-        im = ax.imshow(
-            prob_2D, cmap=plt.cm.viridis,
-            interpolation='nearest', origin='lower')
-
-        x_int = Nlog10r//10
-        y_int = Nlog10Mh//10
-
-        xticks = np.arange(0, Nlog10r, x_int)
-        xticklabels = ["{0:4.2f}".format(b) for b in log10r[xticks]]
-
-        yticks = np.arange(0, Nlog10Mh, y_int)
-        yticklabels = ["{0:4.2f}".format(b) for b in log10Mh[yticks]]
-
-        ax.xaxis.set_ticks(xticks)
-        ax.xaxis.set_ticklabels(xticklabels, rotation=45)
-
-        ax.yaxis.set_ticks(yticks)
-        ax.yaxis.set_ticklabels(yticklabels)
-
-        ax.set_xlabel('log10r')
-        ax.set_ylabel('log10Mh')
-
-        fig.set_tight_layout(True)
-        fig.savefig(plot)
-
-    return interpolate.interp2d(log10Mh, log10r_inv, cs_2D, kind='linear')
+    return draw_dist(log10r, P, N)
 
 def draw_log10Mstar(
         model, log10Mh, obs_type='cen',
@@ -1467,7 +1165,7 @@ def draw_dist(x, P, N):
 
     # cumulative sum
     cs = np.zeros(N_bins)
-    # cs = np.cumsum(phi_sat)
+    # cs = np.cumsum(x)
     cs[1:] = np.cumsum(np.diff(x)*(P[:-1]+P[1:])/2.0)
 
     # normalise
@@ -2597,3 +2295,339 @@ def dumpModel(model, fileOutName=None):
         fileOut.write(new)
 
     return string
+
+
+
+
+
+
+
+
+
+
+
+
+def populate_DEPRECATED(
+        model, halos, redshift, verbose = False, log10Mstar_low = 5.0,
+        Mh_limits=None, log10Mh_name='log10Mh', sat=True):
+
+    """ Populate halos with galaxies from input
+    halo catalogue and HOD (set in model).
+
+    INPUT
+    model: cosmological and HOD model
+    halos: dictionary with the following keys:
+        - 'log10Mh': log halo mass in h^-1 Msun
+        - 'x': x coordinate
+        - 'y': y coordinate
+        - 'z': z coordinate
+    redshift: mean redshift
+    Mh_limits: [log10Mh_min, log10Mh_max], halo
+    mass limits over which HOD is populated
+    log10Mstar_low: lowest stellar mass limit
+
+    OUTPUT
+    dictionary with coordinates, masses and types
+    (central or not) of galaxies: x,y,z,log10Mstar,cen
+
+    log10Mstar in log10(Mstar/[h^-2 Msun]]
+    log10Mh in log10(Mstar/[h^-1 Msun]]
+    """
+
+    # dictionary to be output
+    galaxies = collections.OrderedDict({
+        'log10Mstar': [], 'x': [], 'y': [], 'z': [],
+        'cen': [], 'log10Mh': []
+        })
+
+    # interpolate phi(log10Mstar|log10Mh)
+    cum_prob_HOD_cen = func_cum_prob_HOD(
+        model, log10Mstar_low = log10Mstar_low,
+        obs_type="cen", Mh_limits=Mh_limits)
+    cum_prob_HOD_sat = func_cum_prob_HOD(
+        model, log10Mstar_low = log10Mstar_low,
+        obs_type="sat", Mh_limits=Mh_limits)
+
+    # interpolate DM profiles (for satellites)
+    cum_prob_rho_Halo = func_cum_prob_rho_halo(
+        model, redshift, log10Mstar_low = log10Mstar_low)
+
+    Nh = len(halos['log10Mh'])
+
+    if verbose:
+        sys.stdout.write('\rPopulated {0:d}/{1:d} halos'.format(0, Nh))
+        sys.stdout.flush()
+
+    # loop over halos
+    for count, (log10Mh, x, y, z) in enumerate(
+        zip(halos[log10Mh_name], halos['x'], halos['y'], halos['z'])):
+
+        # centrals
+        galaxies['log10Mstar'].append(cum_prob_HOD_cen(
+            log10Mh, np.random.rand())[0])
+        galaxies['x'].append(x)
+        galaxies['y'].append(y)
+        galaxies['z'].append(z)
+        galaxies['cen'].append(1)
+        galaxies['log10Mh'].append(log10Mh)
+
+        # number of satellites
+        if sat:
+            Nsat = np.random.poisson(
+                Ngal(model, log10Mh, log10Mstar_low, -1.0, obs_type='sat'))
+            if Nsat > 0:
+
+                # Mstar distribution within halo
+                log10Mstar = cum_prob_HOD_sat(
+                    log10Mh, np.random.rand(Nsat)).flatten()
+
+                # radius and angle
+                r = pow(10.0, cum_prob_rho_Halo(
+                    log10Mh, np.random.rand(Nsat))).flatten()
+                ra = np.random.rand(Nsat)*2.0*np.pi
+                dec = np.random.rand(Nsat)*2.0-1.0
+                dec = np.arcsin(dec)
+
+                # set galaxies
+                for i in range(Nsat):
+                    galaxies['log10Mstar'].append(log10Mstar[i])
+                    galaxies['x'].append(x+r[i]*np.cos(ra[i])*np.cos(dec[i]))
+                    galaxies['y'].append(y+r[i]*np.sin(ra[i])*np.cos(dec[i]))
+                    galaxies['z'].append(z+r[i]*np.sin(-dec[i]))
+                    galaxies['cen'].append(0)
+                    galaxies['log10Mh'].append(log10Mh)
+
+        if verbose:
+            if (count+1)%1000 == 0:
+                sys.stdout.write(
+                    '\rPopulated {0:d}/{1:d} halos'.format(count+1, Nh))
+                sys.stdout.flush()
+
+    if verbose:
+        sys.stdout.write('\rPopulated {0:d}/{1:d} halos\n'.format(Nh, Nh))
+
+    # convert to numpy arrays
+    for k in galaxies:
+        galaxies[k] = np.array(galaxies[k])
+
+    return galaxies
+
+
+def func_cum_prob_HOD_DEPRECATED(
+        model, obs_type='cen',
+        plot=None, Mh_limits=None, return_prob=False):
+
+    """ Return a function to interpolate
+    cumulative HOD (Mstar_inv).
+
+    For a given log10Mh and random number
+    number between 0 and 1, this function then
+    returns a log10Mstar with the probability
+    given by the HOD model.
+
+    The Mh_limits is not given, the minimum halo mass
+    is deduced from the Mstar-Mh relation (with +0.2
+    added to avoid truncated gaussian in Mstar at
+    given Mh)
+
+    return_prob: if True, returns the probability
+    instead of the cumulative one.
+
+    """
+
+    # Mstar grid
+    log10Mstar_low = 5.0
+    log10Mstar = np.concatenate((
+        np.linspace(log10Mstar_low, 11.00, 200),
+        np.linspace(11.00, 11.50, 200),
+        np.linspace(11.50, 12.50, 200)))
+
+    # DEBUGGING
+    log10Mstar = np.linspace(log10Mstar_low, 12.50, 200)
+
+    Nlog10Mstar = len(log10Mstar)
+
+    # Mh grid
+    Nlog10Mh = 100
+
+    if Mh_limits is not None:
+        log10Mh = np.linspace(Mh_limits[0], Mh_limits[1], Nlog10Mh)
+    else:
+        log10Mh = np.linspace(
+            msmh_log10Mh(model, log10Mstar[0])+0.2, 16.0, Nlog10Mh)
+
+    uniform = np.linspace(0.0, 1.0, Nlog10Mstar)
+
+    # cumulative sums and 2D probability containers
+    cs_2D = np.zeros(Nlog10Mh*Nlog10Mstar)
+    cs_2D_array = np.zeros((Nlog10Mh,Nlog10Mstar))
+    prob_2D = np.zeros(Nlog10Mh*Nlog10Mstar)
+
+    prob_2D_array = np.zeros((Nlog10Mh,Nlog10Mstar))
+    cs = np.zeros(Nlog10Mstar)
+
+    # loop over halo masses
+    for i,m in enumerate(log10Mh):
+
+        # probability of Mstar given Mh
+        prob = phi(model, log10Mstar, m, obs_type=obs_type)
+
+        sum_prob = np.trapz(prob, log10Mstar)
+
+        # skip those halos with too few satellites
+        # or too low probability
+        if sum_prob > 0.0:
+
+            # commulative function
+            cs[1:] = np.cumsum(np.diff(log10Mstar)*(prob[:-1]+prob[1:])/2.0)
+
+            # normalise
+            cs /= max(cs)
+            prob /= sum_prob
+
+            cs_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = np.interp(
+                uniform, cs, log10Mstar)
+
+            cs_2D_array[i, :] = np.interp(uniform, cs, log10Mstar)
+
+            prob_2D[i*Nlog10Mstar:(i+1)*Nlog10Mstar] = prob
+
+            prob_2D_array[i,:] = prob
+
+        # DEBUGGING
+        """
+        prob_2D[i,:] = cs/max(cs)
+        prob_2D[i:] = np.interp(
+            uniform, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
+        prob_2D[i,:] = prob
+        """
+
+    if plot is not None:
+
+        fig, ax = plt.subplots(figsize=(6.0, 5.0))
+        im = ax.imshow(
+            prob_2D_array, cmap=plt.cm.viridis,
+            interpolation='nearest', origin='lower')
+
+        x_int = Nlog10Mstar//10
+        y_int = Nlog10Mh//10
+
+        xticks = np.arange(0, Nlog10Mstar, x_int)
+        xticklabels = ["{0:4.2f}".format(b) for b in log10Mstar[xticks]]
+
+        yticks = np.arange(0, Nlog10Mh, y_int)
+        yticklabels = ["{0:4.2f}".format(b) for b in log10Mh[yticks]]
+
+        ax.xaxis.set_ticks(xticks)
+        ax.xaxis.set_ticklabels(xticklabels, rotation=45)
+
+        ax.yaxis.set_ticks(yticks)
+        ax.yaxis.set_ticklabels(yticklabels)
+
+        ax.set_xlabel('log10Mstar')
+        ax.set_ylabel('log10Mh')
+
+        fig.set_tight_layout(True)
+        fig.savefig(plot)
+
+    if return_prob:
+        # return log10Mh, log10Mstar, prob_2D
+
+        X, Y = np.meshgrid(log10Mh, log10Mstar)
+        return X.flatten(), Y.flatten(), prob_2D.flatten()
+        # return X, Y, prob_2D
+
+        #func = interpolate.interp2d(X, Y, prob_2D, kind='linear')
+
+        # func = interpolate.interp2d(log10Mh, log10Mstar, prob_2D, kind='linear')
+    else:
+        return interpolate.interp2d(log10Mh, uniform, cs_2D, kind='linear')
+
+def func_cum_prob_rho_halo_DEPRECATED(model, z, log10Mstar_low = 5.0, plot=None):
+    """ Return function to interpolate
+    cumulative halo profile probability
+    to populate satellites in halos.
+
+    For a given log10Mh and random number
+    number between 0 and 1, this function then
+    returns a position with the probability
+    given by the dark matter halo profile.
+
+    This routine needs a redshift for the
+    calculation of the maximum radius
+    of the halos
+    """
+
+    # dimensions in both directions
+    Nlog10r = 1000
+    Nlog10Mh = 100
+
+    # grids
+    log10Mh = np.linspace(msmh_log10Mh(model, log10Mstar_low), 16.0, Nlog10Mh)
+    log10r = np.linspace(
+        -3.0, np.log10(rh(model, pow(10.0, log10Mh[-1]), z)), Nlog10r)
+    log10r_inv = np.linspace(0.0, 1.0, Nlog10r)
+
+    r = pow(10.0, log10r)
+
+    cs_2D = np.zeros(Nlog10Mh*Nlog10r)
+    prob_2D = np.zeros((Nlog10Mh,Nlog10r))
+    cs = np.zeros(Nlog10r)
+
+    for i,m in enumerate(log10Mh):
+
+        # normalised probability of position
+        # (= normalised NFW profile x r^2 x 4 pi x r
+        # [because log scale])
+        prob = rhoHalo(model, r, m, z) \
+            /pow(10.0, m) * r**2 * 4.0 * np.pi * r * np.log(10.0)
+
+        # commulative function
+        cs[1:] = np.cumsum(np.diff(log10r)*(prob[:-1]+prob[1:])/2.0)
+
+        # renormalise in case
+        # probability goes beyond limits
+        cs /= max(cs)
+
+        # inverse cumulative function
+        select = prob > 1.e-8
+        cs_2D[i*Nlog10r:(i+1)*Nlog10r] = np.interp(
+            log10r_inv, cs[select], log10r[select])
+
+        prob_2D[i,:] = cs # /max(cs)
+
+        # DEBUGGING
+        """
+        prob_2D[i,:] = prob
+        prob_2D[i:] = np.interp(
+            uniform, cs/max(cs), log10Mstar,  left=0.0, right=1.0)
+        """
+
+    if plot is not None:
+        fig, ax = plt.subplots(figsize=(6.0, 5.0))
+        im = ax.imshow(
+            prob_2D, cmap=plt.cm.viridis,
+            interpolation='nearest', origin='lower')
+
+        x_int = Nlog10r//10
+        y_int = Nlog10Mh//10
+
+        xticks = np.arange(0, Nlog10r, x_int)
+        xticklabels = ["{0:4.2f}".format(b) for b in log10r[xticks]]
+
+        yticks = np.arange(0, Nlog10Mh, y_int)
+        yticklabels = ["{0:4.2f}".format(b) for b in log10Mh[yticks]]
+
+        ax.xaxis.set_ticks(xticks)
+        ax.xaxis.set_ticklabels(xticklabels, rotation=45)
+
+        ax.yaxis.set_ticks(yticks)
+        ax.yaxis.set_ticklabels(yticklabels)
+
+        ax.set_xlabel('log10r')
+        ax.set_ylabel('log10Mh')
+
+        fig.set_tight_layout(True)
+        fig.savefig(plot)
+
+    return interpolate.interp2d(log10Mh, log10r_inv, cs_2D, kind='linear')

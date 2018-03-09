@@ -887,7 +887,6 @@ def test():
 
         del modelHOD_nonPara
 
-
     # sanity check: the model should not have changed
     m2 = dumpModel(model)
     if printModelChanges:
@@ -1131,9 +1130,9 @@ def draw_log10Mstar(
 
     # split log10Mstar range so that high-mass values are well represented
     log10Mstar = np.concatenate((
-        np.linspace(log10Mstar_low, 11.0, 20),
-        np.linspace(11.0, 11.5, 20),
-        np.linspace(11.5, 12.50, 20)))
+        np.linspace(log10Mstar_low, 11.0, 100),
+        np.linspace(11.0, 11.5, 100),
+        np.linspace(11.5, 12.50, 100)))
     Nlog10Mstar = len(log10Mstar)
 
     # phi(Mh) = probability of Mstar given a halo mass

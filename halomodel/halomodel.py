@@ -1051,15 +1051,10 @@ def populate(
                 log10Mstar_low=log10Mstar_low,
                 log10Mstar_high=log10Mstar_high)
             Nsat = len(log10Mstar)
+
             if Nsat > 0:
 
-                # print(Nsat)
-
-                # radius and angle
-                #r = pow(10.0, cum_prob_rho_Halo(
-                #    log10Mh, np.random.rand(Nsat))).flatten()
-
-                r =  pow(10.0, draw_r_halo(model, log10Mh, z, Nsat))
+                r = pow(10.0, draw_r_halo(model, log10Mh, redshift, Nsat))
                 ra = np.random.rand(Nsat)*2.0*np.pi
                 dec = np.random.rand(Nsat)*2.0-1.0
                 dec = np.arcsin(dec)
@@ -1110,7 +1105,7 @@ def draw_r_halo(model, log10Mh, z, N):
     # (= normalised NFW profile x r^2 x 4 pi x r
     # [because log scale])
     P = rhoHalo(model, r, log10Mh, z) \
-        /pow(10.0, log10Mh) * r**2 * 4.0 * np.pi * r * np.log(10.0)
+        / pow(10.0, log10Mh) * r**2 * 4.0 * np.pi * r * np.log(10.0)
 
     return draw_dist(log10r, P, N)
 

@@ -349,6 +349,7 @@ double dndlnMh(const Model *model, double Mh, double z){
       double rhobar = rho_bar(model, 0.0);
 
       int i, Ninter = 128;
+      // int i, Ninter = 256;
       double dx = (LNMH_MAX-LNMH_MIN)/(double)Ninter;
       double *x = (double *)malloc(Ninter*sizeof(double));
       double *y = (double *)malloc(Ninter*sizeof(double));

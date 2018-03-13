@@ -340,8 +340,10 @@ double P_gg_satsat(const Model *model, double k, double z)
 
       double ng = ngal_den(model, LNMH_MAX, model->log10Mstar_min, model->log10Mstar_max, z, all);
 
-      return 0.5*int_gsl(intForP_gg_satsat, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/pow(ng, 2.0);
+      // return 0.5*int_gsl(intForP_gg_satsat, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/pow(ng, 2.0);
 
+      // DEBUGGING
+      return int_gsl(intForP_gg_satsat, (void*)&p, LNMH_MIN, LNMH_MAX, 1.e-3)/pow(ng, 2.0);
 
    }else{
       printf("w(theta) not supported in non-HOD models. Exiting..."); exit(-1);

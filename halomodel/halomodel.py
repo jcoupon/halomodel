@@ -312,7 +312,7 @@ class Model(ctypes.Structure):
 
 
     def print_default(self):
-        """ Print the default values
+        """ Print the default values.
         """
 
         for k in self._defaults_:
@@ -320,7 +320,7 @@ class Model(ctypes.Structure):
 
 
     def print_current(self):
-        """ Print the current values
+        """ Print the current values.
         """
 
         for k in self._defaults_:
@@ -331,8 +331,8 @@ class Model(ctypes.Structure):
         https://www.programcreek.com/python/example/105644/ctypes.Structure.__init__
         https://stackoverflow.com/questions/7946519/default-values-in-a-ctypes-structure/25892189#25892189
 
-        :param kwargs: values different to defaults
-        :type kwargs: dict
+        param kwargs: values different to defaults
+        type kwargs: dict
         """
 
         # sanity checks

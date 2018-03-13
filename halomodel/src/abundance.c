@@ -11,18 +11,19 @@
  * ---------------------------------------------------------------- */
 
 
-
 void dndlog10Mstar(const Model *model, double *log10Mstar, int N, double z, int obs_type, double *result)
 {
    /* Computes the stellar mass function.
-   See Leauthaud et al. (2011) eq. 17
-   and Coupon et al. (2012) Eq. A. 21.
+      See Leauthaud et al. (2011) eq. 17
+      and Coupon et al. (2012) Eq. A. 21.
 
-   takes Mstar in (Msun/h^2), returns result in (Mpc/h)^-3 dex^-1
+      takes Mstar in (Msun/h^2), returns result in (Mpc/h)^-3 dex^-1
    */
 
    int i;
-   double dlog10Mstar = 0.01;
+
+   // TODO: figure why too small step creates glitches in SMF
+   double dlog10Mstar = 5.e-2;
 
    if (model->hod == 0){
       printf("The SMF is not supported for non-HOD models. Exiting...\n");
@@ -31,8 +32,8 @@ void dndlog10Mstar(const Model *model, double *log10Mstar, int N, double z, int 
 
    for(i=0; i<N; i++){
       result[i] = ngal_den(model, LNMH_MAX,
-         log10Mstar[i] - dlog10Mstar/2.0,
-         log10Mstar[i] + dlog10Mstar/2.0, z, obs_type)/dlog10Mstar;
+         log10Mstar[i] - dlog10Mstar,
+         log10Mstar[i] + dlog10Mstar, z, obs_type)/dlog10Mstar/2.0;
 
       /* to avoid numerical issues when comparing results
       between machines
@@ -42,9 +43,7 @@ void dndlog10Mstar(const Model *model, double *log10Mstar, int N, double z, int 
       }
 
    }
-
    return;
-
 }
 
 double logM_lim(const Model *model, double r, double c, double z, int obs_type)
@@ -142,6 +141,9 @@ double int_for_ngal_den(double lnMh, void *p) {
 
    double Mh = exp(lnMh);
 
+   // DEBUGGING
+   return  Ngal_c(model, Mh, log10Mstar_min, log10Mstar_max)* dndlnMh(model, Mh, z);
+
    switch (obs_type){
       case cen:
          return Ngal_c(model, Mh, log10Mstar_min, log10Mstar_max) * dndlnMh(model, Mh, z);
@@ -161,7 +163,7 @@ double int_for_ngal_den(double lnMh, void *p) {
 
 double MstarMean(const Model *model, double z, int obs_type)
 {
-  /* returns the mean stellar mass if HOD model .*/
+  /* returns the mean stellar mass if HOD model. */
 
   params p;
   p.model = model;
